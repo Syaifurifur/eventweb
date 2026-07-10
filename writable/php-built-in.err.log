@@ -1,0 +1,71 @@
+[Fri Jul 10 09:29:45 2026] PHP 8.2.12 Development Server (http://127.0.0.1:8080) started
+[Fri Jul 10 09:30:17 2026] 127.0.0.1:54798 Accepted
+[Fri Jul 10 09:30:17 2026] 127.0.0.1:54798 Closing
+[Fri Jul 10 09:30:40 2026] 127.0.0.1:51785 Accepted
+[Fri Jul 10 09:30:40 2026] 127.0.0.1:51785 Closing
+[Fri Jul 10 09:31:02 2026] 127.0.0.1:62388 Accepted
+[Fri Jul 10 09:31:02 2026] 127.0.0.1:62388 Closing
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62398 Accepted
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62399 Accepted
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62398 [200]: GET /assets/css/app.css?v=1782965415
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62400 Accepted
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62399 [200]: GET /assets/js/app.js?v=1782965411
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62398 Closing
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62400 [200]: GET /assets/img/eventhub-logo.png
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62399 Closing
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62400 Closing
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62402 Accepted
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62403 Accepted
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62402 [200]: GET /assets/img/taskbar-icon.png?v=1780266555
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62403 [200]: GET /favicon.ico?v=1780266555
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62402 Closing
+[Fri Jul 10 09:31:03 2026] 127.0.0.1:62403 Closing
+[Fri Jul 10 09:31:07 2026] 127.0.0.1:62404 Accepted
+[Fri Jul 10 09:31:09 2026] 127.0.0.1:62404 Closing
+[Fri Jul 10 09:31:09 2026] 127.0.0.1:62409 Accepted
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62409 Closing
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62411 Accepted
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62412 Accepted
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62411 [200]: GET /assets/css/app.css?v=1782965415
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62413 Accepted
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62412 [200]: GET /assets/js/app.js?v=1782965411
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62411 Closing
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62413 [200]: GET /assets/img/eventhub-mark.png
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62412 Closing
+[Fri Jul 10 09:31:15 2026] 127.0.0.1:62413 Closing
+[Fri Jul 10 09:31:17 2026] 127.0.0.1:62414 Accepted
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62414 Closing
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62416 Accepted
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62416 [200]: GET /assets/css/app.css?v=1782965415
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62417 Accepted
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62416 Closing
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62417 [200]: GET /assets/img/eventhub-mark.png
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62417 Closing
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62418 Accepted
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62418 [200]: GET /assets/js/app.js
+[Fri Jul 10 09:31:19 2026] 127.0.0.1:62418 Closing
+[Fri Jul 10 09:31:25 2026] 127.0.0.1:62420 Accepted
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62420 Closing
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62422 Accepted
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62422 [200]: GET /assets/css/app.css?v=1782965415
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62423 Accepted
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62424 Accepted
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62423 [200]: GET /assets/js/app.js?v=1782965411
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62422 Closing
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62424 [200]: GET /assets/img/eventhub-mark.png
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62423 Closing
+[Fri Jul 10 09:31:31 2026] 127.0.0.1:62424 Closing
+[Fri Jul 10 09:31:32 2026] 127.0.0.1:62425 Accepted
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62425 Closing
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62428 Accepted
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62429 Accepted
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62428 [200]: GET /assets/css/app.css?v=1782965415
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62430 Accepted
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62429 [200]: GET /assets/js/app.js?v=1782965411
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62428 Closing
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62430 [200]: GET /assets/img/eventhub-mark.png
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62429 Closing
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62430 Closing
+[Fri Jul 10 09:31:33 2026] 127.0.0.1:62431 Accepted
+[Fri Jul 10 09:31:39 2026] 127.0.0.1:62431 Closed without sending a request; it was probably just an unused speculative preconnection
+[Fri Jul 10 09:31:39 2026] 127.0.0.1:62431 Closing
