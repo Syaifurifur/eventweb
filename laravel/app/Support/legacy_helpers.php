@@ -41,3 +41,13 @@ if (! function_exists('log_message')) {
 if (! function_exists('csrf_hash')) {
     function csrf_hash(): string { return (string) csrf_token(); }
 }
+
+if (! \Illuminate\Session\Store::hasMacro('getFlashdata')) {
+    \Illuminate\Session\Store::macro('getFlashdata', function (?string $key = null) {
+        /** @var \Illuminate\Session\Store $this */
+        if ($key === null) {
+            return $this->all();
+        }
+        return $this->get($key);
+    });
+}

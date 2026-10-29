@@ -17,6 +17,7 @@ class CrmLeadModel extends Model
         'school_origin',
         'whatsapp',
         'stage',
+        'prospect_status',
         'label',
         'agent_id',
         'notes',

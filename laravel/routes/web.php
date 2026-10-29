@@ -16,6 +16,11 @@ Route::get('register', [AuthController::class, 'register']);
 Route::post('register', [AuthController::class, 'storeRegistration']);
 Route::post('logout', [AuthController::class, 'logout'])->middleware('legacy.auth');
 
+Route::get('q/{code}', [EventSuite::class, 'publicQuestionnaire']);
+Route::post('q/{code}', [EventSuite::class, 'submitPublicQuestionnaire']);
+Route::get('kuesioner/{code}', [EventSuite::class, 'publicQuestionnaire']);
+Route::post('kuesioner/{code}', [EventSuite::class, 'submitPublicQuestionnaire']);
+
 Route::get('crm/login', [CrmController::class, 'login']);
 Route::post('crm/login', [CrmController::class, 'attempt']);
 Route::post('crm/register', [CrmController::class, 'storeRegistration'])->middleware('role:Kepala Kampus');
@@ -23,6 +28,7 @@ Route::get('crm/template', [CrmController::class, 'downloadTemplate']);
 Route::prefix('crm')->middleware('crm.auth')->group(function (): void {
     Route::get('/', [CrmController::class, 'index']);
     Route::get('monitoring', [CrmController::class, 'agentMonitoring']);
+    Route::get('export-excel', [CrmController::class, 'exportExcel']);
     Route::post('logout', [CrmController::class, 'logout']);
     Route::post('users', [CrmController::class, 'storeUser']);
     Route::post('users/{id}/delete', [CrmController::class, 'deleteUser'])->whereNumber('id');
@@ -61,6 +67,8 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('events/{code}/checklist/items/{itemId}/delete', [EventSuite::class, 'deleteChecklistItem'])->middleware('access:events')->whereNumber('itemId');
     Route::post('events/{code}/documents/{type}/upload', [EventSuite::class, 'uploadEventDocument'])->middleware('access:events');
     Route::get('events/{code}/documents/{type}/file', [EventSuite::class, 'downloadUploadedEventDocument'])->middleware('access:events');
+    Route::post('events/{code}/questionnaire', [EventSuite::class, 'saveEventQuestionnaire'])->middleware('access:events');
+    Route::get('events/{code}/questionnaire/export', [EventSuite::class, 'exportQuestionnaireResponses'])->middleware('access:events');
     Route::get('events/{code}', [EventSuite::class, 'eventDetail'])->middleware('access:events');
     Route::post('checklist-tasks/{itemId}/report', [EventSuite::class, 'reportChecklistTask'])->middleware('access:dashboard')->whereNumber('itemId');
 

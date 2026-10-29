@@ -7,11 +7,14 @@ use App\Libraries\GoogleCalendarService;
 use App\Libraries\GeminiDocumentService;
 use App\Models\CampusModel;
 use App\Models\CrmLeadModel;
+use App\Models\CrmUploadBatchModel;
 use App\Models\CrmUserModel;
 use App\Models\EventCategoryModel;
 use App\Models\EventChecklistItemModel;
 use App\Models\EventChecklistTemplateModel;
 use App\Models\EventModel;
+use App\Models\EventQuestionnaireModel;
+use App\Models\EventQuestionnaireResponseModel;
 use App\Models\GoogleCalendarEventModel;
 use App\Models\NotificationModel;
 use App\Models\OneCampusBannerReportModel;
@@ -885,6 +888,11 @@ class EventSuite extends BaseController
         $report = $canUploadReportDocument
             ? $this->normalizeReport($this->ensureCompletedEventReport((int) $event['id']))
             : $this->documentByEvent(new ReportModel(), (int) $event['id']);
+        $questionnaire = $this->ensureEventQuestionnaire($normalizedEvent);
+        $questionnaireResponses = (new EventQuestionnaireResponseModel())
+            ->where('event_id', (int) $event['id'])
+            ->orderBy('submitted_at', 'DESC')
+            ->findAll();
 
         return $this->render('pages/event_detail', [
             'title' => $event['title'],
@@ -902,7 +910,486 @@ class EventSuite extends BaseController
             'canUploadReportDocument' => $canUploadReportDocument,
             'calendarIntegration' => (new CalendarIntegrationModel())->where('event_id', $event['id'])->where('provider', 'google_calendar')->first(),
             'googleCalendar' => (new GoogleCalendarService())->tokenStatus((int) session('user.id')),
+            'questionnaire' => $questionnaire,
+            'questionnaireResponses' => $questionnaireResponses,
         ]);
+    }
+
+    private function ensureEventQuestionnaire(array $event): array
+    {
+        $eventId = (int) ($event['db_id'] ?? $event['id'] ?? 0);
+        $eventCode = (string) ($event['code'] ?? $event['id'] ?? '');
+        $model = new EventQuestionnaireModel();
+        $row = $model->where('event_id', $eventId)->first();
+
+        $defaultQuestions = [
+            [
+                'id' => 'q_minat_prodi',
+                'label' => 'Program Studi / Jurusan yang Diminati di UBSI',
+                'type' => 'select',
+                'required' => true,
+                'placeholder' => 'Pilih program studi minat Anda',
+                'options' => [
+                    'Sistem Informasi',
+                    'Teknologi Informasi',
+                    'Rekayasa Perangkat Lunak',
+                    'Ilmu Komunikasi',
+                    'Manajemen',
+                    'Akuntansi',
+                    'Belum Menentukan / Ingin Konsultasi',
+                ],
+            ],
+            [
+                'id' => 'q_rencana_kuliah',
+                'label' => 'Rencana Melanjutkan Kuliah Setelah Lulus',
+                'type' => 'radio',
+                'required' => true,
+                'placeholder' => '',
+                'options' => [
+                    'Ya, Tahun Ini / Gelombang Terdekat',
+                    'Ya, Masih Mencari Informasi Beasiswa / Biaya',
+                    'Kuliah Sambil Kerja (Kelas Karyawan)',
+                    'Masih Dipertimbangkan Bersama Orang Tua',
+                ],
+            ],
+            [
+                'id' => 'q_kesan_pertanyaan',
+                'label' => 'Pertanyaan atau Kesan & Pesan Mengikuti Event Ini',
+                'type' => 'textarea',
+                'required' => false,
+                'placeholder' => 'Tuliskan kesan, pesan, atau hal yang ingin ditanyakan kepada tim PMB...',
+                'options' => [],
+            ],
+        ];
+
+        if (! $row) {
+            $insertData = [
+                'event_id' => $eventId,
+                'event_code' => $eventCode,
+                'title' => 'Form Kuesioner & Presensi Peserta - ' . (string) ($event['title'] ?? $eventCode),
+                'description' => 'Silakan lengkapi data diri dan pertanyaan kuesioner kegiatan di bawah ini.',
+                'is_active' => 1,
+                'questions_json' => json_encode($defaultQuestions, JSON_UNESCAPED_UNICODE),
+                'crm_batch_id' => null,
+                'created_by' => is_numeric($event['created_by'] ?? null) ? (int) $event['created_by'] : ((int) session('user.id') ?: 1),
+            ];
+            $id = $model->insert($insertData, true);
+            $row = $model->find($id) ?: array_merge(['id' => $id], $insertData);
+        }
+
+        $questions = json_decode((string) ($row['questions_json'] ?? '[]'), true);
+        if (! is_array($questions)) {
+            $questions = $defaultQuestions;
+        }
+
+        $row['questions'] = array_values($questions);
+
+        return $row;
+    }
+
+    public function saveEventQuestionnaire(string $code)
+    {
+        $event = (new EventModel())->findByCode($code);
+        if (! $event || ! $this->canViewEvent($event)) {
+            return redirect()->to(site_url('events'))->with('error', 'Event tidak ditemukan.');
+        }
+
+        if (! $this->canManageEventChecklist($event)) {
+            return redirect()->to(site_url('events/' . $code))->with('error', 'Hanya Admin Sistem atau pembuat event yang dapat mengubah form kuesioner.');
+        }
+
+        $questionnaire = $this->ensureEventQuestionnaire($this->normalizeEvent($event));
+        $title = trim((string) $this->request->getPost('title'));
+        $description = trim((string) $this->request->getPost('description'));
+        $isActive = (int) ($this->request->getPost('is_active') ? 1 : 0);
+        $rawQuestionsJson = (string) $this->request->getPost('questions_json');
+
+        if ($title === '') {
+            $title = 'Form Kuesioner & Daftar Hadir - ' . (string) $event['title'];
+        }
+
+        $decoded = json_decode($rawQuestionsJson, true);
+        $cleanQuestions = [];
+        if (is_array($decoded)) {
+            foreach (array_values($decoded) as $idx => $q) {
+                if (! is_array($q)) {
+                    continue;
+                }
+                $label = trim((string) ($q['label'] ?? ''));
+                if ($label === '') {
+                    continue;
+                }
+                $type = strtolower(trim((string) ($q['type'] ?? 'text')));
+                if (! in_array($type, ['text', 'textarea', 'select', 'radio', 'checkbox'], true)) {
+                    $type = 'text';
+                }
+                $rawOptions = $q['options'] ?? [];
+                if (is_string($rawOptions)) {
+                    $rawOptions = preg_split('/\r\n|\r|\n|,/', $rawOptions) ?: [];
+                }
+                $options = [];
+                if (is_array($rawOptions)) {
+                    foreach ($rawOptions as $opt) {
+                        $optStr = trim((string) $opt);
+                        if ($optStr !== '') {
+                            $options[] = $optStr;
+                        }
+                    }
+                }
+                $cleanQuestions[] = [
+                    'id' => ! empty($q['id']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '', (string) $q['id']) : ('q_custom_' . ($idx + 1)),
+                    'label' => mb_substr($label, 0, 240),
+                    'type' => $type,
+                    'required' => ! empty($q['required']),
+                    'placeholder' => mb_substr(trim((string) ($q['placeholder'] ?? '')), 0, 180),
+                    'options' => $options,
+                ];
+            }
+        }
+
+        (new EventQuestionnaireModel())->update((int) $questionnaire['id'], [
+            'title' => mb_substr($title, 0, 200),
+            'description' => mb_substr($description, 0, 1500),
+            'is_active' => $isActive,
+            'questions_json' => json_encode($cleanQuestions, JSON_UNESCAPED_UNICODE),
+        ]);
+
+        return redirect()->to(site_url('events/' . $code) . '#event-questionnaire-section')
+            ->with('success', 'Form Kuesioner Event, Link Responden & QR Code berhasil disimpan dan siap dibagikan.');
+    }
+
+    public function publicQuestionnaire(string $code)
+    {
+        $event = (new EventModel())->findByCode($code);
+        if (! $event) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Form Kuesioner Event tidak ditemukan.');
+        }
+
+        $normalizedEvent = $this->normalizeEvent($event);
+        $questionnaire = $this->ensureEventQuestionnaire($normalizedEvent);
+
+        return view('pages/public_questionnaire', [
+            'title' => $questionnaire['title'] ?? ('Kuesioner - ' . $normalizedEvent['title']),
+            'event' => $normalizedEvent,
+            'questionnaire' => $questionnaire,
+            'submitted' => (string) $this->request->getGet('submitted') === '1',
+        ]);
+    }
+
+    public function submitPublicQuestionnaire(string $code)
+    {
+        $event = (new EventModel())->findByCode($code);
+        if (! $event) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound('Form Kuesioner Event tidak ditemukan.');
+        }
+
+        $normalizedEvent = $this->normalizeEvent($event);
+        $questionnaire = $this->ensureEventQuestionnaire($normalizedEvent);
+
+        if ((int) ($questionnaire['is_active'] ?? 1) !== 1) {
+            return redirect()->back()->withInput()->with('error', 'Mohon maaf, pengisian kuesioner untuk event ini sedang ditutup.');
+        }
+
+        $studentName = trim((string) $this->request->getPost('student_name'));
+        $schoolOrigin = trim((string) $this->request->getPost('school_origin'));
+        $rawWhatsapp = trim((string) $this->request->getPost('whatsapp'));
+        $whatsapp = $this->normalizeQuestionnaireWhatsapp($rawWhatsapp);
+
+        if ($studentName === '' || $schoolOrigin === '' || $whatsapp === '') {
+            return redirect()->back()->withInput()->with('error', 'Nama Siswa, Asal Sekolah, dan Nomor WhatsApp (minimal 9 digit) wajib diisi.');
+        }
+
+        $questions = is_array($questionnaire['questions'] ?? null) ? $questionnaire['questions'] : [];
+        $submittedAnswers = $this->request->getPost('custom_answers') ?: $this->request->getPost('answers');
+        $submittedAnswers = is_array($submittedAnswers) ? $submittedAnswers : [];
+
+        $savedAnswers = [];
+        $notesParts = [];
+
+        foreach ($questions as $idx => $q) {
+            $qId = (string) ($q['id'] ?? ('q_' . ($idx + 1)));
+            $qLabel = (string) ($q['label'] ?? ('Pertanyaan ' . ($idx + 1)));
+            $isRequired = ! empty($q['required']);
+            $rawVal = $submittedAnswers[$qId] ?? '';
+
+            if (is_array($rawVal)) {
+                $cleanVals = array_values(array_filter(array_map(static fn ($v) => trim((string) $v), $rawVal), static fn ($v) => $v !== ''));
+                $answerText = implode(', ', $cleanVals);
+            } else {
+                $answerText = trim((string) $rawVal);
+            }
+
+            if ($isRequired && $answerText === '') {
+                return redirect()->back()->withInput()->with('error', 'Pertanyaan wajib diisi: "' . $qLabel . '".');
+            }
+
+            $savedAnswers[] = [
+                'id' => $qId,
+                'label' => $qLabel,
+                'answer' => $answerText,
+            ];
+
+            if ($answerText !== '') {
+                $notesParts[] = $qLabel . ': ' . $answerText;
+            }
+        }
+
+        $batchModel = new CrmUploadBatchModel();
+        $batchId = (int) ($questionnaire['crm_batch_id'] ?? 0);
+        $batch = $batchId > 0 ? $batchModel->find($batchId) : null;
+
+        if (! $batch) {
+            $batchCode = 'QST-' . strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string) $event['code'])) . '-' . (int) $event['id'];
+            $existingBatch = $batchModel->where('batch_code', $batchCode)->first();
+            if ($existingBatch) {
+                $batchId = (int) $existingBatch['id'];
+            } else {
+                $batchId = (int) $batchModel->insert([
+                    'batch_code' => $batchCode,
+                    'file_name' => 'Kuesioner QR: ' . mb_substr((string) $event['title'], 0, 180),
+                    'event_id' => (int) $event['id'],
+                    'total_rows' => 0,
+                    'uploaded_by' => null,
+                    'uploaded_at' => date('Y-m-d H:i:s'),
+                ], true);
+            }
+
+            (new EventQuestionnaireModel())->update((int) $questionnaire['id'], [
+                'crm_batch_id' => $batchId,
+            ]);
+        }
+
+        $prospectStatus = $this->evaluateQuestionnaireProspectStatus($savedAnswers);
+        $prospectPrefix = $prospectStatus === 'priority'
+            ? '[⭐ PROSPEK PRIORITAS (Chat di Awal)]'
+            : '[🕒 FOLLOW UP LANJUTAN (Setelah Prospek Selesai)]';
+
+        $notesSummary = $prospectPrefix . ' [Kuesioner QR Event ' . $event['code'] . ']';
+        if ($notesParts !== []) {
+            $notesSummary .= ' ' . implode(' | ', $notesParts);
+        }
+        $notesSummary = mb_substr($notesSummary, 0, 1950);
+
+        $leadModel = new CrmLeadModel();
+        $existingLead = $leadModel
+            ->where('event_id', (int) $event['id'])
+            ->where('whatsapp', $whatsapp)
+            ->first();
+
+        if ($existingLead) {
+            $crmLeadId = (int) $existingLead['id'];
+            $leadModel->update($crmLeadId, [
+                'student_name' => mb_substr($studentName, 0, 160),
+                'school_origin' => mb_substr($schoolOrigin, 0, 180),
+                'prospect_status' => $prospectStatus,
+                'label' => $prospectStatus === 'priority' ? 'Minat/Tertarik' : ($existingLead['label'] ?? null),
+                'notes' => $notesSummary,
+            ]);
+        } else {
+            $crmLeadId = (int) $leadModel->insert([
+                'batch_id' => $batchId > 0 ? $batchId : null,
+                'event_id' => (int) $event['id'],
+                'student_name' => mb_substr($studentName, 0, 160),
+                'school_origin' => mb_substr($schoolOrigin, 0, 180),
+                'whatsapp' => $whatsapp,
+                'stage' => 'Tahap 1',
+                'prospect_status' => $prospectStatus,
+                'label' => $prospectStatus === 'priority' ? 'Minat/Tertarik' : null,
+                'agent_id' => null,
+                'notes' => $notesSummary,
+                'rejection_reason' => null,
+                'responded_at' => null,
+            ], true);
+        }
+
+        if ($batchId > 0) {
+            $totalLeadsInBatch = $leadModel->where('batch_id', $batchId)->countAllResults();
+            $batchModel->update($batchId, [
+                'total_rows' => max(1, (int) $totalLeadsInBatch),
+                'uploaded_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        (new EventQuestionnaireResponseModel())->insert([
+            'questionnaire_id' => (int) $questionnaire['id'],
+            'event_id' => (int) $event['id'],
+            'crm_lead_id' => $crmLeadId > 0 ? $crmLeadId : null,
+            'prospect_status' => $prospectStatus,
+            'student_name' => mb_substr($studentName, 0, 160),
+            'school_origin' => mb_substr($schoolOrigin, 0, 180),
+            'whatsapp' => $whatsapp,
+            'answers_json' => json_encode($savedAnswers, JSON_UNESCAPED_UNICODE),
+            'submitted_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return redirect()->to(site_url('kuesioner/' . $code) . '?submitted=1')
+            ->with('success', 'Terima kasih, ' . $studentName . '! Jawaban kuesioner Anda telah berhasil disimpan.');
+    }
+
+    public function evaluateQuestionnaireProspectStatus(array $savedAnswers): string
+    {
+        $priorityScore = 0;
+
+        $highKeywords = [
+            'daftar', 'mendaftar', 'pendaftaran', 'biaya', 'beasiswa', 'potongan',
+            'gelombang', 'syarat', 'formulir', 'tes', 'jadwal', 'pmb', 'registrasi',
+            'brosur', 'sangat minat', 'tertarik', 'mau kuliah', 'ingin masuk', 'tahun ini',
+            'segera', 'karyawan', 'sambil kerja'
+        ];
+
+        $lowKeywords = [
+            'tidak berminat', 'belum berminat', 'hanya hadir', 'tidak kuliah', 'belum tahu',
+            'ragu', 'tidak tertarik', 'belum ada', 'tidak ada', 'hanya ikut'
+        ];
+
+        foreach ($savedAnswers as $key => $item) {
+            if (is_array($item)) {
+                $lbl = mb_strtolower(trim((string) ($item['label'] ?? $item['question'] ?? $key)));
+                $ans = mb_strtolower(trim((string) ($item['answer'] ?? $item['value'] ?? '')));
+            } else {
+                $lbl = mb_strtolower(trim((string) $key));
+                $ans = mb_strtolower(trim((string) $item));
+            }
+
+            if ($ans === '') {
+                continue;
+            }
+
+            // Check if specific answer indicates high or low intent
+            foreach ($highKeywords as $kw) {
+                if (str_contains($ans, $kw)) {
+                    $priorityScore += 2;
+                }
+            }
+
+            foreach ($lowKeywords as $lkw) {
+                if (str_contains($ans, $lkw)) {
+                    $priorityScore -= 2;
+                }
+            }
+
+            // Specific check for study plan
+            if (str_contains($lbl, 'rencana') || str_contains($lbl, 'kuliah') || str_contains($lbl, 'setelah lulus')) {
+                if (
+                    str_contains($ans, 'tahun ini')
+                    || str_contains($ans, 'gelombang')
+                    || str_contains($ans, 'segera')
+                    || str_contains($ans, 'karyawan')
+                    || str_contains($ans, 'sambil kerja')
+                    || str_contains($ans, 'beasiswa')
+                    || (str_starts_with($ans, 'ya') && ! str_contains($ans, 'tidak'))
+                ) {
+                    $priorityScore += 3;
+                } elseif (str_contains($ans, 'ragu') || str_contains($ans, 'belum') || str_contains($ans, 'tidak')) {
+                    $priorityScore -= 2;
+                }
+            }
+
+            // Specific check for study program selection
+            if (str_contains($lbl, 'prodi') || str_contains($lbl, 'jurusan')) {
+                if ($ans !== '' && ! str_contains($ans, 'belum') && ! str_contains($ans, 'tidak ada')) {
+                    $priorityScore += 2;
+                }
+            }
+        }
+
+        return $priorityScore > 0 ? 'priority' : 'nurture';
+    }
+
+    public function exportQuestionnaireResponses(string $code)
+    {
+        $event = (new EventModel())->findByCode($code);
+        if (! $event || ! $this->canViewEvent($event)) {
+            return redirect()->to(site_url('events'))->with('error', 'Event tidak ditemukan.');
+        }
+
+        $normalizedEvent = $this->normalizeEvent($event);
+        $questionnaire = $this->ensureEventQuestionnaire($normalizedEvent);
+        $questions = is_array($questionnaire['questions'] ?? null) ? $questionnaire['questions'] : [];
+        $responses = (new EventQuestionnaireResponseModel())
+            ->where('event_id', (int) $event['id'])
+            ->orderBy('submitted_at', 'DESC')
+            ->findAll();
+
+        $header = [
+            'No',
+            'Nama Siswa',
+            'Asal Sekolah',
+            'No WA',
+            'Klasifikasi Prospek CRM',
+        ];
+        foreach ($questions as $q) {
+            $header[] = (string) ($q['label'] ?? 'Pertanyaan');
+        }
+        $header[] = 'ID Lead CRM';
+        $header[] = 'Waktu Mengisi';
+
+        $rows = [$header];
+
+        foreach (array_values($responses) as $idx => $resp) {
+            $ansList = json_decode((string) ($resp['answers_json'] ?? '[]'), true);
+            $ansMap = [];
+            if (is_array($ansList)) {
+                foreach ($ansList as $item) {
+                    if (is_array($item)) {
+                        $keyId = (string) ($item['id'] ?? '');
+                        $keyLabel = (string) ($item['label'] ?? '');
+                        $val = (string) ($item['answer'] ?? '');
+                        if ($keyId !== '') {
+                            $ansMap[$keyId] = $val;
+                        }
+                        if ($keyLabel !== '') {
+                            $ansMap[$keyLabel] = $val;
+                        }
+                    }
+                }
+            }
+
+            $isPriority = ($resp['prospect_status'] ?? '') === 'priority';
+            $prospectLabel = $isPriority ? 'Prospek Prioritas (Chat di Awal)' : 'Follow-up Lanjutan (Setelah Prospek)';
+
+            $row = [
+                (string) ($idx + 1),
+                (string) ($resp['student_name'] ?? '-'),
+                (string) ($resp['school_origin'] ?? '-'),
+                (string) ($resp['whatsapp'] ?? '-'),
+                $prospectLabel,
+            ];
+
+            foreach ($questions as $q) {
+                $qId = (string) ($q['id'] ?? '');
+                $qLabel = (string) ($q['label'] ?? '');
+                $row[] = (string) ($ansMap[$qId] ?? $ansMap[$qLabel] ?? '-');
+            }
+
+            $row[] = ! empty($resp['crm_lead_id']) ? ('CRM #' . (int) $resp['crm_lead_id']) : 'Tersinkron';
+            $row[] = (string) ($resp['submitted_at'] ?? '-');
+
+            $rows[] = $row;
+        }
+
+        $filename = 'hasil-kuesioner-crm-' . strtolower((string) $event['code']) . '-' . date('Ymd-His') . '.xlsx';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($this->xlsxFromRows($rows, 'Hasil Kuesioner'));
+    }
+
+    private function normalizeQuestionnaireWhatsapp(string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+        if ($digits === '') {
+            return '';
+        }
+
+        if (str_starts_with($digits, '0')) {
+            $digits = '62' . substr($digits, 1);
+        } elseif (str_starts_with($digits, '8')) {
+            $digits = '62' . $digits;
+        }
+
+        return strlen($digits) >= 9 ? substr($digits, 0, 25) : '';
     }
 
     public function deleteEvent(string $code)

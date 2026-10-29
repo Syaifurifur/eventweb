@@ -32,6 +32,12 @@ class CrmAiAssistantService
         $stage = trim((string) ($lead['stage'] ?? 'Tahap 1'));
         $label = trim((string) ($lead['label'] ?? 'Belum dilabeli'));
         $reason = trim((string) ($lead['rejection_reason'] ?? $lead['notes'] ?? ''));
+        $prospectStatus = trim((string) ($lead['prospect_status'] ?? ''));
+        $prospectNote = match ($prospectStatus) {
+            'priority' => '⭐ PRIORITAS TINGGI (Siswa memiliki niat kuliah tinggi/berencana kuliah tahun ini/membutuhkan info beasiswa segera dari kuesioner event. Utamakan ajakan pendaftaran langsung, kuota beasiswa, dan kemudahan pembayaran).',
+            'nurture' => '🕒 FOLLOW-UP LANJUTAN (Siswa masih tahap penjajakan/mempertimbangkan. Gunakan pendekatan konsultatif ramah, edukatif, dan jangan terlalu mendesak).',
+            default => 'Standard Follow-Up',
+        };
 
         $fallbackVariants = $this->buildContextualMessageVariants($studentName, $school, $campus, $eventTitle, $stage, $label, $reason, $intent, $customPrompt);
 
@@ -51,6 +57,7 @@ Buatkan 3 variasi pesan WhatsApp dalam Bahasa Indonesia yang ramah, natural, sop
 - Asal Sekolah: {$school}
 - Kampus Tujuan: {$campus}
 - Event yang Diikuti: {$eventTitle}
+- Prioritas Prospek: {$prospectNote}
 - Status CRM Saat Ini: {$stage} | Label: {$label}
 - Catatan/Alasan Sebelumnya: {$reason}
 - Tujuan Pesan (Intent): {$intent}

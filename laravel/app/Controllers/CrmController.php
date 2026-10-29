@@ -192,6 +192,7 @@ class CrmController extends BaseController
             'from' => (string) $this->request->getGet('from'),
             'to' => (string) $this->request->getGet('to'),
             'unassigned' => (string) $this->request->getGet('unassigned'),
+            'prospect_priority' => (string) $this->request->getGet('prospect_priority'),
         ];
         $paginationQuery = array_filter($filters, static fn (string $value): bool => $value !== '');
 
@@ -679,6 +680,7 @@ class CrmController extends BaseController
                 'whatsapp_normalized' => $normalizedWa,
                 'stage' => (string) ($lead['stage'] ?? 'Tahap 1'),
                 'label' => (string) ($lead['label'] ?? ''),
+                'prospect_status' => (string) ($lead['prospect_status'] ?? 'priority'),
                 'notes' => (string) ($lead['notes'] ?? ''),
                 'rejection_reason' => (string) ($lead['rejection_reason'] ?? ''),
                 'event_code' => (string) ($lead['event_code'] ?? ''),
@@ -1002,6 +1004,19 @@ class CrmController extends BaseController
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) === 1) {
             $builder->where('DATE(crm_leads.created_at) <=', $to);
         }
+
+        $prospectPriority = trim((string) $this->request->getGet('prospect_priority'));
+        if ($prospectPriority === 'priority') {
+            $builder->groupStart()
+                ->where('crm_leads.prospect_status', 'priority')
+                ->orLike('crm_leads.notes', 'PROSPEK PRIORITAS')
+                ->groupEnd();
+        } elseif ($prospectPriority === 'nurture') {
+            $builder->groupStart()
+                ->where('crm_leads.prospect_status', 'nurture')
+                ->orLike('crm_leads.notes', 'FOLLOW UP LANJUTAN')
+                ->groupEnd();
+        }
     }
 
     private function applyAnalyticsFilters($builder): void
@@ -1052,6 +1067,19 @@ class CrmController extends BaseController
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) === 1) {
             $builder->where('DATE(crm_leads.created_at) <=', $to);
         }
+
+        $prospectPriority = trim((string) $this->request->getGet('prospect_priority'));
+        if ($prospectPriority === 'priority') {
+            $builder->groupStart()
+                ->where('crm_leads.prospect_status', 'priority')
+                ->orLike('crm_leads.notes', 'PROSPEK PRIORITAS')
+                ->groupEnd();
+        } elseif ($prospectPriority === 'nurture') {
+            $builder->groupStart()
+                ->where('crm_leads.prospect_status', 'nurture')
+                ->orLike('crm_leads.notes', 'FOLLOW UP LANJUTAN')
+                ->groupEnd();
+        }
     }
 
     private function crmStats(array $leads): array
@@ -1067,11 +1095,23 @@ class CrmController extends BaseController
             'hesitant' => 0,
             'rejected' => 0,
             'no_response' => 0,
+            'prospect_priority' => 0,
+            'prospect_nurture' => 0,
         ];
 
         foreach ($leads as $lead) {
             if (empty($lead['agent_id'])) {
                 $stats['unassigned']++;
+            }
+
+            $isPriority = ($lead['prospect_status'] ?? '') === 'priority'
+                || str_contains((string) ($lead['notes'] ?? ''), 'PROSPEK PRIORITAS');
+            $isNurture = ($lead['prospect_status'] ?? '') === 'nurture'
+                || str_contains((string) ($lead['notes'] ?? ''), 'FOLLOW UP LANJUTAN');
+            if ($isPriority) {
+                $stats['prospect_priority']++;
+            } elseif ($isNurture) {
+                $stats['prospect_nurture']++;
             }
 
             if (($lead['stage'] ?? '') === 'Tahap 1') {
@@ -2099,5 +2139,195 @@ class CrmController extends BaseController
                 'message' => $message,
             ]);
         }
+    }
+
+    public function exportExcel()
+    {
+        $isAdmin = $this->isCrmAdmin();
+        $currentUserId = (int) session('crmUser.id');
+        $currentCrmCampusId = $this->currentCrmCampusId();
+
+        $leadModel = new CrmLeadModel();
+        $builder = $leadModel
+            ->select('crm_leads.*, crm_users.full_name AS agent_name, crm_upload_batches.batch_code, events.code AS event_code, events.title AS event_title, campuses.name AS campus_name')
+            ->join('crm_users', 'crm_users.id = crm_leads.agent_id', 'left')
+            ->join('crm_upload_batches', 'crm_upload_batches.id = crm_leads.batch_id', 'left')
+            ->join('events', 'events.id = crm_leads.event_id', 'left')
+            ->join('campuses', 'campuses.id = events.campus_id', 'left')
+            ->orderBy('crm_leads.id', 'ASC');
+
+        if (! $isAdmin) {
+            $builder->where('crm_leads.agent_id', $currentUserId);
+        } elseif ($currentCrmCampusId !== null) {
+            $builder->where('events.campus_id', $currentCrmCampusId);
+        }
+
+        $this->applyLeadFilters($builder);
+        $leads = $builder->findAll();
+
+        $leadIds = array_map(static fn (array $l): int => (int) $l['id'], $leads);
+        $leadLogsByLeadId = $this->crmLeadLogsByLeadIds($leadIds);
+
+        $rows = [
+            [
+                'No',
+                'Nama Calon Mahasiswa',
+                'Asal Sekolah',
+                'No. WhatsApp',
+                'Prioritas Prospek CRM',
+                'Tahap Follow-Up',
+                'Label Hasil',
+                'Alasan / Keterangan',
+                'Event Kegiatan',
+                'Kode Event',
+                'Kampus',
+                'Agent CRM Penanggung Jawab',
+                'Kode Batch',
+                'Catatan CRM',
+                'Jumlah Aktivitas & Bukti Gambar',
+                'Tanggal Masuk CRM',
+                'Tanggal Terakhir Direspon',
+            ],
+        ];
+
+        foreach ($leads as $index => $lead) {
+            $leadId = (int) $lead['id'];
+            $isPriority = ($lead['prospect_status'] ?? '') === 'priority'
+                || str_contains((string) ($lead['notes'] ?? ''), 'PROSPEK PRIORITAS');
+            $prospectLabel = $isPriority
+                ? '⭐ Prioritas (Chat di Awal)'
+                : '🕒 Follow-up Lanjutan';
+
+            $logs = $leadLogsByLeadId[$leadId] ?? [];
+            $imageCount = 0;
+            foreach ($logs as $lg) {
+                if (! empty($lg['follow_up_image'])) {
+                    $imageCount++;
+                }
+            }
+            $proofSummary = count($logs) . ' aktivitas' . ($imageCount > 0 ? " ({$imageCount} bukti gambar)" : '');
+
+            $rows[] = [
+                (string) ($index + 1),
+                (string) ($lead['student_name'] ?? '-'),
+                (string) ($lead['school_origin'] ?? '-'),
+                (string) ($lead['whatsapp'] ?? '-'),
+                $prospectLabel,
+                (string) ($lead['stage'] ?? 'Tahap 1'),
+                (string) ($lead['label'] ?: '-'),
+                (string) ($lead['rejection_reason'] ?: '-'),
+                (string) ($lead['event_title'] ?: '-'),
+                (string) ($lead['event_code'] ?: '-'),
+                (string) ($lead['campus_name'] ?: '-'),
+                (string) ($lead['agent_name'] ?: 'Belum Dibagi'),
+                (string) ($lead['batch_code'] ?: '-'),
+                (string) ($lead['notes'] ?: '-'),
+                $proofSummary,
+                ! empty($lead['created_at']) ? date('d/m/Y H:i', strtotime((string) $lead['created_at'])) : '-',
+                ! empty($lead['responded_at']) ? date('d/m/Y H:i', strtotime((string) $lead['responded_at'])) : '-',
+            ];
+        }
+
+        $filename = 'Hasil_CRM_' . date('Ymd_His') . '.xlsx';
+        $content = $this->xlsxFromRows($rows, 'Hasil CRM');
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setHeader('Cache-Control', 'max-age=0')
+            ->setBody($content);
+    }
+
+    private function xlsxFromRows(array $rows, string $sheetName = 'CRM'): string
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            return $this->csvFromRows($rows);
+        }
+
+        $sheetRows = [];
+        foreach ($rows as $rowIndex => $row) {
+            $cells = [];
+            foreach (array_values($row) as $columnIndex => $value) {
+                $cellReference = $this->xlsxColumnName($columnIndex + 1) . ($rowIndex + 1);
+                $cells[] = '<c r="' . $cellReference . '" t="inlineStr"><is><t>' . $this->xmlValue((string) $value) . '</t></is></c>';
+            }
+            $sheetRows[] = '<row r="' . ($rowIndex + 1) . '">' . implode('', $cells) . '</row>';
+        }
+
+        $sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>' . implode('', $sheetRows) . '</sheetData>'
+            . '</worksheet>';
+
+        $safeSheetName = $this->xmlValue(substr(preg_replace('/[\\\\\\/?*\\[\\]:]/', ' ', $sheetName) ?: 'CRM', 0, 31));
+
+        $entries = [
+            '[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>',
+            '_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+            'xl/workbook.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' . $safeSheetName . '" sheetId="1" r:id="rId1"/></sheets></workbook>',
+            'xl/_rels/workbook.xml.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
+            'xl/worksheets/sheet1.xml' => $sheetXml,
+        ];
+
+        $tempDir = defined('WRITEPATH') ? WRITEPATH . 'cache' : sys_get_temp_dir();
+        if (! is_dir($tempDir)) {
+            $tempDir = sys_get_temp_dir();
+        }
+        $path = tempnam($tempDir, 'crm-export-');
+        if ($path === false) {
+            return '';
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($path, \ZipArchive::OVERWRITE) !== true) {
+            @unlink($path);
+
+            return '';
+        }
+
+        foreach ($entries as $name => $contents) {
+            $zip->addFromString($name, $contents);
+        }
+        $zip->close();
+
+        $contents = file_get_contents($path);
+        @unlink($path);
+
+        return is_string($contents) ? $contents : '';
+    }
+
+    private function csvFromRows(array $rows): string
+    {
+        $handle = fopen('php://temp', 'r+');
+        if (! $handle) {
+            return '';
+        }
+
+        foreach ($rows as $row) {
+            fputcsv($handle, $row);
+        }
+
+        rewind($handle);
+        $contents = stream_get_contents($handle);
+        fclose($handle);
+
+        return is_string($contents) ? $contents : '';
+    }
+
+    private function xlsxColumnName(int $index): string
+    {
+        $name = '';
+        while ($index > 0) {
+            $index--;
+            $name = chr(65 + ($index % 26)) . $name;
+            $index = intdiv($index, 26);
+        }
+
+        return $name;
+    }
+
+    private function xmlValue(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 }

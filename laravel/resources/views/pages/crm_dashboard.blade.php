@@ -796,26 +796,32 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
 
         <!-- Quick Filter Pills for Fast Workflow -->
         <nav class="crm-quick-pills" aria-label="Filter Cepat CRM">
-            <a class="crm-quick-pill <?= ($filters['stage'] ?? '') === '' && ($filters['label'] ?? '') === '' && ($filters['unassigned'] ?? '') === '' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => '', 'unassigned' => ''])) ?>">
+            <a class="crm-quick-pill <?= ($filters['stage'] ?? '') === '' && ($filters['label'] ?? '') === '' && ($filters['unassigned'] ?? '') === '' && ($filters['prospect_priority'] ?? '') === '' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => '', 'unassigned' => '', 'prospect_priority' => ''])) ?>">
                 📋 Semua Data (<?= esc((string) ($stats['total'] ?? 0)) ?>)
             </a>
-            <a class="crm-quick-pill <?= ($filters['stage'] ?? '') === 'Tahap 1' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => 'Tahap 1', 'label' => '', 'unassigned' => ''])) ?>">
+            <a class="crm-quick-pill <?= ($filters['prospect_priority'] ?? '') === 'priority' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['prospect_priority' => 'priority', 'stage' => '', 'label' => '', 'unassigned' => ''])) ?>" style="<?= ($filters['prospect_priority'] ?? '') === 'priority' ? 'background:#d97706; color:#ffffff; border-color:#b45309;' : 'background:#fffbeb; color:#b45309; border-color:#f59e0b;' ?> font-weight:800;">
+                ⭐ Prospek Prioritas (Chat di Awal) (<?= esc((string) ($stats['prospect_priority'] ?? 0)) ?>)
+            </a>
+            <a class="crm-quick-pill <?= ($filters['prospect_priority'] ?? '') === 'nurture' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['prospect_priority' => 'nurture', 'stage' => '', 'label' => '', 'unassigned' => ''])) ?>" style="<?= ($filters['prospect_priority'] ?? '') === 'nurture' ? 'background:#475569; color:#ffffff; border-color:#334155;' : 'background:#f8fafc; color:#475569; border-color:#cbd5e1;' ?> font-weight:700;">
+                🕒 Follow-up Lanjutan (Setelah Prospek) (<?= esc((string) ($stats['prospect_nurture'] ?? 0)) ?>)
+            </a>
+            <a class="crm-quick-pill <?= ($filters['stage'] ?? '') === 'Tahap 1' && ($filters['prospect_priority'] ?? '') === '' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => 'Tahap 1', 'label' => '', 'unassigned' => '', 'prospect_priority' => ''])) ?>">
                 ⚡ Fresh Tahap 1 (<?= esc((string) ($stats['stage1'] ?? 0)) ?>)
             </a>
-            <a class="crm-quick-pill <?= ($filters['label'] ?? '') === 'Minat/Tertarik' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => 'Minat/Tertarik', 'unassigned' => ''])) ?>">
+            <a class="crm-quick-pill <?= ($filters['label'] ?? '') === 'Minat/Tertarik' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => 'Minat/Tertarik', 'unassigned' => '', 'prospect_priority' => ''])) ?>">
                 🔥 Minat/Tertarik (<?= esc((string) ($stats['interested'] ?? 0)) ?>)
             </a>
-            <a class="crm-quick-pill <?= ($filters['label'] ?? '') === 'Ragu-ragu' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => 'Ragu-ragu', 'unassigned' => ''])) ?>">
+            <a class="crm-quick-pill <?= ($filters['label'] ?? '') === 'Ragu-ragu' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => 'Ragu-ragu', 'unassigned' => '', 'prospect_priority' => ''])) ?>">
                 🤔 Ragu-ragu (<?= esc((string) ($stats['hesitant'] ?? 0)) ?>)
             </a>
-            <a class="crm-quick-pill <?= ($filters['label'] ?? '') === 'Tidak Merespon' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => 'Tidak Merespon', 'unassigned' => ''])) ?>">
+            <a class="crm-quick-pill <?= ($filters['label'] ?? '') === 'Tidak Merespon' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => 'Tidak Merespon', 'unassigned' => '', 'prospect_priority' => ''])) ?>">
                 🔕 Tidak Merespon (<?= esc((string) ($stats['no_response'] ?? 0)) ?>)
             </a>
-            <a class="crm-quick-pill <?= ($filters['label'] ?? '') === 'Closing' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => 'Closing', 'unassigned' => ''])) ?>">
+            <a class="crm-quick-pill <?= ($filters['label'] ?? '') === 'Closing' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => 'Closing', 'unassigned' => '', 'prospect_priority' => ''])) ?>">
                 ✅ Closing (<?= esc((string) ($stats['closing'] ?? 0)) ?>)
             </a>
             <?php if ($isAdmin): ?>
-                <a class="crm-quick-pill <?= ($filters['unassigned'] ?? '') === '1' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => '', 'unassigned' => '1'])) ?>">
+                <a class="crm-quick-pill <?= ($filters['unassigned'] ?? '') === '1' ? 'is-active' : '' ?>" href="<?= esc($quickFilterUrl(['stage' => '', 'label' => '', 'unassigned' => '1', 'prospect_priority' => ''])) ?>">
                     ⏳ Belum Assign (<?= esc((string) ($stats['unassigned'] ?? 0)) ?>)
                 </a>
             <?php endif; ?>
@@ -825,25 +831,30 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
             <section class="crm-board">
                 <div class="crm-board-header">
                     <h2>Data Siswa CRM & WhatsApp Workspace</h2>
-                    <?php if ($isAdmin): ?>
-                        <div class="crm-board-actions">
-                            <span data-crm-selected-count>0 dipilih</span>
-                            <form id="crm-assign-form" action="<?= site_url('crm/leads/assign') ?>" method="post">
-                                <?= csrf_field() ?>
-                                <select class="control compact" name="agent_id" required>
-                                    <option value="">Pilih Agent</option>
-                                    <?php foreach ($agents as $agent): ?>
-                                        <option value="<?= esc($agent['id']) ?>"><?= esc($agent['full_name'] . (! empty($agent['campus_name']) ? ' - ' . $agent['campus_name'] : '')) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </form>
-                            <button class="ghost-button compact-button" type="submit" form="crm-assign-form">Assign</button>
-                            <form action="<?= site_url('crm/leads/auto-assign') ?>" method="post" class="inline-form">
-                                <?= csrf_field() ?>
-                                <button class="crm-warning-button compact-button" type="submit">Auto Assign</button>
-                            </form>
-                        </div>
-                    <?php endif; ?>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <a href="<?= site_url('crm/export-excel?' . http_build_query($leadPagination['query'] ?? [])) ?>" class="primary-button compact-button" style="background:linear-gradient(135deg, #10b981, #059669); border-color:#059669; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                            📥 Download Excel CRM
+                        </a>
+                        <?php if ($isAdmin): ?>
+                            <div class="crm-board-actions">
+                                <span data-crm-selected-count>0 dipilih</span>
+                                <form id="crm-assign-form" action="<?= site_url('crm/leads/assign') ?>" method="post">
+                                    <?= csrf_field() ?>
+                                    <select class="control compact" name="agent_id" required>
+                                        <option value="">Pilih Agent</option>
+                                        <?php foreach ($agents as $agent): ?>
+                                            <option value="<?= esc($agent['id']) ?>"><?= esc($agent['full_name'] . (! empty($agent['campus_name']) ? ' - ' . $agent['campus_name'] : '')) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </form>
+                                <button class="ghost-button compact-button" type="submit" form="crm-assign-form">Assign</button>
+                                <form action="<?= site_url('crm/leads/auto-assign') ?>" method="post" class="inline-form">
+                                    <?= csrf_field() ?>
+                                    <button class="crm-warning-button compact-button" type="submit">Auto Assign</button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
                 <form class="crm-filter-bar" action="<?= site_url('crm') ?>" method="get">
@@ -861,6 +872,11 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                 <?= esc(($event['campus_name'] ?: 'Tanpa kampus') . ' - ' . $event['code'] . ' - ' . $event['title']) ?>
                             </option>
                         <?php endforeach; ?>
+                    </select>
+                    <select class="control" name="prospect_priority">
+                        <option value="">Semua Prioritas Prospek</option>
+                        <option value="priority" <?= ($filters['prospect_priority'] ?? '') === 'priority' ? 'selected' : '' ?>>⭐ Prospek Prioritas (Chat di Awal)</option>
+                        <option value="nurture" <?= ($filters['prospect_priority'] ?? '') === 'nurture' ? 'selected' : '' ?>>🕒 Follow-up Lanjutan (Setelah Prospek)</option>
                     </select>
                     <select class="control" name="stage">
                         <option value="">Semua Tahap</option>
@@ -905,12 +921,20 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                     <div class="crm-filter-actions">
                         <button class="primary-button compact-button" type="submit">Filter</button>
                         <a class="ghost-button compact-button" href="<?= site_url('crm') ?>">Reset</a>
+                        <a class="ghost-button compact-button" href="<?= site_url('crm/export-excel?' . http_build_query($leadPagination['query'] ?? [])) ?>" style="background:#ecfdf5; color:#065f46; border-color:#a7f3d0; font-weight:700;" title="Unduh data Excel sesuai filter yang aktif">
+                            📥 Download Excel
+                        </a>
                     </div>
                 </form>
 
                 <div class="report-table-summary crm-table-summary">
                     <span><?= esc((string) $leadPagination['from']) ?>-<?= esc((string) $leadPagination['to']) ?> dari <?= esc((string) $leadPagination['total']) ?> data siswa CRM</span>
-                    <span>Klik <strong>"💬 Chat WA & AI"</strong> untuk chat langsung & simpan gambar bukti chat</span>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <a href="<?= site_url('crm/export-excel?' . http_build_query($leadPagination['query'] ?? [])) ?>" style="color:#059669; font-weight:700; text-decoration:none; font-size:12px; display:inline-flex; align-items:center; gap:4px;">
+                            📥 Unduh Excel (<?= esc((string) $leadPagination['total']) ?> Data)
+                        </a>
+                        <span>Klik <strong>"💬 Chat WA & AI"</strong> untuk chat langsung & simpan bukti</span>
+                    </div>
                 </div>
 
                 <div class="crm-table-wrap">
@@ -954,6 +978,25 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                     <?php endif; ?>
                                     <td>
                                         <strong><?= esc($lead['student_name']) ?></strong>
+                                        <?php
+                                            $isLeadPriority = ($lead['prospect_status'] ?? '') === 'priority'
+                                                || str_contains((string) ($lead['notes'] ?? ''), 'PROSPEK PRIORITAS');
+                                            $isLeadNurture = ($lead['prospect_status'] ?? '') === 'nurture'
+                                                || str_contains((string) ($lead['notes'] ?? ''), 'FOLLOW UP LANJUTAN');
+                                        ?>
+                                        <?php if ($isLeadPriority): ?>
+                                            <div style="margin-top:4px;">
+                                                <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; background:#fef3c7; border:1px solid #f59e0b; color:#92400e; font-size:10.5px; font-weight:800; white-space:nowrap;">
+                                                    ⭐ Prospek Prioritas (Chat Diawal)
+                                                </span>
+                                            </div>
+                                        <?php elseif ($isLeadNurture): ?>
+                                            <div style="margin-top:4px;">
+                                                <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; font-size:10.5px; font-weight:700; white-space:nowrap;">
+                                                    🕒 Follow-up Lanjutan (Setelah Prospek)
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td><?= esc($lead['school_origin'] ?: '-') ?></td>
                                     <?php
@@ -1271,6 +1314,7 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                         <h3>
                             <span id="crm-wa-student-name">Nama Siswa</span>
                             <span id="crm-wa-stage-badge" style="background:rgba(255,255,255,0.2);font-size:11px;padding:2px 8px;border-radius:999px;">Tahap 1</span>
+                            <span id="crm-wa-prospect-badge" style="display:none;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:700;"></span>
                         </h3>
                         <p id="crm-wa-student-sub">Sekolah • No WA • Event • Kampus</p>
                     </div>
@@ -1512,6 +1556,7 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
         const avatarEl = document.getElementById('crm-wa-avatar');
         const studentNameEl = document.getElementById('crm-wa-student-name');
         const stageBadgeEl = document.getElementById('crm-wa-stage-badge');
+        const prospectBadgeEl = document.getElementById('crm-wa-prospect-badge');
         const studentSubEl = document.getElementById('crm-wa-student-sub');
         const externalBtn = document.getElementById('crm-wa-external-btn');
         const streamEl = document.getElementById('crm-wa-messages-stream');
@@ -1739,6 +1784,23 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                     avatarEl.textContent = (activeLead.student_name || 'S').trim().charAt(0).toUpperCase();
                     studentNameEl.textContent = activeLead.student_name || 'Siswa';
                     stageBadgeEl.textContent = (activeLead.stage || 'Tahap 1') + (activeLead.label ? ' • ' + activeLead.label : '');
+                    if (prospectBadgeEl) {
+                        if (activeLead.prospect_status === 'priority') {
+                            prospectBadgeEl.style.display = 'inline-block';
+                            prospectBadgeEl.style.background = '#fef3c7';
+                            prospectBadgeEl.style.color = '#92400e';
+                            prospectBadgeEl.style.border = '1px solid #fde68a';
+                            prospectBadgeEl.textContent = '⭐ Prospek Prioritas (Chat di Awal)';
+                        } else if (activeLead.prospect_status === 'nurture') {
+                            prospectBadgeEl.style.display = 'inline-block';
+                            prospectBadgeEl.style.background = '#f1f5f9';
+                            prospectBadgeEl.style.color = '#334155';
+                            prospectBadgeEl.style.border = '1px solid #cbd5e1';
+                            prospectBadgeEl.textContent = '🕒 Follow-up Lanjutan (Setelah Prospek)';
+                        } else {
+                            prospectBadgeEl.style.display = 'none';
+                        }
+                    }
                     studentSubEl.textContent = [
                         activeLead.school_origin || 'Sekolah -',
                         activeLead.whatsapp || 'Tanpa No WA',

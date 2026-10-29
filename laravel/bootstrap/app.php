@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->validateCsrfTokens(except: [
+            'q/*',
+            'kuesioner/*',
+        ]);
+
         $middleware->alias([
             'legacy.auth' => AuthenticateLegacy::class,
             'crm.auth' => AuthenticateCrm::class,

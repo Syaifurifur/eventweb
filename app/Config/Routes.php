@@ -15,6 +15,11 @@ $routes->get('register', 'AuthController::register');
 $routes->post('register', 'AuthController::storeRegistration');
 $routes->post('logout', 'AuthController::logout', ['filter' => 'auth']);
 
+$routes->get('q/(:segment)', 'EventSuite::publicQuestionnaire/$1');
+$routes->post('q/(:segment)', 'EventSuite::submitPublicQuestionnaire/$1');
+$routes->get('kuesioner/(:segment)', 'EventSuite::publicQuestionnaire/$1');
+$routes->post('kuesioner/(:segment)', 'EventSuite::submitPublicQuestionnaire/$1');
+
 $routes->get('crm/login', 'CrmController::login');
 $routes->post('crm/login', 'CrmController::attempt');
 $routes->post('crm/register', 'CrmController::storeRegistration', ['filter' => 'role:Kepala Kampus']);
@@ -22,6 +27,7 @@ $routes->get('crm/template', 'CrmController::downloadTemplate');
 $routes->group('crm', ['filter' => 'crmAuth'], static function ($routes) {
     $routes->get('/', 'CrmController::index');
     $routes->get('monitoring', 'CrmController::agentMonitoring');
+    $routes->get('export-excel', 'CrmController::exportExcel');
     $routes->post('logout', 'CrmController::logout');
     $routes->post('users', 'CrmController::storeUser');
     $routes->post('users/(:num)/delete', 'CrmController::deleteUser/$1');
@@ -60,6 +66,8 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
     $routes->post('events/(:segment)/checklist/items/(:num)/delete', 'EventSuite::deleteChecklistItem/$1/$2', ['filter' => 'access:events']);
     $routes->post('events/(:segment)/documents/(:segment)/upload', 'EventSuite::uploadEventDocument/$1/$2', ['filter' => 'access:events']);
     $routes->get('events/(:segment)/documents/(:segment)/file', 'EventSuite::downloadUploadedEventDocument/$1/$2', ['filter' => 'access:events']);
+    $routes->post('events/(:segment)/questionnaire', 'EventSuite::saveEventQuestionnaire/$1', ['filter' => 'access:events']);
+    $routes->get('events/(:segment)/questionnaire/export', 'EventSuite::exportQuestionnaireResponses/$1', ['filter' => 'access:events']);
     $routes->post('checklist-tasks/(:num)/report', 'EventSuite::reportChecklistTask/$1', ['filter' => 'access:dashboard']);
     $routes->get('calendar', 'EventSuite::calendar', ['filter' => 'access:calendar']);
     $routes->get('master-data', 'EventSuite::masterData', ['filter' => 'role:Admin Sistem']);
