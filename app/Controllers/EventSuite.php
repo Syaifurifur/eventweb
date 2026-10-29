@@ -1091,12 +1091,31 @@ class EventSuite extends BaseController
         }
 
         $studentName = trim((string) $this->request->getPost('student_name'));
+        $email = trim((string) $this->request->getPost('email'));
         $schoolOrigin = trim((string) $this->request->getPost('school_origin'));
         $rawWhatsapp = trim((string) $this->request->getPost('whatsapp'));
         $whatsapp = $this->normalizeQuestionnaireWhatsapp($rawWhatsapp);
 
-        if ($studentName === '' || $schoolOrigin === '' || $whatsapp === '') {
-            return redirect()->back()->withInput()->with('error', 'Nama Siswa, Asal Sekolah, dan Nomor WhatsApp (minimal 9 digit) wajib diisi.');
+        $participantStatus = trim((string) $this->request->getPost('participant_status'));
+        if (! in_array($participantStatus, ['Siswa', 'Umum', 'Guru'], true)) {
+            $participantStatus = 'Siswa';
+        }
+        $studentClass = trim((string) $this->request->getPost('student_class'));
+
+        if ($studentName === '' || $schoolOrigin === '' || $whatsapp === '' || $email === '') {
+            return redirect()->back()->withInput()->with('error', 'Nama Lengkap, Email Aktif, Asal Sekolah, dan Nomor WhatsApp wajib diisi.');
+        }
+
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return redirect()->back()->withInput()->with('error', 'Format alamat email tidak valid.');
+        }
+
+        if ($participantStatus === 'Siswa') {
+            if (! in_array($studentClass, ['X', 'XI', 'XII'], true)) {
+                return redirect()->back()->withInput()->with('error', 'Untuk status peserta Siswa, mohon pilih kelas (X, XI, atau XII).');
+            }
+        } else {
+            $studentClass = null;
         }
 
         $questions = is_array($questionnaire['questions'] ?? null) ? $questionnaire['questions'] : [];
@@ -1159,12 +1178,13 @@ class EventSuite extends BaseController
             ]);
         }
 
-        $prospectStatus = $this->evaluateQuestionnaireProspectStatus($savedAnswers);
+        $prospectStatus = $this->evaluateQuestionnaireProspectStatus($savedAnswers, $participantStatus, $studentClass ?? '');
         $prospectPrefix = $prospectStatus === 'priority'
             ? '[⭐ PROSPEK PRIORITAS (Chat di Awal)]'
             : '[🕒 FOLLOW UP LANJUTAN (Setelah Prospek Selesai)]';
 
-        $notesSummary = $prospectPrefix . ' [Kuesioner QR Event ' . $event['code'] . ']';
+        $statusSummary = $participantStatus === 'Siswa' ? ('Siswa Kelas ' . $studentClass) : $participantStatus;
+        $notesSummary = $prospectPrefix . ' [' . $statusSummary . ' | Email: ' . $email . '] [Kuesioner QR Event ' . $event['code'] . ']';
         if ($notesParts !== []) {
             $notesSummary .= ' ' . implode(' | ', $notesParts);
         }
@@ -1180,6 +1200,9 @@ class EventSuite extends BaseController
             $crmLeadId = (int) $existingLead['id'];
             $leadModel->update($crmLeadId, [
                 'student_name' => mb_substr($studentName, 0, 160),
+                'email' => mb_substr($email, 0, 160),
+                'participant_status' => mb_substr($participantStatus, 0, 60),
+                'student_class' => $studentClass !== null ? mb_substr($studentClass, 0, 30) : null,
                 'school_origin' => mb_substr($schoolOrigin, 0, 180),
                 'prospect_status' => $prospectStatus,
                 'label' => $prospectStatus === 'priority' ? 'Minat/Tertarik' : ($existingLead['label'] ?? null),
@@ -1190,6 +1213,9 @@ class EventSuite extends BaseController
                 'batch_id' => $batchId > 0 ? $batchId : null,
                 'event_id' => (int) $event['id'],
                 'student_name' => mb_substr($studentName, 0, 160),
+                'email' => mb_substr($email, 0, 160),
+                'participant_status' => mb_substr($participantStatus, 0, 60),
+                'student_class' => $studentClass !== null ? mb_substr($studentClass, 0, 30) : null,
                 'school_origin' => mb_substr($schoolOrigin, 0, 180),
                 'whatsapp' => $whatsapp,
                 'stage' => 'Tahap 1',
@@ -1216,6 +1242,9 @@ class EventSuite extends BaseController
             'crm_lead_id' => $crmLeadId > 0 ? $crmLeadId : null,
             'prospect_status' => $prospectStatus,
             'student_name' => mb_substr($studentName, 0, 160),
+            'email' => mb_substr($email, 0, 160),
+            'participant_status' => mb_substr($participantStatus, 0, 60),
+            'student_class' => $studentClass !== null ? mb_substr($studentClass, 0, 30) : null,
             'school_origin' => mb_substr($schoolOrigin, 0, 180),
             'whatsapp' => $whatsapp,
             'answers_json' => json_encode($savedAnswers, JSON_UNESCAPED_UNICODE),
@@ -1226,9 +1255,16 @@ class EventSuite extends BaseController
             ->with('success', 'Terima kasih, ' . $studentName . '! Jawaban kuesioner Anda telah berhasil disimpan.');
     }
 
-    public function evaluateQuestionnaireProspectStatus(array $savedAnswers): string
+    public function evaluateQuestionnaireProspectStatus(array $savedAnswers, string $participantStatus = '', string $studentClass = ''): string
     {
         $priorityScore = 0;
+
+        // Kelas XII adalah target utama penerimaan mahasiswa baru tahun ini
+        if (strtoupper($studentClass) === 'XII') {
+            $priorityScore += 3;
+        } elseif ($participantStatus === 'Siswa') {
+            $priorityScore += 1;
+        }
 
         $highKeywords = [
             'daftar', 'mendaftar', 'pendaftaran', 'biaya', 'beasiswa', 'potongan',
@@ -1313,9 +1349,12 @@ class EventSuite extends BaseController
 
         $header = [
             'No',
-            'Nama Siswa',
-            'Asal Sekolah',
-            'No WA',
+            'Nama Lengkap',
+            'Email',
+            'Status Peserta',
+            'Kelas (Siswa)',
+            'Asal Sekolah / Instansi',
+            'No. WhatsApp',
             'Klasifikasi Prospek CRM',
         ];
         foreach ($questions as $q) {
@@ -1351,6 +1390,9 @@ class EventSuite extends BaseController
             $row = [
                 (string) ($idx + 1),
                 (string) ($resp['student_name'] ?? '-'),
+                (string) ($resp['email'] ?? '-'),
+                (string) ($resp['participant_status'] ?? 'Siswa'),
+                (string) ($resp['student_class'] ? ('Kelas ' . $resp['student_class']) : '-'),
                 (string) ($resp['school_origin'] ?? '-'),
                 (string) ($resp['whatsapp'] ?? '-'),
                 $prospectLabel,
@@ -1765,7 +1807,8 @@ class EventSuite extends BaseController
     {
         $data = $this->applicationData();
         $isAdminSystem = session('user.role') === 'Admin Sistem';
-        $type = $this->normalizeManagedDocumentType($type) ?? 'all';
+        $queryType = trim((string) $this->request->getGet('type'));
+        $type = $this->normalizeManagedDocumentType($queryType !== '' ? $queryType : $type) ?? 'all';
         $reports = array_map(fn (array $item) => $this->normalizeReport($item), (new ReportModel())->findAll());
         $documentState = $this->eventDocumentState($data['events'], $data['proposals'], $reports, $type);
 
@@ -1775,6 +1818,8 @@ class EventSuite extends BaseController
             'documentRows' => $documentState['rows'],
             'documentNotifications' => $documentState['notifications'],
             'documentPagination' => $documentState['pagination'],
+            'documentStats' => $documentState['stats'] ?? [],
+            'documentFilters' => $documentState['filters'] ?? [],
             'documentCampusOptions' => $documentState['campusOptions'],
             'selectedDocumentCampus' => $documentState['selectedCampus'],
             'selectedDocumentType' => $type,
@@ -6192,6 +6237,7 @@ class EventSuite extends BaseController
                 'event' => $event,
                 'documents' => $visibleDocuments,
                 'has_upload' => $hasAnyUpload,
+                'all_documents' => $documents,
             ];
         }
 
@@ -6204,7 +6250,163 @@ class EventSuite extends BaseController
         });
 
         $notifications = $this->recentDocumentUploadNotifications($rows);
-        $perPage = 10;
+
+        // Ringkasan statistik dokumen (berdasarkan filter kampus aktif)
+        $approvedKeywords = ['disetujui', 'approved', 'selesai', 'lengkap', 'terverifikasi', 'diterima', 'valid'];
+        $stats = [
+            'total_events' => count($rows),
+            'waiting_review' => 0,
+            'complete' => 0,
+            'missing' => 0,
+            'trend_pct' => 0,
+        ];
+        $recentCount = 0;
+        $previousCount = 0;
+        $recentThreshold = strtotime('-30 days');
+        $previousThreshold = strtotime('-60 days');
+
+        foreach ($rows as $index => $row) {
+            $allDocuments = $row['all_documents'] ?? ($row['documents'] ?? []);
+            $uploaded = 0;
+            $missingTypes = [];
+            foreach ($allDocuments as $docType => $document) {
+                $hasLink = trim((string) ($document['link'] ?? '')) !== '';
+                if ($hasLink) {
+                    $uploaded++;
+                    $statusText = mb_strtolower((string) ($document['status'] ?? ''));
+                    $isApproved = false;
+                    foreach ($approvedKeywords as $keyword) {
+                        if (str_contains($statusText, $keyword)) {
+                            $isApproved = true;
+                            break;
+                        }
+                    }
+                    if (! $isApproved) {
+                        $stats['waiting_review']++;
+                    }
+                } else {
+                    $missingTypes[] = (string) $docType;
+                }
+            }
+
+            $requiredCount = max(1, count($allDocuments));
+            if ($uploaded >= $requiredCount) {
+                $docState = 'complete';
+                $stats['complete']++;
+            } elseif ($uploaded === 0) {
+                $docState = 'none';
+                $stats['missing']++;
+            } else {
+                $docState = in_array('proposal', $missingTypes, true) ? 'waiting_proposal' : 'waiting_report';
+                $stats['missing']++;
+            }
+
+            $rows[$index]['doc_uploaded'] = $uploaded;
+            $rows[$index]['doc_required'] = $requiredCount;
+            $rows[$index]['doc_state'] = $docState;
+
+            $eventTime = ! empty($row['event']['date']) ? strtotime((string) $row['event']['date']) : false;
+            if ($eventTime !== false && $eventTime <= time()) {
+                if ($eventTime >= $recentThreshold) {
+                    $recentCount++;
+                } elseif ($eventTime >= $previousThreshold) {
+                    $previousCount++;
+                }
+            }
+        }
+        $stats['trend_pct'] = $previousCount > 0
+            ? (int) round((($recentCount - $previousCount) / $previousCount) * 100)
+            : ($recentCount > 0 ? 100 : 0);
+
+        // Filter lanjutan: pencarian, status dokumen, periode
+        $search = mb_strtolower(trim((string) $this->request->getGet('q')));
+        $statusFilter = trim((string) $this->request->getGet('doc_status'));
+        $periodFilter = trim((string) $this->request->getGet('period'));
+        $sortFilter = (string) $this->request->getGet('sort') === 'oldest' ? 'oldest' : 'newest';
+        $perPageInput = (int) $this->request->getGet('per_page');
+        $perPage = in_array($perPageInput, [10, 25, 50], true) ? $perPageInput : 10;
+
+        if (! in_array($statusFilter, ['complete', 'partial', 'none', 'waiting_review'], true)) {
+            $statusFilter = '';
+        }
+        if (preg_match('/^\d{4}-\d{2}$/', $periodFilter) !== 1) {
+            $periodFilter = '';
+        }
+
+        if ($search !== '' || $statusFilter !== '' || $periodFilter !== '') {
+            $rows = array_values(array_filter($rows, static function (array $row) use ($search, $statusFilter, $periodFilter, $approvedKeywords): bool {
+                $event = $row['event'] ?? [];
+                $allDocuments = $row['all_documents'] ?? ($row['documents'] ?? []);
+
+                if ($search !== '') {
+                    $haystack = [
+                        (string) ($event['id'] ?? ''),
+                        (string) ($event['title'] ?? ''),
+                        (string) ($event['campus'] ?? ''),
+                        (string) ($event['category'] ?? ''),
+                    ];
+                    foreach ($allDocuments as $document) {
+                        $haystack[] = (string) ($document['code'] ?? '');
+                    }
+                    if (! str_contains(mb_strtolower(implode(' ', $haystack)), $search)) {
+                        return false;
+                    }
+                }
+
+                if ($periodFilter !== '' && ! str_starts_with((string) ($event['date'] ?? ''), $periodFilter)) {
+                    return false;
+                }
+
+                $state = (string) ($row['doc_state'] ?? '');
+                if ($statusFilter === 'complete' && $state !== 'complete') {
+                    return false;
+                }
+                if ($statusFilter === 'none' && $state !== 'none') {
+                    return false;
+                }
+                if ($statusFilter === 'partial' && ! in_array($state, ['waiting_proposal', 'waiting_report'], true)) {
+                    return false;
+                }
+                if ($statusFilter === 'waiting_review') {
+                    $hasPending = false;
+                    foreach ($allDocuments as $document) {
+                        if (trim((string) ($document['link'] ?? '')) === '') {
+                            continue;
+                        }
+                        $statusText = mb_strtolower((string) ($document['status'] ?? ''));
+                        $approved = false;
+                        foreach ($approvedKeywords as $keyword) {
+                            if (str_contains($statusText, $keyword)) {
+                                $approved = true;
+                                break;
+                            }
+                        }
+                        if (! $approved) {
+                            $hasPending = true;
+                            break;
+                        }
+                    }
+                    if (! $hasPending) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }));
+        }
+
+        if ($sortFilter === 'oldest') {
+            $rows = array_reverse($rows);
+        }
+
+        $filters = [
+            'q' => trim((string) $this->request->getGet('q')),
+            'doc_status' => $statusFilter,
+            'period' => $periodFilter,
+            'sort' => $sortFilter,
+            'per_page' => $perPage,
+        ];
+
         $total = count($rows);
         $totalPages = max(1, (int) ceil($total / $perPage));
         $currentPage = max(1, (int) $this->request->getGet('page'));
@@ -6212,6 +6414,12 @@ class EventSuite extends BaseController
         $offset = ($currentPage - 1) * $perPage;
         $query = array_filter([
             'campus' => $selectedCampus,
+            'type' => $type !== 'all' ? $type : '',
+            'q' => $filters['q'],
+            'doc_status' => $filters['doc_status'],
+            'period' => $filters['period'],
+            'sort' => $filters['sort'] !== 'newest' ? $filters['sort'] : '',
+            'per_page' => $perPage !== 10 ? (string) $perPage : '',
         ], static fn (string $value): bool => $value !== '');
 
         ksort($campusOptions);
@@ -6221,6 +6429,8 @@ class EventSuite extends BaseController
             'notifications' => $notifications,
             'campusOptions' => array_keys($campusOptions),
             'selectedCampus' => $selectedCampus,
+            'stats' => $stats,
+            'filters' => $filters,
             'pagination' => [
                 'current' => $currentPage,
                 'perPage' => $perPage,

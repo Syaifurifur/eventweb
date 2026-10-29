@@ -17,6 +17,9 @@ class EventQuestionnaireResponseModel extends Model
         'student_name',
         'school_origin',
         'whatsapp',
+        'email',
+        'participant_status',
+        'student_class',
         'answers_json',
         'submitted_at',
     ];

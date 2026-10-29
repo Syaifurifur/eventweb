@@ -539,9 +539,9 @@
                         <thead>
                             <tr style="background:#f8fafc; color:#334155; text-align:left; border-bottom:1px solid #e2e8f0;">
                                 <th style="padding:11px 14px;">No</th>
-                                <th style="padding:11px 14px;">Nama Siswa</th>
-                                <th style="padding:11px 14px;">Asal Sekolah</th>
-                                <th style="padding:11px 14px;">No. WA</th>
+                                <th style="padding:11px 14px;">Nama & Status</th>
+                                <th style="padding:11px 14px;">Kontak (WA & Email)</th>
+                                <th style="padding:11px 14px;">Asal Sekolah / Instansi</th>
                                 <th style="padding:11px 14px;">Prioritas CRM</th>
                                 <th style="padding:11px 14px;">Jawaban Pertanyaan Kuesioner</th>
                                 <th style="padding:11px 14px;">Status CRM</th>
@@ -554,12 +554,26 @@
                                     $ansItems = json_decode((string) ($resp['answers_json'] ?? '[]'), true);
                                     $ansItems = is_array($ansItems) ? $ansItems : [];
                                     $isPriority = ($resp['prospect_status'] ?? '') === 'priority';
+                                    $pStatus = $resp['participant_status'] ?? 'Siswa';
+                                    $pClass = $resp['student_class'] ?? '';
                                 ?>
                                 <tr style="border-bottom:1px solid #f1f5f9;" data-prospect="<?= $isPriority ? 'priority' : 'nurture' ?>">
                                     <td style="padding:11px 14px; font-weight:700; color:#64748b;"><?= $rIdx + 1 ?></td>
-                                    <td style="padding:11px 14px; font-weight:700; color:#0f172a;"><?= esc($resp['student_name'] ?? '-') ?></td>
+                                    <td style="padding:11px 14px;">
+                                        <div style="font-weight:700; color:#0f172a;"><?= esc($resp['student_name'] ?? '-') ?></div>
+                                        <div style="margin-top:3px; display:flex; gap:4px; flex-wrap:wrap;">
+                                            <span style="display:inline-block; padding:2px 7px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:10.5px; font-weight:700; border:1px solid #bfdbfe;">
+                                                <?= esc($pStatus) ?><?= ($pStatus === 'Siswa' && $pClass) ? ' (Kelas ' . esc($pClass) . ')' : '' ?>
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td style="padding:11px 14px;">
+                                        <div style="font-family:monospace; font-weight:600; color:#0f172a;"><?= esc($resp['whatsapp'] ?? '-') ?></div>
+                                        <?php if (! empty($resp['email'])): ?>
+                                            <div style="font-size:11.5px; color:#64748b; margin-top:2px;">✉ <?= esc($resp['email']) ?></div>
+                                        <?php endif; ?>
+                                    </td>
                                     <td style="padding:11px 14px; color:#334155;"><?= esc($resp['school_origin'] ?? '-') ?></td>
-                                    <td style="padding:11px 14px; font-family:monospace; color:#0f172a;"><?= esc($resp['whatsapp'] ?? '-') ?></td>
                                     <td style="padding:11px 14px;">
                                         <?php if ($isPriority): ?>
                                             <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; background:#fef3c7; border:1px solid #f59e0b; color:#92400e; font-size:11px; font-weight:800;">

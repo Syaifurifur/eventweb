@@ -985,6 +985,9 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                     <?php endif; ?>
                                     <td>
                                         <strong><?= esc($lead['student_name']) ?></strong>
+                                        <?php if (! empty($lead['email'])): ?>
+                                            <div style="font-size:11px; color:#64748b; margin-top:2px;">✉ <?= esc($lead['email']) ?></div>
+                                        <?php endif; ?>
                                         <?php
                                             $isLeadPriority = ($lead['prospect_status'] ?? '') === 'priority'
                                                 || str_contains((string) ($lead['notes'] ?? ''), 'PROSPEK PRIORITAS');
@@ -1005,7 +1008,16 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                             </div>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?= esc($lead['school_origin'] ?: '-') ?></td>
+                                    <td>
+                                        <div><?= esc($lead['school_origin'] ?: '-') ?></div>
+                                        <?php if (! empty($lead['participant_status'])): ?>
+                                            <div style="margin-top:3px;">
+                                                <span style="display:inline-block; padding:1px 6px; border-radius:6px; background:#eff6ff; color:#1d4ed8; font-size:10px; font-weight:700; border:1px solid #bfdbfe;">
+                                                    <?= esc($lead['participant_status']) ?><?= ($lead['participant_status'] === 'Siswa' && ! empty($lead['student_class'])) ? ' (Kelas ' . esc($lead['student_class']) . ')' : '' ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
                                     <?php
                                         $rawWhatsapp = preg_replace('/\D+/', '', (string) ($lead['whatsapp'] ?? '')) ?? '';
                                         $whatsappLinkNumber = str_starts_with($rawWhatsapp, '0')
@@ -1808,9 +1820,15 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                             prospectBadgeEl.style.display = 'none';
                         }
                     }
+                    let statusDesc = activeLead.participant_status || '';
+                    if (statusDesc === 'Siswa' && activeLead.student_class) {
+                        statusDesc += ' (Kelas ' + activeLead.student_class + ')';
+                    }
                     studentSubEl.textContent = [
+                        statusDesc,
                         activeLead.school_origin || 'Sekolah -',
                         activeLead.whatsapp || 'Tanpa No WA',
+                        activeLead.email ? ('✉ ' + activeLead.email) : '',
                         activeLead.event_code ? (activeLead.event_code + ' - ' + activeLead.event_title) : '',
                         activeLead.campus_name || ''
                     ].filter(Boolean).join(' • ');
@@ -1970,8 +1988,13 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
 
             ctx.fillStyle = '#d1fae5';
             ctx.font = '12.5px Inter, Segoe UI, Arial, sans-serif';
+            const statusStr = (activeLead && activeLead.participant_status)
+                ? (activeLead.participant_status + (activeLead.student_class ? ' Kelas ' + activeLead.student_class : ''))
+                : '';
             const subText = [
+                statusStr,
                 activeLead ? activeLead.school_origin : '',
+                activeLead ? activeLead.email : '',
                 activeLead ? activeLead.campus_name : '',
                 'Status: ' + (formStage.value || 'Tahap 1') + (formLabel.value ? ' • ' + formLabel.value : '')
             ].filter(Boolean).join(' | ');

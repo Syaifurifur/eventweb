@@ -675,6 +675,9 @@ class CrmController extends BaseController
             'lead' => [
                 'id' => (int) $lead['id'],
                 'student_name' => (string) ($lead['student_name'] ?? ''),
+                'email' => (string) ($lead['email'] ?? ''),
+                'participant_status' => (string) ($lead['participant_status'] ?? ''),
+                'student_class' => (string) ($lead['student_class'] ?? ''),
                 'school_origin' => (string) ($lead['school_origin'] ?? '-'),
                 'whatsapp' => (string) ($lead['whatsapp'] ?? ''),
                 'whatsapp_normalized' => $normalizedWa,
@@ -2172,7 +2175,10 @@ class CrmController extends BaseController
             [
                 'No',
                 'Nama Calon Mahasiswa',
-                'Asal Sekolah',
+                'Email',
+                'Status Peserta',
+                'Kelas (Siswa)',
+                'Asal Sekolah / Instansi',
                 'No. WhatsApp',
                 'Prioritas Prospek CRM',
                 'Tahap Follow-Up',
@@ -2210,6 +2216,9 @@ class CrmController extends BaseController
             $rows[] = [
                 (string) ($index + 1),
                 (string) ($lead['student_name'] ?? '-'),
+                (string) ($lead['email'] ?? '-'),
+                (string) ($lead['participant_status'] ?? 'Siswa'),
+                (string) ($lead['student_class'] ? ('Kelas ' . $lead['student_class']) : '-'),
                 (string) ($lead['school_origin'] ?? '-'),
                 (string) ($lead['whatsapp'] ?? '-'),
                 $prospectLabel,

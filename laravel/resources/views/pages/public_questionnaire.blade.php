@@ -234,6 +234,51 @@ $flashSuccess = session('success') ?: (is_object(session()) && method_exists(ses
             margin: 0;
             flex-shrink: 0;
         }
+        .qst-radio-pill-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .qst-pill-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: 1.5px solid #e2e8f0;
+            background: #f8fafc;
+            cursor: pointer;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #334155;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .qst-pill-option:hover {
+            border-color: #93c5fd;
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        .qst-pill-option.active, .qst-pill-option:has(input:checked) {
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #1d4ed8;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+        }
+        .qst-pill-option input {
+            accent-color: #2563eb;
+            width: 17px;
+            height: 17px;
+            margin: 0;
+        }
+        .qst-student-class-box {
+            padding: 16px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1.5px dashed #cbd5e1;
+            margin-top: 6px;
+        }
         .qst-submit-btn {
             width: 100%;
             padding: 15px 22px;
@@ -341,7 +386,7 @@ $flashSuccess = session('success') ?: (is_object(session()) && method_exists(ses
 
                         <div class="qst-field">
                             <label class="qst-label" for="qst-student-name">
-                                Nama Siswa / Lengkap <span class="qst-req">*</span>
+                                Nama Lengkap / Siswa <span class="qst-req">*</span>
                             </label>
                             <input
                                 id="qst-student-name"
@@ -355,18 +400,19 @@ $flashSuccess = session('success') ?: (is_object(session()) && method_exists(ses
                         </div>
 
                         <div class="qst-field">
-                            <label class="qst-label" for="qst-school-origin">
-                                Asal Sekolah / Instansi <span class="qst-req">*</span>
+                            <label class="qst-label" for="qst-email">
+                                Alamat Email Aktif <span class="qst-req">*</span>
                             </label>
                             <input
-                                id="qst-school-origin"
+                                id="qst-email"
                                 class="qst-input"
-                                type="text"
-                                name="school_origin"
-                                value="<?= esc((string) old('school_origin')) ?>"
-                                placeholder="Contoh: SMA Negeri 1 Yogyakarta"
+                                type="email"
+                                name="email"
+                                value="<?= esc((string) old('email')) ?>"
+                                placeholder="Contoh: raka.pratama@gmail.com"
                                 required
                             >
+                            <span class="qst-hint">Email aktif untuk pengiriman materi acara dan e-sertifikat kegiatan.</span>
                         </div>
 
                         <div class="qst-field">
@@ -382,7 +428,70 @@ $flashSuccess = session('success') ?: (is_object(session()) && method_exists(ses
                                 placeholder="Contoh: 081234567890"
                                 required
                             >
-                            <span class="qst-hint">Pastikan nomor terhubung dengan WhatsApp aktif untuk pengiriman sertifikat / informasi lanjutan.</span>
+                            <span class="qst-hint">Pastikan nomor terhubung dengan WhatsApp aktif untuk notifikasi dan layanan informasi.</span>
+                        </div>
+
+                        <div class="qst-field">
+                            <label class="qst-label" for="qst-school-origin">
+                                Asal Sekolah / Instansi <span class="qst-req">*</span>
+                            </label>
+                            <input
+                                id="qst-school-origin"
+                                class="qst-input"
+                                type="text"
+                                name="school_origin"
+                                value="<?= esc((string) old('school_origin')) ?>"
+                                placeholder="Contoh: SMA Negeri 1 Yogyakarta / Instansi"
+                                required
+                            >
+                        </div>
+
+                        <?php
+                        $selectedStatus = (string) old('participant_status', 'Siswa');
+                        $selectedClass = (string) old('student_class', '');
+                        ?>
+                        <div class="qst-field">
+                            <label class="qst-label">
+                                Status Peserta <span class="qst-req">*</span>
+                            </label>
+                            <div class="qst-radio-pill-group">
+                                <?php foreach (['Siswa', 'Umum', 'Guru'] as $st): ?>
+                                    <label class="qst-pill-option <?= $selectedStatus === $st ? 'active' : '' ?>">
+                                        <input
+                                            type="radio"
+                                            name="participant_status"
+                                            value="<?= esc($st) ?>"
+                                            <?= $selectedStatus === $st ? 'checked' : '' ?>
+                                            required
+                                            onchange="updateParticipantStatusUI(this.value)"
+                                        >
+                                        <span><?= esc($st) ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <div class="qst-field" id="student-class-wrapper" style="<?= $selectedStatus === 'Siswa' ? '' : 'display:none;' ?>">
+                            <div class="qst-student-class-box">
+                                <label class="qst-label" style="margin-bottom:8px;">
+                                    Kelas Berapa Saat Ini? (Khusus Siswa) <span class="qst-req">*</span>
+                                </label>
+                                <div class="qst-radio-pill-group">
+                                    <?php foreach (['X', 'XI', 'XII'] as $cls): ?>
+                                        <label class="qst-pill-option <?= $selectedClass === $cls ? 'active' : '' ?>">
+                                            <input
+                                                type="radio"
+                                                name="student_class"
+                                                value="<?= esc($cls) ?>"
+                                                <?= $selectedClass === $cls ? 'checked' : '' ?>
+                                                <?= $selectedStatus === 'Siswa' ? 'required' : '' ?>
+                                            >
+                                            <span>Kelas <?= esc($cls) ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                                <span class="qst-hint" style="margin-top:6px; display:block;">Pilih tingkatan kelas Anda saat ini (SMA / SMK / MA sederajat).</span>
+                            </div>
                         </div>
 
                         <?php if ($questions !== []): ?>
@@ -488,5 +597,40 @@ $flashSuccess = session('success') ?: (is_object(session()) && method_exists(ses
             © <?= date('Y') ?> EventHub Integrated Scheduler & CRM • <?= esc($event['title']) ?>
         </div>
     </div>
+
+    <script>
+        function updateParticipantStatusUI(status) {
+            const classWrapper = document.getElementById('student-class-wrapper');
+            const classInputs = classWrapper ? classWrapper.querySelectorAll('input[name="student_class"]') : [];
+
+            if (status === 'Siswa') {
+                if (classWrapper) classWrapper.style.display = 'block';
+                classInputs.forEach(i => { i.required = true; });
+            } else {
+                if (classWrapper) classWrapper.style.display = 'none';
+                classInputs.forEach(i => {
+                    i.required = false;
+                    i.checked = false;
+                    i.closest('.qst-pill-option')?.classList.remove('active');
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.qst-pill-option input').forEach(input => {
+                input.addEventListener('change', function () {
+                    const groupName = this.name;
+                    document.querySelectorAll(`input[name="${groupName}"]`).forEach(other => {
+                        other.closest('.qst-pill-option')?.classList.toggle('active', other.checked);
+                    });
+                });
+            });
+
+            const checkedStatus = document.querySelector('input[name="participant_status"]:checked');
+            if (checkedStatus) {
+                updateParticipantStatusUI(checkedStatus.value);
+            }
+        });
+    </script>
 </body>
 </html>
