@@ -89,7 +89,7 @@ $initialActiveTab = $canViewAllCrmCampuses
     ? ($requestedCampusParam !== '' ? 'campus-scoped' : 'admin-overview')
     : 'campus-scoped';
 ?>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="<?= base_url('assets/js/lib/svg-chart-engine.js?v=' . @filemtime(FCPATH . 'assets/js/lib/svg-chart-engine.js')) ?>"></script>
 <style>
   .crm-report-wrapper {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -99,6 +99,9 @@ $initialActiveTab = $canViewAllCrmCampuses
   }
   .crm-report-wrapper * {
     box-sizing: border-box;
+  }
+  .crm-report-wrapper canvas {
+    display: none !important;
   }
   .crm-custom-scrollbar::-webkit-scrollbar {
     width: 6px;
@@ -259,12 +262,18 @@ $initialActiveTab = $canViewAllCrmCampuses
           <button id="tabBtn-access-guide" type="button" data-tab="access-guide" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-700/60">
             🛡️ Skema Hak Akses CRM
           </button>
+          <a href="<?= site_url('crm') ?>" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-emerald-500 hover:bg-emerald-600 text-slate-950 shadow">
+            💬 Buka CRM WhatsApp &amp; AI Workspace &rarr;
+          </a>
         </nav>
       <?php else: ?>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <span class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600/20 text-emerald-300 border border-emerald-500/30">
             🔒 Akses Terkunci: <?= esc($matchedCampus['kampus'] ?? $userCampusFullName) ?>
           </span>
+          <a href="<?= site_url('crm') ?>" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-slate-950 transition shadow">
+            💬 Buka CRM WhatsApp &amp; AI Workspace &rarr;
+          </a>
         </div>
       <?php endif; ?>
     </div>

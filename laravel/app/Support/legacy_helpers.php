@@ -37,3 +37,7 @@ if (! function_exists('service')) {
 if (! function_exists('log_message')) {
     function log_message(string $level, string $message): void { logger()->log($level, $message); }
 }
+
+if (! function_exists('csrf_hash')) {
+    function csrf_hash(): string { return (string) csrf_token(); }
+}

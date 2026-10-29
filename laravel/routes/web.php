@@ -31,6 +31,10 @@ Route::prefix('crm')->middleware('crm.auth')->group(function (): void {
     Route::post('leads/auto-assign', [CrmController::class, 'autoAssignLeads']);
     Route::post('leads/{id}/update', [CrmController::class, 'updateLead'])->whereNumber('id');
     Route::post('leads/{id}/delete', [CrmController::class, 'deleteLead'])->whereNumber('id');
+    Route::get('leads/{id}/chat', [CrmController::class, 'leadChatData'])->whereNumber('id');
+    Route::post('leads/{id}/chat', [CrmController::class, 'storeChatMessage'])->whereNumber('id');
+    Route::post('leads/{id}/save-chat-image', [CrmController::class, 'saveChatAsImage'])->whereNumber('id');
+    Route::post('ai/assist', [CrmController::class, 'aiAssist']);
     Route::get('logs/{id}/image', [CrmController::class, 'followUpImage'])->whereNumber('id');
     Route::post('batches/{id}/delete', [CrmController::class, 'deleteBatch'])->whereNumber('id');
 });

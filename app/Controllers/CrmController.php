@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Libraries\CrmAiAssistantService;
 use App\Libraries\EventHubCrmBridge;
 use App\Models\CampusModel;
 use App\Models\CrmLeadLogModel;
@@ -169,6 +170,10 @@ class CrmController extends BaseController
         $currentPage = min($currentPage, $totalPages);
         $offset = ($currentPage - 1) * $perPage;
         $leads = $builder->findAll($perPage, $offset);
+        $leadLogsByLeadId = $this->crmLeadLogsByLeadIds(array_map(
+            static fn (array $lead): int => (int) $lead['id'],
+            $leads,
+        ));
         $events = $this->crmEventOptions();
         $crmUsersBuilder = $userModel->withDeleted()->orderBy('role', 'ASC')->orderBy('full_name', 'ASC');
         if ($currentCrmCampusId !== null) {
@@ -195,6 +200,7 @@ class CrmController extends BaseController
             'isAdmin' => $isAdmin,
             'stats' => $this->crmStats($allLeads),
             'leads' => $leads,
+            'leadLogsByLeadId' => $leadLogsByLeadId,
             'agents' => $this->crmAgentOptions($currentCrmCampusId),
             'users' => $crmUsersBuilder->findAll(),
             'batches' => $this->crmUploadBatches(),
@@ -494,15 +500,322 @@ class CrmController extends BaseController
             $payload['agent_id'] = $agentId > 0 ? $agentId : null;
         }
 
+        $followUpImage = null;
+        $uploadedFile = $this->request->getFile('follow_up_image');
+        if ($uploadedFile !== null && $uploadedFile->getName() !== '') {
+            try {
+                $followUpImage = $this->storeFollowUpImage($uploadedFile, $id);
+            } catch (\InvalidArgumentException $error) {
+                return redirect()->to(site_url('crm'))->with('error', $error->getMessage());
+            }
+        }
+
         $changedFields = $this->crmLeadChangedFields($lead, $payload);
         if (! $leadModel->update($id, $payload)) {
+            $this->removeFollowUpImage($followUpImage);
             return redirect()->to(site_url('crm'))->with('error', implode(' ', $leadModel->errors()) ?: 'Data calon pendaftar gagal diperbarui.');
         }
-        if ($changedFields !== []) {
-            $this->logCrmLeadChange($lead, $payload, 'update', $this->crmLeadLogSummary($changedFields, $lead, $payload));
+        if ($changedFields !== [] || $followUpImage !== null) {
+            $summary = $this->crmLeadLogSummary($changedFields, $lead, $payload);
+            if ($followUpImage !== null) {
+                $summary = $changedFields === [] ? 'Bukti hasil follow-up diunggah.' : $summary . '; Bukti hasil follow-up diunggah';
+            }
+            $this->logCrmLeadChange($lead, $payload, 'update', $summary, $followUpImage);
         }
 
         return redirect()->to(site_url('crm'))->with('success', 'Data calon pendaftar berhasil diperbarui.');
+    }
+
+    public function followUpImage(int $id)
+    {
+        $log = (new CrmLeadLogModel())->find($id);
+        if (! $log || empty($log['follow_up_image']) || empty($log['lead_id'])) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $lead = (new CrmLeadModel())
+            ->select('crm_leads.*, events.campus_id AS event_campus_id')
+            ->join('events', 'events.id = crm_leads.event_id', 'left')
+            ->find((int) $log['lead_id']);
+        if (! $lead || ! $this->canManageLead($lead)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $path = $this->followUpImageAbsolutePath((string) $log['follow_up_image']);
+        if ($path === null) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $mime = mime_content_type($path);
+        if (! in_array($mime, ['image/jpeg', 'image/png'], true)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('Content-Disposition', 'inline; filename="' . basename($path) . '"')
+            ->setHeader('X-Content-Type-Options', 'nosniff')
+            ->setHeader('Cache-Control', 'private, max-age=3600')
+            ->setBody((string) file_get_contents($path));
+    }
+
+    public function leadChatData(int $id)
+    {
+        $lead = (new CrmLeadModel())
+            ->select('crm_leads.*, crm_users.full_name AS agent_name, events.code AS event_code, events.title AS event_title, events.campus_id AS event_campus_id, campuses.name AS campus_name')
+            ->join('crm_users', 'crm_users.id = crm_leads.agent_id', 'left')
+            ->join('events', 'events.id = crm_leads.event_id', 'left')
+            ->join('campuses', 'campuses.id = events.campus_id', 'left')
+            ->find($id);
+
+        if (! $lead || ! $this->canManageLead($lead)) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'Data siswa CRM tidak ditemukan atau tidak memiliki akses.'], 404);
+        }
+
+        $messages = $this->crmChatMessagesForLead($id);
+        $logsGrouped = $this->crmLeadLogsByLeadIds([$id], 12);
+        $logs = array_map(static function (array $log): array {
+            $log['image_url'] = ! empty($log['follow_up_image']) ? site_url('crm/logs/' . $log['id'] . '/image') : null;
+            $log['formatted_time'] = ! empty($log['created_at']) ? date('d M Y, H.i', strtotime((string) $log['created_at'])) : '-';
+            return $log;
+        }, $logsGrouped[$id] ?? []);
+
+        $rawWa = preg_replace('/\D+/', '', (string) ($lead['whatsapp'] ?? '')) ?? '';
+        $normalizedWa = $this->normalizeWhatsappNumber($rawWa);
+
+        $aiService = new CrmAiAssistantService();
+        $defaultIntent = match ($lead['label'] ?? '') {
+            'Minat/Tertarik' => 'follow_up_minat',
+            'Ragu-ragu' => 'atasi_ragu',
+            'Tidak Merespon' => 'reengage',
+            'Closing' => 'closing_daftar',
+            default => 'sapaan_awal',
+        };
+        $quickScripts = $aiService->generateMessage($lead, $defaultIntent, '', []);
+
+        return $this->jsonResponse([
+            'ok' => true,
+            'lead' => [
+                'id' => (int) $lead['id'],
+                'student_name' => (string) ($lead['student_name'] ?? ''),
+                'school_origin' => (string) ($lead['school_origin'] ?? '-'),
+                'whatsapp' => (string) ($lead['whatsapp'] ?? ''),
+                'whatsapp_normalized' => $normalizedWa,
+                'stage' => (string) ($lead['stage'] ?? 'Tahap 1'),
+                'label' => (string) ($lead['label'] ?? ''),
+                'notes' => (string) ($lead['notes'] ?? ''),
+                'rejection_reason' => (string) ($lead['rejection_reason'] ?? ''),
+                'event_code' => (string) ($lead['event_code'] ?? ''),
+                'event_title' => (string) ($lead['event_title'] ?? ''),
+                'campus_name' => (string) ($lead['campus_name'] ?? ''),
+                'agent_id' => (int) ($lead['agent_id'] ?? 0),
+                'agent_name' => (string) ($lead['agent_name'] ?? (session('crmUser.name') ?? 'Agent CRM')),
+            ],
+            'messages' => $messages,
+            'logs' => $logs,
+            'ai_quick' => $quickScripts,
+        ]);
+    }
+
+    public function storeChatMessage(int $id)
+    {
+        $leadModel = new CrmLeadModel();
+        $lead = $leadModel
+            ->select('crm_leads.*, events.campus_id AS event_campus_id, events.title AS event_title, campuses.name AS campus_name')
+            ->join('events', 'events.id = crm_leads.event_id', 'left')
+            ->join('campuses', 'campuses.id = events.campus_id', 'left')
+            ->find($id);
+
+        if (! $lead || ! $this->canManageLead($lead)) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'Data siswa tidak ditemukan atau akses ditolak.'], 404);
+        }
+
+        $senderType = trim((string) $this->request->getPost('sender_type')) === 'student' ? 'student' : 'agent';
+        $messageText = trim((string) $this->request->getPost('message'));
+        $sentViaWa = (int) ($this->request->getPost('sent_via_wa') ?? 1) === 1 ? 1 : 0;
+
+        if ($messageText === '') {
+            return $this->jsonResponse(['ok' => false, 'message' => 'Isi pesan chat tidak boleh kosong.'], 422);
+        }
+
+        $senderName = $senderType === 'student'
+            ? (string) ($lead['student_name'] ?? 'Siswa')
+            : (string) (session('crmUser.name') ?? 'Agent CRM');
+
+        $now = date('Y-m-d H:i:s');
+        $db = db_connect();
+        $msgId = 0;
+        if ($db->tableExists('crm_chat_messages')) {
+            $db->table('crm_chat_messages')->insert([
+                'lead_id' => $id,
+                'user_id' => (int) session('crmUser.id') ?: null,
+                'sender_type' => $senderType,
+                'sender_name' => $senderName,
+                'message' => $messageText,
+                'attachment_image' => null,
+                'sent_via_wa' => $sentViaWa,
+                'created_at' => $now,
+            ]);
+            $msgId = (int) $db->insertID();
+        }
+
+        $autoUpdated = false;
+        if ($senderType === 'student' && ($lead['stage'] ?? 'Tahap 1') === 'Tahap 1') {
+            $leadModel->update($id, [
+                'stage' => 'Tahap 2',
+                'responded_at' => $now,
+            ]);
+            $this->logCrmLeadChange($lead, ['stage' => 'Tahap 2'], 'chat_reply', 'Balasan WhatsApp siswa dicatat di CRM Workspace (Otomatis naik ke Tahap 2).');
+            $lead['stage'] = 'Tahap 2';
+            $autoUpdated = true;
+        }
+
+        return $this->jsonResponse([
+            'ok' => true,
+            'message_item' => [
+                'id' => $msgId,
+                'lead_id' => $id,
+                'sender_type' => $senderType,
+                'sender_name' => $senderName,
+                'message' => $messageText,
+                'sent_via_wa' => $sentViaWa,
+                'created_at' => $now,
+                'formatted_time' => date('H:i', strtotime($now)),
+                'formatted_date' => date('d M Y, H:i', strtotime($now)),
+            ],
+            'lead_stage' => $lead['stage'] ?? 'Tahap 1',
+            'auto_updated' => $autoUpdated,
+        ]);
+    }
+
+    public function saveChatAsImage(int $id)
+    {
+        $leadModel = new CrmLeadModel();
+        $lead = $leadModel
+            ->select('crm_leads.*, events.campus_id AS event_campus_id')
+            ->join('events', 'events.id = crm_leads.event_id', 'left')
+            ->find($id);
+
+        if (! $lead || ! $this->canManageLead($lead)) {
+            return $this->jsonResponse(['ok' => false, 'message' => 'Data siswa tidak ditemukan atau akses ditolak.'], 404);
+        }
+
+        $base64Image = trim((string) $this->request->getPost('image_base64'));
+        $uploadedFile = $this->request->getFile('follow_up_image');
+        $followUpImage = null;
+
+        try {
+            if ($base64Image !== '') {
+                $followUpImage = $this->storeBase64FollowUpImage($base64Image, $id);
+            } elseif ($uploadedFile !== null && $uploadedFile->isValid()) {
+                $followUpImage = $this->storeFollowUpImage($uploadedFile, $id);
+            }
+        } catch (\InvalidArgumentException $error) {
+            return $this->jsonResponse(['ok' => false, 'message' => $error->getMessage()], 422);
+        }
+
+        $stage = trim((string) $this->request->getPost('stage')) ?: ($lead['stage'] ?? 'Tahap 1');
+        $label = trim((string) $this->request->getPost('label')) ?: null;
+        $notes = trim((string) $this->request->getPost('notes')) ?: ($lead['notes'] ?? null);
+        $rejectionReason = trim((string) $this->request->getPost('rejection_reason')) ?: null;
+
+        if ($label === 'Closing') {
+            $stage = 'Tahap 3';
+        }
+        $supportsLabelReason = in_array($stage, ['Tahap 2', 'Tahap 3'], true)
+            && in_array($label, ['Minat/Tertarik', 'Ragu-ragu', 'Menolak'], true);
+        if (! $supportsLabelReason) {
+            $rejectionReason = null;
+        }
+
+        $payload = [
+            'stage' => $stage,
+            'label' => $label,
+            'notes' => $notes,
+            'rejection_reason' => $rejectionReason,
+            'responded_at' => date('Y-m-d H:i:s'),
+        ];
+
+        $changedFields = $this->crmLeadChangedFields($lead, $payload);
+        $leadModel->update($id, $payload);
+
+        $customSummary = trim((string) $this->request->getPost('summary'));
+        $summaryParts = [];
+        if ($changedFields !== []) {
+            $summaryParts[] = $this->crmLeadLogSummary($changedFields, $lead, $payload);
+        }
+        if ($followUpImage !== null) {
+            $summaryParts[] = $customSummary !== '' ? $customSummary : 'Bukti chat WhatsApp disimpan sebagai gambar di CRM Workspace';
+        }
+        $finalSummary = implode('; ', $summaryParts) ?: ($customSummary ?: 'Update dari WhatsApp CRM Workspace.');
+
+        $this->logCrmLeadChange($lead, $payload, 'wa_workspace', $finalSummary, $followUpImage);
+
+        $logsGrouped = $this->crmLeadLogsByLeadIds([$id], 12);
+        $logs = array_map(static function (array $log): array {
+            $log['image_url'] = ! empty($log['follow_up_image']) ? site_url('crm/logs/' . $log['id'] . '/image') : null;
+            $log['formatted_time'] = ! empty($log['created_at']) ? date('d M Y, H.i', strtotime((string) $log['created_at'])) : '-';
+            return $log;
+        }, $logsGrouped[$id] ?? []);
+
+        return $this->jsonResponse([
+            'ok' => true,
+            'message' => $followUpImage !== null
+                ? 'Hasil chat berhasil disimpan sebagai gambar Bukti Follow-Up dan status CRM diperbarui!'
+                : 'Status CRM siswa berhasil diperbarui!',
+            'lead' => [
+                'id' => $id,
+                'stage' => $stage,
+                'label' => $label ?? '',
+                'rejection_reason' => $rejectionReason ?? '',
+                'notes' => $notes ?? '',
+            ],
+            'logs' => $logs,
+            'latest_image_url' => $logs[0]['image_url'] ?? null,
+        ]);
+    }
+
+    public function aiAssist()
+    {
+        $mode = trim((string) $this->request->getPost('mode')) ?: 'generate_message';
+        $leadId = (int) $this->request->getPost('lead_id');
+        $intent = trim((string) $this->request->getPost('intent')) ?: 'sapaan_awal';
+        $customPrompt = trim((string) $this->request->getPost('custom_prompt'));
+        $latestReply = trim((string) $this->request->getPost('latest_reply'));
+
+        $aiService = new CrmAiAssistantService();
+
+        if ($mode === 'workspace_insight') {
+            $statsJson = (string) $this->request->getPost('stats_json');
+            $stats = json_decode($statsJson, true);
+            if (! is_array($stats)) {
+                $stats = [];
+            }
+            $result = $aiService->generateWorkspaceInsight($stats, $customPrompt);
+            return $this->jsonResponse($result);
+        }
+
+        $lead = [];
+        $chatHistory = [];
+        if ($leadId > 0) {
+            $found = (new CrmLeadModel())
+                ->select('crm_leads.*, events.code AS event_code, events.title AS event_title, events.campus_id AS event_campus_id, campuses.name AS campus_name')
+                ->join('events', 'events.id = crm_leads.event_id', 'left')
+                ->join('campuses', 'campuses.id = events.campus_id', 'left')
+                ->find($leadId);
+            if ($found && $this->canManageLead($found)) {
+                $lead = $found;
+                $chatHistory = $this->crmChatMessagesForLead($leadId);
+            }
+        }
+
+        if ($mode === 'analyze_reply') {
+            $result = $aiService->analyzeConversation($lead, $chatHistory, $latestReply);
+            return $this->jsonResponse($result);
+        }
+
+        $result = $aiService->generateMessage($lead, $intent, $customPrompt, $chatHistory);
+        return $this->jsonResponse($result);
     }
 
     public function deleteLead(int $id)
@@ -741,7 +1054,36 @@ class CrmController extends BaseController
         return array_filter($query, static fn ($value): bool => $value !== '' && $value !== null);
     }
 
-    private function logCrmLeadChange(array $lead, array $newData, string $action, string $summary): void
+    private function crmLeadLogsByLeadIds(array $leadIds, int $perLead = 6): array
+    {
+        $leadIds = array_values(array_unique(array_filter(array_map('intval', $leadIds))));
+        $db = db_connect();
+        if ($leadIds === [] || ! $db->tableExists('crm_lead_logs')) {
+            return [];
+        }
+
+        $rows = $db->table('crm_lead_logs')
+            ->select('crm_lead_logs.*, crm_users.full_name AS actor_name')
+            ->join('crm_users', 'crm_users.id = crm_lead_logs.user_id', 'left')
+            ->whereIn('crm_lead_logs.lead_id', $leadIds)
+            ->orderBy('crm_lead_logs.created_at', 'DESC')
+            ->orderBy('crm_lead_logs.id', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $leadId = (int) ($row['lead_id'] ?? 0);
+            if ($leadId <= 0 || count($grouped[$leadId] ?? []) >= $perLead) {
+                continue;
+            }
+            $grouped[$leadId][] = $row;
+        }
+
+        return $grouped;
+    }
+
+    private function logCrmLeadChange(array $lead, array $newData, string $action, string $summary, ?string $followUpImage = null): void
     {
         $db = db_connect();
         if (! $db->tableExists('crm_lead_logs')) {
@@ -765,8 +1107,147 @@ class CrmController extends BaseController
                 ? ($newData['rejection_reason'] ?: null)
                 : ($lead['rejection_reason'] ?? null),
             'summary' => $summary,
+            'follow_up_image' => $followUpImage,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    private function storeFollowUpImage($file, int $leadId): string
+    {
+        if (! $file->isValid()) {
+            throw new \InvalidArgumentException('Gambar hasil follow-up gagal diunggah. Pilih ulang file JPG atau PNG.');
+        }
+
+        $size = (int) $file->getSize();
+        if ($size <= 0 || $size > 5 * 1024 * 1024) {
+            throw new \InvalidArgumentException('Ukuran gambar hasil follow-up maksimal 5 MB.');
+        }
+
+        $imageInfo = @getimagesize($file->getTempName());
+        $extension = match ($imageInfo[2] ?? null) {
+            IMAGETYPE_JPEG => 'jpg',
+            IMAGETYPE_PNG => 'png',
+            default => null,
+        };
+        if ($extension === null) {
+            throw new \InvalidArgumentException('Bukti follow-up wajib berupa gambar JPG atau PNG yang valid.');
+        }
+
+        $relativeDirectory = 'uploads/crm_follow_up/' . $leadId;
+        $targetDirectory = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $relativeDirectory);
+        if (! is_dir($targetDirectory) && ! mkdir($targetDirectory, 0775, true) && ! is_dir($targetDirectory)) {
+            throw new \InvalidArgumentException('Folder penyimpanan bukti follow-up tidak dapat dibuat.');
+        }
+
+        $filename = 'follow-up-' . $leadId . '-' . date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $extension;
+        try {
+            $file->move($targetDirectory, $filename, true);
+        } catch (\Throwable) {
+            throw new \InvalidArgumentException('Gambar hasil follow-up gagal disimpan.');
+        }
+
+        return $relativeDirectory . '/' . $filename;
+    }
+
+    private function followUpImageAbsolutePath(string $relativePath): ?string
+    {
+        $relativePath = str_replace('\\', '/', trim($relativePath));
+        if (! str_starts_with($relativePath, 'uploads/crm_follow_up/') || str_contains($relativePath, '..')) {
+            return null;
+        }
+
+        $root = realpath(WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'crm_follow_up');
+        $path = realpath(WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $relativePath));
+        if ($root === false || $path === false || ! is_file($path)) {
+            return null;
+        }
+
+        $rootPrefix = rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        return str_starts_with($path, $rootPrefix) ? $path : null;
+    }
+
+    private function removeFollowUpImage(?string $relativePath): void
+    {
+        if ($relativePath === null) {
+            return;
+        }
+
+        $path = $this->followUpImageAbsolutePath($relativePath);
+        if ($path !== null) {
+            @unlink($path);
+        }
+    }
+
+    private function storeBase64FollowUpImage(string $base64Data, int $leadId): string
+    {
+        $raw = trim($base64Data);
+        if (preg_match('/^data:image\/(png|jpeg|jpg);base64,(.+)$/i', $raw, $matches) === 1) {
+            $raw = $matches[2];
+        }
+
+        $binary = base64_decode($raw, true);
+        if ($binary === false || strlen($binary) < 64) {
+            throw new \InvalidArgumentException('Data gambar hasil chat tidak valid.');
+        }
+
+        if (strlen($binary) > 5 * 1024 * 1024) {
+            throw new \InvalidArgumentException('Ukuran gambar hasil chat maksimal 5 MB.');
+        }
+
+        $imageInfo = @getimagesizefromstring($binary);
+        $extension = match ($imageInfo[2] ?? null) {
+            IMAGETYPE_JPEG => 'jpg',
+            IMAGETYPE_PNG => 'png',
+            default => null,
+        };
+        if ($extension === null) {
+            throw new \InvalidArgumentException('Format gambar hasil chat wajib PNG atau JPG.');
+        }
+
+        $relativeDirectory = 'uploads/crm_follow_up/' . $leadId;
+        $targetDirectory = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $relativeDirectory);
+        if (! is_dir($targetDirectory) && ! mkdir($targetDirectory, 0775, true) && ! is_dir($targetDirectory)) {
+            throw new \InvalidArgumentException('Folder penyimpanan bukti chat tidak dapat dibuat.');
+        }
+
+        $filename = 'chat-wa-' . $leadId . '-' . date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $extension;
+        $fullPath = $targetDirectory . DIRECTORY_SEPARATOR . $filename;
+        if (@file_put_contents($fullPath, $binary) === false) {
+            throw new \InvalidArgumentException('Gagal menyimpan file gambar hasil chat.');
+        }
+
+        return $relativeDirectory . '/' . $filename;
+    }
+
+    private function crmChatMessagesForLead(int $leadId): array
+    {
+        $db = db_connect();
+        if (! $db->tableExists('crm_chat_messages')) {
+            return [];
+        }
+
+        $rows = $db->table('crm_chat_messages')
+            ->where('lead_id', $leadId)
+            ->orderBy('created_at', 'ASC')
+            ->orderBy('id', 'ASC')
+            ->limit(100)
+            ->get()
+            ->getResultArray();
+
+        return array_map(static function (array $row): array {
+            $createdAt = (string) ($row['created_at'] ?? '');
+            $row['formatted_time'] = $createdAt !== '' ? date('H:i', strtotime($createdAt)) : '';
+            $row['formatted_date'] = $createdAt !== '' ? date('d M Y, H:i', strtotime($createdAt)) : '';
+            return $row;
+        }, $rows);
+    }
+
+    private function jsonResponse(array $payload, int $status = 200)
+    {
+        return $this->response
+            ->setStatusCode($status)
+            ->setHeader('Content-Type', 'application/json; charset=UTF-8')
+            ->setBody((string) json_encode($payload, JSON_UNESCAPED_UNICODE));
     }
 
     private function crmLeadChangedFields(array $lead, array $payload): array

@@ -22,6 +22,7 @@ class CrmLeadLogModel extends Model
         'old_rejection_reason',
         'new_rejection_reason',
         'summary',
+        'follow_up_image',
         'created_at',
     ];
 }

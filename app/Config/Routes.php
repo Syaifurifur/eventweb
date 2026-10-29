@@ -30,6 +30,11 @@ $routes->group('crm', ['filter' => 'crmAuth'], static function ($routes) {
     $routes->post('leads/auto-assign', 'CrmController::autoAssignLeads');
     $routes->post('leads/(:num)/update', 'CrmController::updateLead/$1');
     $routes->post('leads/(:num)/delete', 'CrmController::deleteLead/$1');
+    $routes->get('leads/(:num)/chat', 'CrmController::leadChatData/$1');
+    $routes->post('leads/(:num)/chat', 'CrmController::storeChatMessage/$1');
+    $routes->post('leads/(:num)/save-chat-image', 'CrmController::saveChatAsImage/$1');
+    $routes->post('ai/assist', 'CrmController::aiAssist');
+    $routes->get('logs/(:num)/image', 'CrmController::followUpImage/$1');
     $routes->post('batches/(:num)/delete', 'CrmController::deleteBatch/$1');
 });
 

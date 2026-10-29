@@ -32,6 +32,7 @@ $totalCampusesCount = count($dmerCampusesData);
         flex-direction: column;
         gap: 1.25rem;
     }
+    .dmer-dashboard-wrap canvas { display: none !important; }
     .dmer-dashboard-wrap .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .dmer-dashboard-wrap .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 9999px; }
     .dmer-dashboard-wrap .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
@@ -848,8 +849,8 @@ $totalCampusesCount = count($dmerCampusesData);
 
 </div>
 
-<!-- Chart.js Local Asset -->
-<script src="<?= base_url('assets/js/lib/chart.umd.min.js') ?>"></script>
+<!-- Cross-Browser Vector SVG Chart Engine (Mozilla Firefox, Chrome, Edge, Safari) -->
+<script src="<?= base_url('assets/js/lib/svg-chart-engine.js?v=' . @filemtime(FCPATH . 'assets/js/lib/svg-chart-engine.js')) ?>"></script>
 <script>
 // ==================== 1. REAL DATASET & TARGET CONFIG ====================
 const TARGETS = {
