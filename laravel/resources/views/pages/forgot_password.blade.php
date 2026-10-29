@@ -1,51 +1,66 @@
-<!doctype html>
-<html lang="id">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= esc($title ?? 'Lupa Password') ?> | EventHub</title>
-    @vite('resources/css/app.css')
-    <link rel="icon" href="<?= base_url('favicon.ico?v=' . filemtime(FCPATH . 'favicon.ico')) ?>" sizes="any">
-    <link rel="apple-touch-icon" href="<?= base_url('assets/img/taskbar-icon.png?v=' . filemtime(FCPATH . 'assets/img/taskbar-icon.png')) ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/app.css?v=' . filemtime(FCPATH . 'assets/css/app.css')) ?>">
-</head>
-<body class="login-page">
-    <main class="login-shell">
-        <section class="login-visual" aria-label="Reset password">
-            <a class="brand light brand-logo-link" href="<?= site_url('login') ?>" aria-label="EventHub Login">
-                <img class="brand-logo brand-logo-login" src="<?= base_url('assets/img/eventhub-logo.png') ?>" alt="EventHub">
-            </a>
-            <div class="login-hero">
-                <span class="eyebrow">Reset akses</span>
-                <h1>Buat password baru agar akun EventHub bisa digunakan kembali.</h1>
-            </div>
-        </section>
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
 
-        <section class="login-card">
-            <span class="eyebrow">Lupa password</span>
-            <h2>Reset password akun</h2>
-            <?php if (session('success')): ?>
-                <div class="alert success"><?= esc(session('success')) ?></div>
-            <?php endif; ?>
-            <?php if (session('error')): ?>
-                <div class="alert error"><?= esc(session('error')) ?></div>
-            <?php endif; ?>
-            <?php if (session('reset_link')): ?>
-                <div class="alert info">
-                    Mode development: <a href="<?= esc(session('reset_link')) ?>">buka link reset password</a>.
+<x-head :title="$title ?? 'Lupa Password'" />
+
+<body class="dark:bg-neutral-800 bg-neutral-100 dark:text-white wowdash-auth-body">
+
+    <section class="bg-white dark:bg-dark-2 flex flex-wrap min-h-[100vh]">
+        <div class="lg:w-1/2 lg:flex hidden bg-gradient-to-br from-slate-900 via-primary-900 to-slate-900 relative overflow-hidden p-12 flex-col justify-between text-white">
+            <div class="relative z-10">
+                <a class="inline-flex items-center gap-3" href="<?= site_url('login') ?>" aria-label="EventHub Login">
+                    <img class="h-12 w-auto object-contain" src="<?= base_url('assets/img/eventhub-logo.png') ?>" alt="EventHub">
+                </a>
+            </div>
+            <div class="relative z-10 my-auto py-8">
+                <div class="max-w-[500px] mx-auto text-center mb-8">
+                    <img src="{{ asset('assets/images/auth/forgot-pass-img.png') }}" alt="Reset Password" class="max-h-[260px] w-auto mx-auto drop-shadow-2xl">
                 </div>
-            <?php endif; ?>
-            <form action="<?= site_url('forgot-password') ?>" method="post" class="stacked-form">
-                <?= csrf_field() ?>
-                <label>
-                    Username atau Email
-                    <input class="control" type="text" name="identity" value="<?= old('identity') ?>" required>
-                </label>
-                <button class="primary-button" type="submit">Kirim Link Reset</button>
-                <a class="ghost-button" href="<?= site_url('login') ?>">Kembali Login</a>
-            </form>
-        </section>
-    </main>
-    <script src="<?= base_url('assets/js/app.js?v=' . filemtime(FCPATH . 'assets/js/app.js')) ?>"></script>
+                <span class="inline-block px-3 py-1 rounded-full bg-primary-600/30 border border-primary-400/30 text-primary-200 text-xs font-semibold uppercase tracking-wider mb-3">Reset akses</span>
+                <h1 class="text-3xl font-bold text-white leading-tight">Buat password baru agar akun EventHub bisa digunakan kembali.</h1>
+            </div>
+            <div class="relative z-10 text-xs text-neutral-300">© <?= date('Y') ?> EventHub — WowDash UI</div>
+        </div>
+
+        <div class="lg:w-1/2 w-full py-8 px-6 flex flex-col justify-center">
+            <div class="lg:max-w-[464px] mx-auto w-full">
+                <div class="mb-6">
+                    <span class="text-xs font-bold uppercase tracking-wider text-primary-600 block mb-1">Lupa password</span>
+                    <h4 class="mb-2 font-bold text-2xl text-neutral-900 dark:text-white">Reset password akun</h4>
+                    <p class="mb-6 text-secondary-light text-sm">Masukkan username atau email terdaftar untuk menerima tautan reset password.</p>
+                </div>
+
+                <?php if (session('success')): ?>
+                    <div class="alert success mb-5"><?= esc(session('success')) ?></div>
+                <?php endif; ?>
+                <?php if (session('error')): ?>
+                    <div class="alert error mb-5"><?= esc(session('error')) ?></div>
+                <?php endif; ?>
+                <?php if (session('reset_link')): ?>
+                    <div class="alert info mb-5">
+                        Mode development: <a href="<?= esc(session('reset_link')) ?>" class="underline font-semibold">buka link reset password</a>.
+                    </div>
+                <?php endif; ?>
+
+                <form action="<?= site_url('forgot-password') ?>" method="post" class="stacked-form">
+                    <?= csrf_field() ?>
+                    <div class="mb-6">
+                        <label class="form-label block text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-2">Username atau Email</label>
+                        <div class="icon-field relative">
+                            <span class="absolute start-4 top-1/2 -translate-y-1/2 pointer-events-none flex text-xl text-neutral-500">
+                                <iconify-icon icon="mage:email"></iconify-icon>
+                            </span>
+                            <input class="form-control control h-[52px] !ps-11 border-neutral-300 bg-neutral-50 dark:bg-dark-2 rounded-xl w-full" type="text" name="identity" value="<?= old('identity') ?>" placeholder="Username atau email" required>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary primary-button justify-center text-sm font-semibold px-4 py-3.5 w-full rounded-xl" type="submit">Kirim Link Reset</button>
+                    <a class="ghost-button justify-center text-sm font-semibold py-3 px-4 w-full rounded-xl mt-3 text-center" href="<?= site_url('login') ?>">Kembali Login</a>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <x-script />
+
 </body>
 </html>

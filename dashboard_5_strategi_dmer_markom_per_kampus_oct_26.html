@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard 5 Strategi DMER (MARKOM) Per Kampus — Oct-26</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .cell-unachieved {
+      background-color: #ffe4e6;
+      color: #9f1239;
+    }
+    .cell-achieved {
+      background-color: #ecfdf5;
+      color: #065f46;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+
+  <!-- Top Header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div class="flex items-start sm:items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-inner">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Dashboard 5 Strategi DMER (MARKOM)</h1>
+              <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">Periode: Oct-26</span>
+              <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">34 Kampus / Unit</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Monitoring Realisasi Bulanan: OCTH (Target 2) • OCTE (Target 2) • OCTS (Target 30) • OCFO (Target 5) • OCFS (Target 5)</p>
+          </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex flex-wrap items-center gap-1.5 bg-slate-800/90 p-1 rounded-xl border border-slate-700">
+          <button id="tabBtn-campus" data-tab="campus" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow">
+            Profil Per Kampus
+          </button>
+          <button id="tabBtn-cards" data-tab="cards" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-700/60">
+            Grid 34 Kampus
+          </button>
+          <button id="tabBtn-matrix" data-tab="matrix" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-700/60">
+            Tabel &amp; Heatmap
+          </button>
+          <button id="tabBtn-executive" data-tab="executive" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-700/60">
+            Ringkasan Eksekutif
+          </button>
+          <button id="tabBtn-compare" data-tab="compare" class="nav-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-700/60">
+            Komparasi Kampus
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: PROFIL & EVALUASI PER KAMPUS        -->
+    <!-- ========================================== -->
+    <section id="view-campus" class="space-y-6">
+      <!-- Top Selector Bar -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          <!-- Left: Search & Dropdown Selector -->
+          <div class="lg:col-span-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div class="flex-1">
+              <label for="campusSelect" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Pilih Kampus untuk Dianalisis</label>
+              <div class="flex items-center gap-2">
+                <button id="prevCampusBtn" type="button" title="Kampus Sebelumnya" class="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <select id="campusSelect" class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-900 shadow-sm focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20">
+                </select>
+                <button id="nextCampusBtn" type="button" title="Kampus Berikutnya" class="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="sm:w-56">
+              <label for="quickCampusFilter" class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Filter Cepat Daftar</label>
+              <select id="quickCampusFilter" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-medium text-slate-700 focus:border-indigo-600 focus:outline-none">
+                <option value="ALL">Semua Kampus (34)</option>
+                <option value="PASS_4">Capaian Tertinggi: 4/5 Strategi (5)</option>
+                <option value="PASS_3">Capaian Menengah: 3/5 Strategi (6)</option>
+                <option value="PASS_2">Capaian 2/5 Strategi (10)</option>
+                <option value="PASS_1">Capaian 1/5 Strategi (3)</option>
+                <option value="PASS_0">Capaian 0/5 Strategi (10)</option>
+                <option value="UBSI">Hanya Kampus UBSI (29)</option>
+                <option value="UNM">Hanya Kampus UNM (3)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Right: Campus Overall Status Summary Pill -->
+          <div class="lg:col-span-5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 bg-slate-50 rounded-xl p-3.5 border border-slate-200/80">
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="campusRankBadge" class="px-2.5 py-0.5 text-xs font-bold rounded-md bg-indigo-100 text-indigo-800">Peringkat #1</span>
+                <span id="campusGroupBadge" class="px-2.5 py-0.5 text-xs font-medium rounded-md bg-slate-200 text-slate-700">UBSI</span>
+              </div>
+              <p id="campusStatusSubtext" class="text-xs text-slate-600 mt-1.5 font-medium">4 dari 5 strategi mencapai target bulanan</p>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-xs font-medium text-slate-500">Skor Ketercapaian</div>
+              <div id="campusOverallScore" class="text-2xl font-extrabold text-indigo-600">80%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 Strategy KPI Cards for Selected Campus -->
+      <div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+            <span>Realisasi vs Target Bulanan:</span>
+            <span id="selectedCampusTitle" class="text-indigo-600">UBSI KAMPUS BOGOR</span>
+            <span id="simActiveBadge" class="hidden px-2.5 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-300">Mode Simulasi Aktif</span>
+          </h2>
+          <div class="flex items-center gap-3 text-xs">
+            <span class="inline-flex items-center gap-1.5 font-medium text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Tercapai (&ge; Target)
+            </span>
+            <span class="inline-flex items-center gap-1.5 font-medium text-rose-800 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span> Belum Tercapai (&lt; Target)
+            </span>
+          </div>
+        </div>
+
+        <div id="campusStrategyCards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Charts & Diagnostic Action Plan for Selected Campus -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Radar / Normalized Achievement Chart -->
+        <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Peta Kekuatan 5 Strategi (% dari Target)</h3>
+              <p class="text-xs text-slate-500">Perbandingan capaian kampus vs Target (100%) &amp; Rata-rata 34 Kampus</p>
+            </div>
+          </div>
+          <div class="relative h-72 w-full my-auto">
+            <canvas id="campusRadarChart"></canvas>
+          </div>
+          <div class="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex items-center justify-between">
+            <span>Catatan: Visualisasi radar dibatasi maks 200% agar proporsional.</span>
+            <span id="radarTotalActivityText" class="font-semibold text-slate-700">Total Output: 68</span>
+          </div>
+        </div>
+
+        <!-- Bar Comparison & Actionable Evaluation -->
+        <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between space-y-5">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Realisasi Aktual vs Target Bulanan per Strategi</h3>
+                <p class="text-xs text-slate-500">Angka aktual kegiatan dibanding ambang batas minimal kelulusan strategi</p>
+              </div>
+              <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+                <button id="chartModeActualBtn" type="button" class="px-2.5 py-1 text-xs font-semibold rounded-md bg-white text-slate-900 shadow-sm">Angka Aktual</button>
+                <button id="chartModePctBtn" type="button" class="px-2.5 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900">% Capaian</button>
+              </div>
+            </div>
+            <div class="relative h-60 w-full">
+              <canvas id="campusBarChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Evaluasi & Rekomendasi Otomatis -->
+          <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Evaluasi &amp; Rekomendasi Prioritas Kampus Ini
+              </h4>
+              <span id="deficitSummaryBadge" class="text-xs font-semibold px-2 py-0.5 rounded bg-rose-100 text-rose-800">Kurang 1 Strategi</span>
+            </div>
+            <div id="campusEvaluationList" class="space-y-2 text-xs text-slate-700">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive What-If Target Simulator for Selected Campus -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-bold text-slate-900">Simulasi Penambahan Aktivitas Kampus (What-If Target Planner)</h3>
+              <span class="px-2 py-0.5 text-[11px] font-semibold rounded bg-indigo-50 text-indigo-700 border border-indigo-200">Interaktif</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Uji coba tambahkan rencana kegiatan pada kampus ini untuk melihat dampak langsung terhadap kelulusan 5 Strategi DMER.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="autoFillTargetBtn" type="button" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm">
+              Penuhi Semua Target (5/5)
+            </button>
+            <button id="resetSimBtn" type="button" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition border border-slate-200">
+              Reset ke Data Real
+            </button>
+          </div>
+        </div>
+
+        <div id="simulatorControls" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-4">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: GRID 34 KAMPUS (MINI DASHBOARDS)    -->
+    <!-- ========================================== -->
+    <section id="view-cards" class="hidden space-y-5">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Rapor Mini Per Kampus (34 Kampus / Unit)</h2>
+            <p class="text-xs text-slate-500">Klik pada kartu kampus mana saja untuk membuka analisis detail dan simulator untuk kampus tersebut.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <input id="cardsSearchInput" type="text" placeholder="Cari nama kampus..." class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none w-48 sm:w-56" />
+            <select id="cardsFilterSelect" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium bg-white focus:border-indigo-600 focus:outline-none">
+              <option value="ALL">Semua Tingkat Capaian (34)</option>
+              <option value="4">4 Strategi Tercapai (5 Kampus)</option>
+              <option value="3">3 Strategi Tercapai (6 Kampus)</option>
+              <option value="2">2 Strategi Tercapai (10 Kampus)</option>
+              <option value="1">1 Strategi Tercapai (3 Kampus)</option>
+              <option value="0">0 Strategi Tercapai (10 Kampus)</option>
+            </select>
+            <select id="cardsSortSelect" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium bg-white focus:border-indigo-600 focus:outline-none">
+              <option value="RANK_DESC">Urutkan: Capaian Tertinggi</option>
+              <option value="RANK_ASC">Urutkan: Capaian Terendah</option>
+              <option value="NO_ASC">Urutkan: Nomor Urut (1-34)</option>
+              <option value="NAME_ASC">Urutkan: Nama Kampus (A-Z)</option>
+              <option value="OCTS_DESC">Urutkan: OCTS Tertinggi</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="campusCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: TABEL & HEATMAP 34 KAMPUS           -->
+    <!-- ========================================== -->
+    <section id="view-matrix" class="hidden space-y-5">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Tabel Matriks Laporan 5 Strategi DMER (MARKOM) — Oct-26</h2>
+            <p class="text-xs text-slate-500">Sel berwarna merah muda menandakan strategi <span class="font-semibold text-rose-700">Belum Tercapai</span> sesuai laporan asli. Klik baris untuk melihat profil detail kampus.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input id="matrixSearchInput" type="text" placeholder="Cari kampus..." class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium focus:border-indigo-600 focus:outline-none w-44" />
+            <select id="matrixStrategyFilter" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium bg-white focus:border-indigo-600 focus:outline-none">
+              <option value="ALL">Semua Status Strategi</option>
+              <option value="FAIL_OCTH">Belum Tercapai: OCTH (&lt; 2)</option>
+              <option value="FAIL_OCTE">Belum Tercapai: OCTE (&lt; 2)</option>
+              <option value="FAIL_OCTS">Belum Tercapai: OCTS (&lt; 30)</option>
+              <option value="FAIL_OCFO">Belum Tercapai: OCFO (&lt; 5)</option>
+              <option value="FAIL_OCFS">Belum Tercapai: OCFS (&lt; 5)</option>
+              <option value="PASS_OCTH">Tercapai: OCTH (&ge; 2)</option>
+              <option value="PASS_OCTE">Tercapai: OCTE (&ge; 2)</option>
+              <option value="PASS_OCTS">Tercapai: OCTS (&ge; 30)</option>
+              <option value="PASS_OCFO">Tercapai: OCFO (&ge; 5)</option>
+              <option value="PASS_OCFS">Tercapai: OCFS (&ge; 5)</option>
+            </select>
+            <button id="exportCsvBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              Unduh CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto custom-scrollbar rounded-xl border border-slate-200">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-900 text-white font-semibold text-xs uppercase tracking-wider">
+                <th class="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 select-none" data-sort="no">No ↕</th>
+                <th class="py-3 px-4 cursor-pointer hover:bg-slate-800 select-none" data-sort="kampus">Nama Kampus ↕</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 select-none" data-sort="octh">OCTH (T:2) ↕</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 select-none" data-sort="octe">OCTE (T:2) ↕</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 select-none" data-sort="octs">OCTS (T:30) ↕</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 select-none" data-sort="ocfo">OCFO (T:5) ↕</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 select-none" data-sort="ocfs">OCFS (T:5) ↕</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:bg-slate-800 select-none" data-sort="passed">Tercapai ↕</th>
+                <th class="py-3 px-3 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="matrixTableBody" class="divide-y divide-slate-200 bg-white">
+              <!-- Populated by JS -->
+            </tbody>
+            <tfoot id="matrixTableFoot" class="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-300 text-xs">
+              <!-- Populated by JS -->
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: RINGKASAN EKSEKUTIF (34 KAMPUS)     -->
+    <!-- ========================================== -->
+    <section id="view-executive" class="hidden space-y-6">
+      <!-- Top Macro KPI Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Kampus Terdata</div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span class="text-2xl font-extrabold text-slate-900">34 Unit</span>
+            <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">29 Aktif • 5 Pasif</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">5 unit belum mencatatkan aktivitas sama sekali (nilai 0 di semua strategi)</p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-500">Kampus Lulus 5/5 Strategi</div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span class="text-2xl font-extrabold text-rose-600">0 Kampus</span>
+            <span class="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">Maks: 4/5 (5 Kampus)</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">Bogor, Cibitung, Cikampek, Kalimalang, &amp; Solo mencapai 4 dari 5 strategi</p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-500">Strategi Paling Tercapai</div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span class="text-2xl font-extrabold text-emerald-600">OCTE &amp; OCTS</span>
+            <span class="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">19 &amp; 18 Kampus</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">55,9% kampus lulus target Event (OCTE) &amp; 52,9% lulus target Sekolah (OCTS)</p>
+        </div>
+
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-500">Bottleneck Utama Nasional</div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span class="text-2xl font-extrabold text-rose-700">OCFO &amp; OCFS</span>
+            <span class="text-xs font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">Hanya 6 &amp; 7 Kampus</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">82,4% kampus belum mencapai target OJT (OCFO) &amp; 79,4% belum mencapai Spanduk</p>
+        </div>
+      </div>
+
+      <!-- Aggregate Breakdown per Strategy -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-6 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-900">Tingkat Kelulusan Kampus per Strategi (Dari 34 Kampus)</h3>
+          <p class="text-xs text-slate-500 mb-4">Jumlah kampus yang berstatus Tercapai vs Belum Tercapai pada masing-masing indikator</p>
+          <div class="relative h-72 w-full">
+            <canvas id="execPassRateChart"></canvas>
+          </div>
+        </div>
+
+        <div class="lg:col-span-6 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-900">Distribusi Jumlah Strategi yang Tercapai per Kampus</h3>
+          <p class="text-xs text-slate-500 mb-4">Pengelompokan 34 kampus berdasarkan banyaknya indikator yang memenuhi target</p>
+          <div class="relative h-72 w-full">
+            <canvas id="execDistChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Performers & Outlier Highlights -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-900 mb-1">Top 5 Kampus Paling Seimbang (Lulus 4 dari 5 Strategi)</h3>
+          <p class="text-xs text-slate-500 mb-3">Hanya membutuhkan 1 strategi lagi untuk mencapai kesempurnaan 5/5 strategi</p>
+          <div id="topBalancedList" class="space-y-2.5"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+          <h3 class="text-sm font-bold text-slate-900 mb-1">Sorotan Rekor Volume Aktivitas Tertinggi per Strategi</h3>
+          <p class="text-xs text-slate-500 mb-3">Kampus dengan pencapaian volume tertinggi secara absolut pada Oktober 2026</p>
+          <div class="space-y-2.5 text-xs">
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <div>
+                <span class="font-bold text-indigo-700">OCTH (Open House) Tertinggi:</span>
+                <p class="text-slate-700 font-semibold mt-0.5">UBSI KAMPUS PURWOKERTO</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 font-extrabold text-sm">41 Kegiatan (2.050% Target)</span>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <div>
+                <span class="font-bold text-indigo-700">OCTE (Event) Tertinggi:</span>
+                <p class="text-slate-700 font-semibold mt-0.5">UBSI KAMPUS PURWOKERTO</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 font-extrabold text-sm">62 Event (3.100% Target)</span>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <div>
+                <span class="font-bold text-emerald-700">OCTS (School) Tertinggi:</span>
+                <p class="text-slate-700 font-semibold mt-0.5">UBSI KAMPUS SUKABUMI &amp; TEGAL</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-extrabold text-sm">194 &amp; 126 Sekolah</span>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <div>
+                <span class="font-bold text-amber-700">OCFO (OJT) Tertinggi:</span>
+                <p class="text-slate-700 font-semibold mt-0.5">UBSI KAMPUS CIKAMPEK &amp; CILEBUT</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 font-extrabold text-sm">12 &amp; 10 OJT</span>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <div>
+                <span class="font-bold text-purple-700">OCFS (Spanduk) Tertinggi:</span>
+                <p class="text-slate-700 font-semibold mt-0.5">UBSI KAMPUS TASIKMALAYA, BOGOR &amp; SOLO</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 font-extrabold text-sm">14, 10 &amp; 10 Spanduk</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: KOMPARASI ANTAR KAMPUS              -->
+    <!-- ========================================== -->
+    <section id="view-compare" class="hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <h2 class="text-base font-bold text-slate-900 mb-1">Komparasi Head-to-Head Antar Kampus</h2>
+        <p class="text-xs text-slate-500 mb-4">Bandingkan performa 2 hingga 3 kampus secara berdampingan pada kelima strategi DMER.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label for="compSelectA" class="block text-xs font-bold text-indigo-700 uppercase mb-1">Kampus A</label>
+            <select id="compSelectA" class="w-full rounded-xl border border-indigo-300 bg-indigo-50/40 px-3 py-2.5 text-xs font-semibold text-slate-900"></select>
+          </div>
+          <div>
+            <label for="compSelectB" class="block text-xs font-bold text-emerald-700 uppercase mb-1">Kampus B</label>
+            <select id="compSelectB" class="w-full rounded-xl border border-emerald-300 bg-emerald-50/40 px-3 py-2.5 text-xs font-semibold text-slate-900"></select>
+          </div>
+          <div>
+            <label for="compSelectC" class="block text-xs font-bold text-amber-700 uppercase mb-1">Kampus C</label>
+            <select id="compSelectC" class="w-full rounded-xl border border-amber-300 bg-amber-50/40 px-3 py-2.5 text-xs font-semibold text-slate-900"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <h3 class="text-sm font-bold text-slate-900 mb-1">Overlay Radar (% Capaian Terhadap Target)</h3>
+          <p class="text-xs text-slate-500 mb-3">Perbandingan keseimbangan pemenuhan target antar 3 kampus</p>
+          <div class="relative h-72 w-full">
+            <canvas id="compareRadarChart"></canvas>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-5 overflow-x-auto">
+          <h3 class="text-sm font-bold text-slate-900 mb-3">Tabel Perbandingan Rinci 5 Strategi</h3>
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <th class="py-2.5 px-3">Indikator Strategi</th>
+                <th class="py-2.5 px-3 text-center">Target</th>
+                <th id="compHeaderA" class="py-2.5 px-3 text-center text-indigo-700">Kampus A</th>
+                <th id="compHeaderB" class="py-2.5 px-3 text-center text-emerald-700">Kampus B</th>
+                <th id="compHeaderC" class="py-2.5 px-3 text-center text-amber-700">Kampus C</th>
+              </tr>
+            </thead>
+            <tbody id="compareTableBody" class="divide-y divide-slate-200">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toastNotice" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium border border-slate-700">
+    Data berhasil diunduh!
+  </div>
+
+  <!-- Application Script -->
+  <script>
+    // =========================================================================
+    // 1. REAL DATASET FROM: laporan-5-strategi-dmer-oct-26(2).xls
+    // =========================================================================
+    const TARGETS = {
+      octh: { code: 'OCTH', name: 'One Campus Two Hangout / Open House', short: 'Hangout / Open House', target: 2, unit: 'Kegiatan' },
+      octe: { code: 'OCTE', name: 'One Campus Two Event', short: 'Campus Event', target: 2, unit: 'Event' },
+      octs: { code: 'OCTS', name: 'One Campus Thirty School', short: 'Kunjungan Sekolah', target: 30, unit: 'Sekolah' },
+      ocfo: { code: 'OCFO', name: 'One Campus Five OJT', short: 'On The Job Training', target: 5, unit: 'OJT' },
+      ocfs: { code: 'OCFS', name: 'One Campus Five Spanduk', short: 'Pemasangan Spanduk', target: 5, unit: 'Spanduk' }
+    };
+
+    const STRATEGY_KEYS = ['octh', 'octe', 'octs', 'ocfo', 'ocfs'];
+
+    const RAW_CAMPUS_DATA = [
+      { no: 1, kampus: "CYBER UNIVERSITY", octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 1 },
+      { no: 2, kampus: "UBSI KAMPUS BEKASI CUT MUTIA", octh: 1, octe: 4, octs: 72, ocfo: 2, ocfs: 0 },
+      { no: 3, kampus: "UBSI KAMPUS BOGOR", octh: 2, octe: 2, octs: 50, ocfo: 4, ocfs: 10 },
+      { no: 4, kampus: "UBSI KAMPUS BSD", octh: 3, octe: 2, octs: 15, ocfo: 0, ocfs: 0 },
+      { no: 5, kampus: "UBSI KAMPUS CENGKARENG", octh: 2, octe: 4, octs: 31, ocfo: 2, ocfs: 0 },
+      { no: 6, kampus: "UBSI KAMPUS CIBITUNG", octh: 2, octe: 3, octs: 47, ocfo: 8, ocfs: 0 },
+      { no: 7, kampus: "UBSI KAMPUS CIKAMPEK", octh: 2, octe: 3, octs: 57, ocfo: 12, ocfs: 3 },
+      { no: 8, kampus: "UBSI KAMPUS CIKARANG", octh: 3, octe: 5, octs: 55, ocfo: 0, ocfs: 0 },
+      { no: 9, kampus: "UBSI KAMPUS CILEBUT", octh: 2, octe: 0, octs: 12, ocfo: 10, ocfs: 0 },
+      { no: 10, kampus: "UBSI KAMPUS CILEDUG", octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 },
+      { no: 11, kampus: "UBSI KAMPUS CIPUTAT", octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 },
+      { no: 12, kampus: "UBSI KAMPUS DEWI SARTIKA B", octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 },
+      { no: 13, kampus: "UBSI KAMPUS FATMAWATI", octh: 0, octe: 3, octs: 20, ocfo: 6, ocfs: 0 },
+      { no: 14, kampus: "UBSI KAMPUS JATIWARINGIN", octh: 0, octe: 6, octs: 7, ocfo: 5, ocfs: 0 },
+      { no: 15, kampus: "UBSI KAMPUS KALIABANG", octh: 0, octe: 2, octs: 41, ocfo: 5, ocfs: 0 },
+      { no: 16, kampus: "UBSI KAMPUS KALIMALANG", octh: 4, octe: 8, octs: 36, ocfo: 0, ocfs: 5 },
+      { no: 17, kampus: "UBSI KAMPUS KARAWANG", octh: 1, octe: 2, octs: 40, ocfo: 0, ocfs: 5 },
+      { no: 18, kampus: "UBSI KAMPUS KRAMAT 98", octh: 0, octe: 0, octs: 0, ocfo: 2, ocfs: 0 },
+      { no: 19, kampus: "UBSI KAMPUS MARGONDA", octh: 0, octe: 0, octs: 56, ocfo: 0, ocfs: 0 },
+      { no: 20, kampus: "UBSI KAMPUS PEMUDA", octh: 0, octe: 1, octs: 0, ocfo: 0, ocfs: 0 },
+      { no: 21, kampus: "UBSI KAMPUS PONTIANAK", octh: 2, octe: 4, octs: 62, ocfo: 0, ocfs: 0 },
+      { no: 22, kampus: "UBSI KAMPUS PURWOKERTO", octh: 41, octe: 62, octs: 26, ocfo: 2, ocfs: 2 },
+      { no: 23, kampus: "UBSI KAMPUS SALEMBA 45", octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 },
+      { no: 24, kampus: "UBSI KAMPUS SLIPI", octh: 0, octe: 1, octs: 20, ocfo: 0, ocfs: 0 },
+      { no: 25, kampus: "UBSI KAMPUS SOLO", octh: 3, octe: 7, octs: 40, ocfo: 2, ocfs: 10 },
+      { no: 26, kampus: "UBSI KAMPUS SUKABUMI", octh: 1, octe: 2, octs: 194, ocfo: 0, ocfs: 0 },
+      { no: 27, kampus: "UBSI KAMPUS TANGERANG", octh: 1, octe: 2, octs: 30, ocfo: 0, ocfs: 1 },
+      { no: 28, kampus: "UBSI KAMPUS TASIKMALAYA", octh: 0, octe: 1, octs: 46, ocfo: 4, ocfs: 14 },
+      { no: 29, kampus: "UBSI KAMPUS TEGAL", octh: 0, octe: 1, octs: 126, ocfo: 2, ocfs: 0 },
+      { no: 30, kampus: "UBSI KAMPUS YOGYAKARTA", octh: 0, octe: 1, octs: 30, ocfo: 0, ocfs: 5 },
+      { no: 31, kampus: "UNM KAMPUS JATIWARINGIN", octh: 0, octe: 0, octs: 0, ocfo: 1, ocfs: 1 },
+      { no: 32, kampus: "UNM KAMPUS MARGONDA", octh: 1, octe: 2, octs: 30, ocfo: 0, ocfs: 7 },
+      { no: 33, kampus: "UNM KAMPUS RAWAMANGUN", octh: 0, octe: 3, octs: 2, ocfo: 4, ocfs: 2 },
+      { no: 34, kampus: "WILAYAH 1 JABODETABEK", octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 }
+    ];
+
+    function enrichCampus(item) {
+      const group = item.kampus.startsWith('UBSI')
+        ? 'UBSI'
+        : item.kampus.startsWith('UNM')
+        ? 'UNM'
+        : item.kampus.startsWith('CYBER')
+        ? 'CYBER UNIVERSITY'
+        : 'WILAYAH';
+
+      let passed = 0;
+      let cappedPctSum = 0;
+      STRATEGY_KEYS.forEach((k) => {
+        const t = TARGETS[k].target;
+        const val = item[k];
+        if (val >= t) passed += 1;
+        cappedPctSum += Math.min(100, (val / t) * 100);
+      });
+
+      const totalVolume = item.octh + item.octe + item.octs + item.ocfo + item.ocfs;
+      const progressIndex = Math.round(cappedPctSum / 5);
+
+      return {
+        ...item,
+        group,
+        passed,
+        passPct: Math.round((passed / 5) * 100),
+        progressIndex,
+        totalVolume
+      };
+    }
+
+    const CAMPUS_LIST = RAW_CAMPUS_DATA.map(enrichCampus);
+
+    // Compute ranking based on (passed DESC, progressIndex DESC, totalVolume DESC)
+    const RANKED_IDS = [...CAMPUS_LIST]
+      .sort((a, b) => {
+        if (b.passed !== a.passed) return b.passed - a.passed;
+        if (b.progressIndex !== a.progressIndex) return b.progressIndex - a.progressIndex;
+        return b.totalVolume - a.totalVolume;
+      })
+      .map((c) => c.no);
+
+    CAMPUS_LIST.forEach((c) => {
+      c.rank = RANKED_IDS.indexOf(c.no) + 1;
+    });
+
+    // National averages (% of target capped at 200% for radar reference)
+    const NATIONAL_AVG_PCT = {};
+    STRATEGY_KEYS.forEach((k) => {
+      const avgVal = CAMPUS_LIST.reduce((acc, c) => acc + c[k], 0) / CAMPUS_LIST.length;
+      NATIONAL_AVG_PCT[k] = Math.min(200, Math.round((avgVal / TARGETS[k].target) * 100));
+    });
+
+    // =========================================================================
+    // 2. APPLICATION STATE
+    // =========================================================================
+    let state = {
+      activeTab: 'campus',
+      selectedCampusNo: 3, // Default to #3 UBSI KAMPUS BOGOR (or user can pick any of the 34)
+      campusFilterGroup: 'ALL',
+      barChartMode: 'ACTUAL', // 'ACTUAL' or 'PCT'
+      simOffsets: { octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 },
+      matrixSortKey: 'no',
+      matrixSortAsc: true,
+      compareNos: [3, 7, 22] // Bogor, Cikampek, Purwokerto
+    };
+
+    // Chart instances
+    let campusRadarChartInstance = null;
+    let campusBarChartInstance = null;
+    let execPassRateChartInstance = null;
+    let execDistChartInstance = null;
+    let compareRadarChartInstance = null;
+
+    // =========================================================================
+    // 3. HELPER FUNCTIONS
+    // =========================================================================
+    function getFilteredCampusOptions() {
+      const f = state.campusFilterGroup;
+      return CAMPUS_LIST.filter((c) => {
+        if (f === 'ALL') return true;
+        if (f.startsWith('PASS_')) {
+          const targetPass = parseInt(f.split('_')[1], 10);
+          return c.passed === targetPass;
+        }
+        if (f === 'UBSI') return c.group === 'UBSI';
+        if (f === 'UNM') return c.group === 'UNM';
+        return true;
+      });
+    }
+
+    function getCurrentCampusWithSim() {
+      const base = CAMPUS_LIST.find((c) => c.no === state.selectedCampusNo) || CAMPUS_LIST[0];
+      const sim = {
+        ...base,
+        octh: Math.max(0, base.octh + state.simOffsets.octh),
+        octe: Math.max(0, base.octe + state.simOffsets.octe),
+        octs: Math.max(0, base.octs + state.simOffsets.octs),
+        ocfo: Math.max(0, base.ocfo + state.simOffsets.ocfo),
+        ocfs: Math.max(0, base.ocfs + state.simOffsets.ocfs)
+      };
+      return enrichCampus(sim);
+    }
+
+    function isSimActive() {
+      return STRATEGY_KEYS.some((k) => state.simOffsets[k] !== 0);
+    }
+
+    function resetSimulation() {
+      state.simOffsets = { octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 };
+      renderCampusView();
+    }
+
+    // =========================================================================
+    // 4. RENDER TAB 1: PROFIL PER KAMPUS
+    // =========================================================================
+    function populateCampusDropdown() {
+      const selectEl = document.getElementById('campusSelect');
+      const filtered = getFilteredCampusOptions();
+      selectEl.innerHTML = '';
+
+      if (filtered.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = state.selectedCampusNo;
+        opt.textContent = 'Tidak ada kampus pada filter ini';
+        selectEl.appendChild(opt);
+        return;
+      }
+
+      if (!filtered.some((c) => c.no === state.selectedCampusNo)) {
+        state.selectedCampusNo = filtered[0].no;
+        state.simOffsets = { octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 };
+      }
+
+      filtered.forEach((c) => {
+        const opt = document.createElement('option');
+        opt.value = c.no;
+        opt.textContent = `${c.no}. ${c.kampus} — (${c.passed}/5 Tercapai)`;
+        if (c.no === state.selectedCampusNo) opt.selected = true;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function renderCampusView() {
+      const baseCampus = CAMPUS_LIST.find((c) => c.no === state.selectedCampusNo) || CAMPUS_LIST[0];
+      const current = getCurrentCampusWithSim();
+      const simActive = isSimActive();
+
+      // Header & Badges
+      document.getElementById('selectedCampusTitle').textContent = current.kampus;
+      const simBadge = document.getElementById('simActiveBadge');
+      if (simActive) {
+        simBadge.classList.remove('hidden');
+      } else {
+        simBadge.classList.add('hidden');
+      }
+
+      document.getElementById('campusRankBadge').textContent = `Peringkat #${baseCampus.rank} dari 34`;
+      document.getElementById('campusGroupBadge').textContent = current.group;
+      document.getElementById('campusStatusSubtext').textContent =
+        `${current.passed} dari 5 strategi mencapai target bulanan (Indeks Progres: ${current.progressIndex}%)`;
+      document.getElementById('campusOverallScore').textContent = `${current.passed}/5 (${current.passPct}%)`;
+
+      // 5 Strategy Cards
+      const cardsContainer = document.getElementById('campusStrategyCards');
+      cardsContainer.innerHTML = '';
+
+      STRATEGY_KEYS.forEach((k) => {
+        const meta = TARGETS[k];
+        const actual = current[k];
+        const baseVal = baseCampus[k];
+        const target = meta.target;
+        const achieved = actual >= target;
+        const pct = Math.round((actual / target) * 100);
+        const barWidth = Math.min(100, pct);
+        const diff = actual - target;
+        const diffLabel = diff >= 0 ? `+${diff} di atas target` : `Kurang ${Math.abs(diff)} lagi`;
+
+        const card = document.createElement('div');
+        card.className = `rounded-2xl p-4 border transition-all shadow-sm flex flex-col justify-between ${
+          achieved
+            ? 'bg-white border-emerald-200 ring-1 ring-emerald-500/10'
+            : 'bg-rose-50/60 border-rose-200 ring-1 ring-rose-500/10'
+        }`;
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-md ${
+                achieved ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-200/80 text-rose-900'
+              }">${meta.code}</span>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                achieved ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+              }">${achieved ? 'Tercapai' : 'Belum Tercapai'}</span>
+            </div>
+            <p class="text-xs font-semibold text-slate-600 mt-2 line-clamp-1" title="${meta.name}">${meta.short}</p>
+            <div class="mt-3 flex items-baseline justify-between">
+              <div>
+                <span class="text-3xl font-extrabold ${achieved ? 'text-slate-900' : 'text-rose-900'}">${actual}</span>
+                <span class="text-xs font-semibold text-slate-500"> / ${target} ${meta.unit}</span>
+              </div>
+              <span class="text-xs font-bold ${achieved ? 'text-emerald-700' : 'text-rose-700'}">${pct}%</span>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-2 border-t ${achieved ? 'border-slate-100' : 'border-rose-200/60'}">
+            <div class="w-full h-2 rounded-full bg-slate-200 overflow-hidden mb-1.5">
+              <div class="h-full rounded-full transition-all duration-300 ${
+                achieved ? 'bg-emerald-500' : 'bg-rose-500'
+              }" style="width: ${barWidth}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] font-medium">
+              <span class="${achieved ? 'text-emerald-700' : 'text-rose-800'}">${diffLabel}</span>
+              ${
+                actual !== baseVal
+                  ? `<span class="text-amber-700 font-bold">(Real: ${baseVal})</span>`
+                  : `<span class="text-slate-400">Target: ${target}</span>`
+              }
+            </div>
+          </div>
+        `;
+        cardsContainer.appendChild(card);
+      });
+
+      // Evaluation & Recommendations
+      renderCampusEvaluation(current);
+
+      // Simulator Controls
+      renderSimulatorControls(baseCampus, current);
+
+      // Charts
+      updateCampusCharts(current);
+    }
+
+    function renderCampusEvaluation(current) {
+      const listEl = document.getElementById('campusEvaluationList');
+      const badgeEl = document.getElementById('deficitSummaryBadge');
+      listEl.innerHTML = '';
+
+      const failedKeys = STRATEGY_KEYS.filter((k) => current[k] < TARGETS[k].target);
+      const passedKeys = STRATEGY_KEYS.filter((k) => current[k] >= TARGETS[k].target);
+
+      if (failedKeys.length === 0) {
+        badgeEl.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+        badgeEl.textContent = 'Semua 5 Strategi Tercapai (100%)';
+      } else {
+        badgeEl.className = 'text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800';
+        badgeEl.textContent = `${failedKeys.length} Strategi Belum Tercapai`;
+      }
+
+      if (passedKeys.length > 0) {
+        const passedDetails = passedKeys
+          .map((k) => `${TARGETS[k].code} (${current[k]}/${TARGETS[k].target})`)
+          .join(', ');
+        const item = document.createElement('div');
+        item.className = 'flex items-start gap-2 text-emerald-800 bg-emerald-50/80 p-2.5 rounded-lg border border-emerald-200';
+        item.innerHTML = `
+          <span class="font-bold shrink-0">✓ Strategi Lulus (${passedKeys.length}):</span>
+          <span>Kampus telah memenuhi target bulanan pada <strong>${passedDetails}</strong>. Pertahankan konsistensi pelaksanaan.</span>
+        `;
+        listEl.appendChild(item);
+      }
+
+      if (failedKeys.length > 0) {
+        failedKeys.forEach((k) => {
+          const meta = TARGETS[k];
+          const shortage = meta.target - current[k];
+          const item = document.createElement('div');
+          item.className = 'flex items-start gap-2 text-rose-900 bg-rose-50/90 p-2.5 rounded-lg border border-rose-200';
+          item.innerHTML = `
+            <span class="font-bold shrink-0">! Prioritas ${meta.code}:</span>
+            <span>Realisasi saat ini baru <strong>${current[k]} ${meta.unit}</strong> dari target <strong>${meta.target}</strong>. Butuh tambahan minimal <strong>+${shortage} ${meta.unit} (${meta.short})</strong> agar status berubah menjadi Tercapai.</span>
+          `;
+          listEl.appendChild(item);
+        });
+      }
+    }
+
+    function renderSimulatorControls(baseCampus, current) {
+      const container = document.getElementById('simulatorControls');
+      container.innerHTML = '';
+
+      STRATEGY_KEYS.forEach((k) => {
+        const meta = TARGETS[k];
+        const offset = state.simOffsets[k];
+        const actual = current[k];
+        const achieved = actual >= meta.target;
+
+        const box = document.createElement('div');
+        box.className = 'p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between';
+        box.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-800">${meta.code} (Target ${meta.target})</span>
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded ${
+              achieved ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+            }">${actual} ${meta.unit}</span>
+          </div>
+          <div class="flex items-center justify-between gap-2 my-1">
+            <button type="button" data-sim-key="${k}" data-sim-delta="-1" class="sim-step-btn w-8 h-8 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 font-bold text-slate-700 flex items-center justify-center">-</button>
+            <div class="text-center">
+              <div class="text-xs font-bold ${offset > 0 ? 'text-indigo-600' : offset < 0 ? 'text-rose-600' : 'text-slate-500'}">
+                ${offset >= 0 ? `+${offset}` : offset} Simulasi
+              </div>
+              <div class="text-[10px] text-slate-400">Data Real: ${baseCampus[k]}</div>
+            </div>
+            <button type="button" data-sim-key="${k}" data-sim-delta="1" class="sim-step-btn w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 font-bold text-white flex items-center justify-center">+</button>
+          </div>
+        `;
+        container.appendChild(box);
+      });
+
+      container.querySelectorAll('.sim-step-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-sim-key');
+          const delta = parseInt(btn.getAttribute('data-sim-delta'), 10);
+          const baseVal = baseCampus[key];
+          const nextOffset = state.simOffsets[key] + delta;
+          if (baseVal + nextOffset >= 0) {
+            state.simOffsets[key] = nextOffset;
+            renderCampusView();
+          }
+        });
+      });
+    }
+
+    function updateCampusCharts(current) {
+      document.getElementById('radarTotalActivityText').textContent =
+        `Total Output Aktivitas: ${current.totalVolume}`;
+
+      const labels = STRATEGY_KEYS.map((k) => `${TARGETS[k].code} (T:${TARGETS[k].target})`);
+      const campusPctCapped = STRATEGY_KEYS.map((k) =>
+        Math.min(200, Math.round((current[k] / TARGETS[k].target) * 100))
+      );
+      const targetLine = [100, 100, 100, 100, 100];
+      const natAvgLine = STRATEGY_KEYS.map((k) => NATIONAL_AVG_PCT[k]);
+
+      const radarCtx = document.getElementById('campusRadarChart').getContext('2d');
+      if (campusRadarChartInstance) campusRadarChartInstance.destroy();
+
+      campusRadarChartInstance = new Chart(radarCtx, {
+        type: 'radar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: `${current.kampus} (% Target)`,
+              data: campusPctCapped,
+              backgroundColor: 'rgba(79, 70, 229, 0.22)',
+              borderColor: 'rgba(79, 70, 229, 1)',
+              pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+              borderWidth: 2.5
+            },
+            {
+              label: 'Target Minimal (100%)',
+              data: targetLine,
+              backgroundColor: 'rgba(16, 185, 129, 0.05)',
+              borderColor: 'rgba(16, 185, 129, 0.85)',
+              borderDash: [5, 5],
+              pointRadius: 2,
+              borderWidth: 1.8
+            },
+            {
+              label: 'Rata-rata 34 Kampus',
+              data: natAvgLine,
+              backgroundColor: 'rgba(148, 163, 184, 0.08)',
+              borderColor: 'rgba(100, 116, 139, 0.7)',
+              borderWidth: 1.5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 200,
+              ticks: {
+                stepSize: 50,
+                callback: (v) => v + '%',
+                font: { size: 10 }
+              },
+              pointLabels: {
+                font: { size: 11, weight: '600' }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 12, font: { size: 11 } }
+            }
+          }
+        }
+      });
+
+      // Bar Chart
+      const barCtx = document.getElementById('campusBarChart').getContext('2d');
+      if (campusBarChartInstance) campusBarChartInstance.destroy();
+
+      const isActual = state.barChartMode === 'ACTUAL';
+      const barValues = STRATEGY_KEYS.map((k) =>
+        isActual ? current[k] : Math.round((current[k] / TARGETS[k].target) * 100)
+      );
+      const targetValues = STRATEGY_KEYS.map((k) => (isActual ? TARGETS[k].target : 100));
+      const barColors = STRATEGY_KEYS.map((k) =>
+        current[k] >= TARGETS[k].target ? 'rgba(16, 185, 129, 0.85)' : 'rgba(225, 29, 72, 0.85)'
+      );
+
+      campusBarChartInstance = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: STRATEGY_KEYS.map((k) => TARGETS[k].code),
+          datasets: [
+            {
+              label: isActual ? 'Realisasi Kampus' : '% Capaian Kampus',
+              data: barValues,
+              backgroundColor: barColors,
+              borderRadius: 6
+            },
+            {
+              label: isActual ? 'Target Bulanan' : 'Target (100%)',
+              data: targetValues,
+              backgroundColor: 'rgba(148, 163, 184, 0.45)',
+              borderColor: 'rgba(71, 85, 105, 0.8)',
+              borderWidth: 1,
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (val) => (isActual ? val : val + '%')
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { boxWidth: 12, font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 5. RENDER TAB 2: GRID 34 KAMPUS (MINI DASHBOARDS)
+    // =========================================================================
+    function renderCardsGrid() {
+      const search = document.getElementById('cardsSearchInput').value.trim().toLowerCase();
+      const filterVal = document.getElementById('cardsFilterSelect').value;
+      const sortVal = document.getElementById('cardsSortSelect').value;
+
+      let list = CAMPUS_LIST.filter((c) => {
+        if (search && !c.kampus.toLowerCase().includes(search)) return false;
+        if (filterVal !== 'ALL' && c.passed !== parseInt(filterVal, 10)) return false;
+        return true;
+      });
+
+      list.sort((a, b) => {
+        if (sortVal === 'RANK_DESC') return a.rank - b.rank;
+        if (sortVal === 'RANK_ASC') return b.rank - a.rank;
+        if (sortVal === 'NO_ASC') return a.no - b.no;
+        if (sortVal === 'NAME_ASC') return a.kampus.localeCompare(b.kampus);
+        if (sortVal === 'OCTS_DESC') return b.octs - a.octs;
+        return a.no - b.no;
+      });
+
+      const grid = document.getElementById('campusCardsGrid');
+      grid.innerHTML = '';
+
+      if (list.length === 0) {
+        grid.innerHTML = `<div class="col-span-full bg-white rounded-2xl p-8 text-center text-slate-500 border border-slate-200">Tidak ada kampus yang cocok dengan pencarian/filter.</div>`;
+        return;
+      }
+
+      list.forEach((c) => {
+        const badgeColor =
+          c.passed >= 4
+            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+            : c.passed >= 2
+            ? 'bg-amber-100 text-amber-800 border-amber-300'
+            : 'bg-rose-100 text-rose-800 border-rose-300';
+
+        const card = document.createElement('div');
+        card.className =
+          'bg-white rounded-2xl p-4 border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition cursor-pointer flex flex-col justify-between';
+        card.setAttribute('data-campus-no', c.no);
+
+        const pillsHtml = STRATEGY_KEYS.map((k) => {
+          const t = TARGETS[k].target;
+          const ok = c[k] >= t;
+          return `
+            <div class="rounded-lg p-2 text-center border ${
+              ok ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'
+            }">
+              <div class="text-[10px] font-bold uppercase opacity-75">${TARGETS[k].code}</div>
+              <div class="text-sm font-extrabold mt-0.5">${c[k]}<span class="text-[10px] font-normal opacity-75">/${t}</span></div>
+            </div>
+          `;
+        }).join('');
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <span class="text-[11px] font-bold text-slate-400">#${c.no} • Peringkat ${c.rank}</span>
+                <h3 class="text-sm font-bold text-slate-900 leading-snug">${c.kampus}</h3>
+              </div>
+              <span class="px-2.5 py-0.5 text-xs font-extrabold rounded-full border shrink-0 ${badgeColor}">
+                ${c.passed}/5 Lulus
+              </span>
+            </div>
+            <div class="grid grid-cols-5 gap-1.5 my-3">
+              ${pillsHtml}
+            </div>
+          </div>
+          <div class="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="text-slate-500">Indeks Progres: <strong class="text-slate-800">${c.progressIndex}%</strong></span>
+            <span class="font-semibold text-indigo-600 hover:underline">Buka Detail Kampus &rarr;</span>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          selectCampusAndOpenTab(c.no);
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    // =========================================================================
+    // 6. RENDER TAB 3: MATRIX TABLE & HEATMAP
+    // =========================================================================
+    function renderMatrixTable() {
+      const search = document.getElementById('matrixSearchInput').value.trim().toLowerCase();
+      const stratFilter = document.getElementById('matrixStrategyFilter').value;
+
+      let rows = CAMPUS_LIST.filter((c) => {
+        if (search && !c.kampus.toLowerCase().includes(search)) return false;
+        if (stratFilter !== 'ALL') {
+          const [mode, key] = stratFilter.split('_');
+          const k = key.toLowerCase();
+          const t = TARGETS[k].target;
+          if (mode === 'FAIL' && c[k] >= t) return false;
+          if (mode === 'PASS' && c[k] < t) return false;
+        }
+        return true;
+      });
+
+      const sortKey = state.matrixSortKey;
+      const dir = state.matrixSortAsc ? 1 : -1;
+      rows.sort((a, b) => {
+        if (sortKey === 'kampus') return a.kampus.localeCompare(b.kampus) * dir;
+        return (a[sortKey] - b[sortKey]) * dir;
+      });
+
+      const tbody = document.getElementById('matrixTableBody');
+      tbody.innerHTML = '';
+
+      rows.forEach((c) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/90 transition cursor-pointer';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 text-center font-medium text-slate-500">${c.no}</td>
+          <td class="py-2.5 px-4 font-bold text-slate-900">${c.kampus}</td>
+          ${STRATEGY_KEYS.map((k) => {
+            const ok = c[k] >= TARGETS[k].target;
+            return `<td class="py-2.5 px-3 text-center font-bold border-x border-slate-200/60 ${
+              ok ? 'cell-achieved' : 'cell-unachieved'
+            }">${c[k]}</td>`;
+          }).join('')}
+          <td class="py-2.5 px-3 text-center font-extrabold">
+            <span class="px-2 py-0.5 rounded-full text-xs ${
+              c.passed >= 4
+                ? 'bg-emerald-100 text-emerald-800'
+                : c.passed >= 2
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-rose-100 text-rose-800'
+            }">${c.passed} / 5</span>
+          </td>
+          <td class="py-2.5 px-3 text-center">
+            <button type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+              Detail
+            </button>
+          </td>
+        `;
+        tr.addEventListener('click', () => selectCampusAndOpenTab(c.no));
+        tbody.appendChild(tr);
+      });
+
+      // Footer Totals
+      const sums = {};
+      STRATEGY_KEYS.forEach((k) => {
+        sums[k] = rows.reduce((acc, r) => acc + r[k], 0);
+      });
+      const tfoot = document.getElementById('matrixTableFoot');
+      tfoot.innerHTML = `
+        <tr>
+          <td colspan="2" class="py-3 px-4">TOTAL (${rows.length} Kampus Ditampilkan)</td>
+          <td class="py-3 px-3 text-center">${sums.octh}</td>
+          <td class="py-3 px-3 text-center">${sums.octe}</td>
+          <td class="py-3 px-3 text-center">${sums.octs}</td>
+          <td class="py-3 px-3 text-center">${sums.ocfo}</td>
+          <td class="py-3 px-3 text-center">${sums.ocfs}</td>
+          <td colspan="2" class="py-3 px-3 text-center">Target: 2 / 2 / 30 / 5 / 5</td>
+        </tr>
+      `;
+    }
+
+    // =========================================================================
+    // 7. RENDER TAB 4: EXECUTIVE OVERVIEW
+    // =========================================================================
+    function renderExecutiveView() {
+      // Top 5 Balanced List
+      const topBalanced = CAMPUS_LIST.filter((c) => c.passed === 4);
+      const topContainer = document.getElementById('topBalancedList');
+      topContainer.innerHTML = '';
+
+      topBalanced.forEach((c) => {
+        const missingKey = STRATEGY_KEYS.find((k) => c[k] < TARGETS[k].target);
+        const meta = TARGETS[missingKey];
+        const diff = meta.target - c[missingKey];
+
+        const div = document.createElement('div');
+        div.className =
+          'p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/50 border border-slate-200 flex items-center justify-between gap-2 cursor-pointer transition';
+        div.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-900 text-xs sm:text-sm">${c.kampus}</div>
+            <div class="text-xs text-rose-700 font-medium mt-0.5">
+              Kurang <strong>${meta.code}</strong>: saat ini ${c[missingKey]}/${meta.target} (butuh +${diff} ${meta.unit})
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs shrink-0">4/5 Tercapai</span>
+        `;
+        div.addEventListener('click', () => selectCampusAndOpenTab(c.no));
+        topContainer.appendChild(div);
+      });
+
+      // Pass rate chart
+      const passCounts = STRATEGY_KEYS.map(
+        (k) => CAMPUS_LIST.filter((c) => c[k] >= TARGETS[k].target).length
+      );
+      const failCounts = passCounts.map((p) => CAMPUS_LIST.length - p);
+
+      const ctx1 = document.getElementById('execPassRateChart').getContext('2d');
+      if (execPassRateChartInstance) execPassRateChartInstance.destroy();
+      execPassRateChartInstance = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: STRATEGY_KEYS.map((k) => `${TARGETS[k].code} (Target ${TARGETS[k].target})`),
+          datasets: [
+            {
+              label: 'Tercapai (Jumlah Kampus)',
+              data: passCounts,
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderRadius: 6
+            },
+            {
+              label: 'Belum Tercapai (Jumlah Kampus)',
+              data: failCounts,
+              backgroundColor: 'rgba(225, 29, 72, 0.8)',
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true, max: 34, beginAtZero: true }
+          },
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+
+      // Distribution chart (5/5 down to 0/5)
+      const distLabels = ['5 Strategi', '4 Strategi', '3 Strategi', '2 Strategi', '1 Strategi', '0 Strategi'];
+      const distCounts = [5, 4, 3, 2, 1, 0].map(
+        (cnt) => CAMPUS_LIST.filter((c) => c.passed === cnt).length
+      );
+
+      const ctx2 = document.getElementById('execDistChart').getContext('2d');
+      if (execDistChartInstance) execDistChartInstance.destroy();
+      execDistChartInstance = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: distLabels,
+          datasets: [
+            {
+              label: 'Jumlah Kampus',
+              data: distCounts,
+              backgroundColor: [
+                'rgba(16, 185, 129, 0.9)',
+                'rgba(79, 70, 229, 0.85)',
+                'rgba(59, 130, 246, 0.85)',
+                'rgba(245, 158, 11, 0.85)',
+                'rgba(249, 115, 22, 0.85)',
+                'rgba(225, 29, 72, 0.85)'
+              ],
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 2 } }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 8. RENDER TAB 5: HEAD-TO-HEAD COMPARISON
+    // =========================================================================
+    function initCompareSelects() {
+      const ids = ['compSelectA', 'compSelectB', 'compSelectC'];
+      ids.forEach((id, idx) => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        CAMPUS_LIST.forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c.no;
+          opt.textContent = `${c.no}. ${c.kampus} (${c.passed}/5)`;
+          if (c.no === state.compareNos[idx]) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', () => {
+          state.compareNos[idx] = parseInt(sel.value, 10);
+          renderCompareView();
+        });
+      });
+    }
+
+    function renderCompareView() {
+      const [cA, cB, cC] = state.compareNos.map(
+        (no) => CAMPUS_LIST.find((c) => c.no === no) || CAMPUS_LIST[0]
+      );
+
+      document.getElementById('compHeaderA').textContent = cA.kampus;
+      document.getElementById('compHeaderB').textContent = cB.kampus;
+      document.getElementById('compHeaderC').textContent = cC.kampus;
+
+      const tbody = document.getElementById('compareTableBody');
+      tbody.innerHTML = '';
+
+      STRATEGY_KEYS.forEach((k) => {
+        const meta = TARGETS[k];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="py-3 px-3 font-semibold text-slate-800">${meta.code} — ${meta.short}</td>
+          <td class="py-3 px-3 text-center font-bold text-slate-600">${meta.target} ${meta.unit}</td>
+          ${[cA, cB, cC]
+            .map((c) => {
+              const ok = c[k] >= meta.target;
+              return `<td class="py-3 px-3 text-center font-bold ${
+                ok ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'
+              }">${c[k]} <span class="text-[11px] font-semibold">(${ok ? 'Lulus' : 'Belum'})</span></td>`;
+            })
+            .join('')}
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Summary Row
+      const sumTr = document.createElement('tr');
+      sumTr.className = 'bg-slate-100 font-extrabold text-slate-900';
+      sumTr.innerHTML = `
+        <td class="py-3 px-3">Total Strategi Tercapai</td>
+        <td class="py-3 px-3 text-center">5 Strategi</td>
+        <td class="py-3 px-3 text-center text-indigo-700">${cA.passed}/5 (${cA.passPct}%)</td>
+        <td class="py-3 px-3 text-center text-emerald-700">${cB.passed}/5 (${cB.passPct}%)</td>
+        <td class="py-3 px-3 text-center text-amber-700">${cC.passed}/5 (${cC.passPct}%)</td>
+      `;
+      tbody.appendChild(sumTr);
+
+      // Compare Radar Chart
+      const ctx = document.getElementById('compareRadarChart').getContext('2d');
+      if (compareRadarChartInstance) compareRadarChartInstance.destroy();
+
+      const makePctData = (c) =>
+        STRATEGY_KEYS.map((k) => Math.min(200, Math.round((c[k] / TARGETS[k].target) * 100)));
+
+      compareRadarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: STRATEGY_KEYS.map((k) => TARGETS[k].code),
+          datasets: [
+            {
+              label: cA.kampus,
+              data: makePctData(cA),
+              borderColor: 'rgba(79, 70, 229, 1)',
+              backgroundColor: 'rgba(79, 70, 229, 0.15)',
+              borderWidth: 2
+            },
+            {
+              label: cB.kampus,
+              data: makePctData(cB),
+              borderColor: 'rgba(16, 185, 129, 1)',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              borderWidth: 2
+            },
+            {
+              label: cC.kampus,
+              data: makePctData(cC),
+              borderColor: 'rgba(217, 119, 6, 1)',
+              backgroundColor: 'rgba(217, 119, 6, 0.15)',
+              borderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 200,
+              ticks: { stepSize: 50, callback: (v) => v + '%' }
+            }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 9. NAVIGATION & EVENT WIRING
+    // =========================================================================
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      const tabs = ['campus', 'cards', 'matrix', 'executive', 'compare'];
+      tabs.forEach((t) => {
+        const section = document.getElementById(`view-${t}`);
+        const btn = document.getElementById(`tabBtn-${t}`);
+        if (t === tabName) {
+          section.classList.remove('hidden');
+          btn.className =
+            'nav-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-indigo-600 text-white shadow';
+        } else {
+          section.classList.add('hidden');
+          btn.className =
+            'nav-tab-btn px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-700/60';
+        }
+      });
+
+      if (tabName === 'campus') renderCampusView();
+      if (tabName === 'cards') renderCardsGrid();
+      if (tabName === 'matrix') renderMatrixTable();
+      if (tabName === 'executive') renderExecutiveView();
+      if (tabName === 'compare') renderCompareView();
+    }
+
+    function selectCampusAndOpenTab(campusNo) {
+      state.selectedCampusNo = campusNo;
+      state.campusFilterGroup = 'ALL';
+      document.getElementById('quickCampusFilter').value = 'ALL';
+      state.simOffsets = { octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 };
+      populateCampusDropdown();
+      switchTab('campus');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function exportMatrixCsv() {
+      const headers = ['No', 'Nama Kampus', 'OCTH', 'OCTE', 'OCTS', 'OCFO', 'OCFS', 'Strategi Tercapai'];
+      const lines = [headers.join(',')];
+      CAMPUS_LIST.forEach((c) => {
+        lines.push([c.no, `"${c.kampus}"`, c.octh, c.octe, c.octs, c.ocfo, c.ocfs, `${c.passed}/5`].join(','));
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'laporan-5-strategi-dmer-oct-26.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const toast = document.getElementById('toastNotice');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2500);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Tab Navigation Buttons
+      document.querySelectorAll('.nav-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          switchTab(btn.getAttribute('data-tab'));
+        });
+      });
+
+      // Campus Dropdown & Filter
+      populateCampusDropdown();
+      document.getElementById('campusSelect').addEventListener('change', (e) => {
+        state.selectedCampusNo = parseInt(e.target.value, 10);
+        state.simOffsets = { octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 };
+        renderCampusView();
+      });
+
+      document.getElementById('quickCampusFilter').addEventListener('change', (e) => {
+        state.campusFilterGroup = e.target.value;
+        populateCampusDropdown();
+        renderCampusView();
+      });
+
+      document.getElementById('prevCampusBtn').addEventListener('click', () => {
+        const list = getFilteredCampusOptions();
+        if (!list.length) return;
+        const idx = list.findIndex((c) => c.no === state.selectedCampusNo);
+        const prevIdx = (idx - 1 + list.length) % list.length;
+        state.selectedCampusNo = list[prevIdx].no;
+        state.simOffsets = { octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 };
+        populateCampusDropdown();
+        renderCampusView();
+      });
+
+      document.getElementById('nextCampusBtn').addEventListener('click', () => {
+        const list = getFilteredCampusOptions();
+        if (!list.length) return;
+        const idx = list.findIndex((c) => c.no === state.selectedCampusNo);
+        const nextIdx = (idx + 1) % list.length;
+        state.selectedCampusNo = list[nextIdx].no;
+        state.simOffsets = { octh: 0, octe: 0, octs: 0, ocfo: 0, ocfs: 0 };
+        populateCampusDropdown();
+        renderCampusView();
+      });
+
+      // Bar chart mode switch
+      document.getElementById('chartModeActualBtn').addEventListener('click', () => {
+        state.barChartMode = 'ACTUAL';
+        document.getElementById('chartModeActualBtn').className =
+          'px-2.5 py-1 text-xs font-semibold rounded-md bg-white text-slate-900 shadow-sm';
+        document.getElementById('chartModePctBtn').className =
+          'px-2.5 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900';
+        renderCampusView();
+      });
+
+      document.getElementById('chartModePctBtn').addEventListener('click', () => {
+        state.barChartMode = 'PCT';
+        document.getElementById('chartModePctBtn').className =
+          'px-2.5 py-1 text-xs font-semibold rounded-md bg-white text-slate-900 shadow-sm';
+        document.getElementById('chartModeActualBtn').className =
+          'px-2.5 py-1 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900';
+        renderCampusView();
+      });
+
+      // Simulator buttons
+      document.getElementById('resetSimBtn').addEventListener('click', resetSimulation);
+      document.getElementById('autoFillTargetBtn').addEventListener('click', () => {
+        const base = CAMPUS_LIST.find((c) => c.no === state.selectedCampusNo) || CAMPUS_LIST[0];
+        STRATEGY_KEYS.forEach((k) => {
+          const needed = Math.max(0, TARGETS[k].target - base[k]);
+          state.simOffsets[k] = needed;
+        });
+        renderCampusView();
+      });
+
+      // Cards Grid controls
+      document.getElementById('cardsSearchInput').addEventListener('input', renderCardsGrid);
+      document.getElementById('cardsFilterSelect').addEventListener('change', renderCardsGrid);
+      document.getElementById('cardsSortSelect').addEventListener('change', renderCardsGrid);
+
+      // Matrix controls
+      document.getElementById('matrixSearchInput').addEventListener('input', renderMatrixTable);
+      document.getElementById('matrixStrategyFilter').addEventListener('change', renderMatrixTable);
+      document.getElementById('exportCsvBtn').addEventListener('click', exportMatrixCsv);
+
+      document.querySelectorAll('#view-matrix th[data-sort]').forEach((th) => {
+        th.addEventListener('click', () => {
+          const key = th.getAttribute('data-sort');
+          if (state.matrixSortKey === key) {
+            state.matrixSortAsc = !state.matrixSortAsc;
+          } else {
+            state.matrixSortKey = key;
+            state.matrixSortAsc = true;
+          }
+          renderMatrixTable();
+        });
+      });
+
+      // Compare init
+      initCompareSelects();
+
+      // Initial Render
+      renderCampusView();
+    });
+  </script>
+</body>
+</html>

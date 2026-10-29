@@ -22,7 +22,6 @@ Route::post('crm/register', [CrmController::class, 'storeRegistration'])->middle
 Route::get('crm/template', [CrmController::class, 'downloadTemplate']);
 Route::prefix('crm')->middleware('crm.auth')->group(function (): void {
     Route::get('/', [CrmController::class, 'index']);
-    Route::get('analytics', [CrmController::class, 'analytics']);
     Route::get('monitoring', [CrmController::class, 'agentMonitoring']);
     Route::post('logout', [CrmController::class, 'logout']);
     Route::post('users', [CrmController::class, 'storeUser']);
@@ -97,11 +96,19 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::get('generate-documents/{code}/{type}/download', [EventSuite::class, 'downloadDocument'])->middleware('access:documents');
 
     Route::get('reports', [EventSuite::class, 'reports'])->middleware('access:reports');
+    Route::get('laporan-crm', [EventSuite::class, 'crmRecommendationReport'])->middleware('access:dashboard');
+    Route::get('crm-report', [EventSuite::class, 'crmRecommendationReport'])->middleware('access:dashboard');
     Route::get('reports/export', [EventSuite::class, 'exportReports'])->middleware('access:reports');
     Route::get('reports/crm-export', [EventSuite::class, 'exportCrmResults'])->middleware('access:reports');
     Route::post('reports/{code}', [EventSuite::class, 'updateReport'])->middleware('access:reports');
 
     Route::get('one-campus', [EventSuite::class, 'oneCampus'])->middleware('access:one-campus');
+    Route::get('one-campus/ojt', [EventSuite::class, 'oneCampusOjt'])->middleware('access:one-campus');
+    Route::get('one-campus/schools', [EventSuite::class, 'oneCampusSchools'])->middleware('access:one-campus');
+    Route::get('one-campus/banners', [EventSuite::class, 'oneCampusBanners'])->middleware('access:one-campus');
+    Route::get('one-campus/ojt/export', [EventSuite::class, 'exportOneCampusOjt'])->middleware('access:one-campus');
+    Route::get('one-campus/schools/export', [EventSuite::class, 'exportOneCampusSchools'])->middleware('access:one-campus');
+    Route::get('one-campus/banners/export', [EventSuite::class, 'exportOneCampusBanners'])->middleware('access:one-campus');
     Route::post('one-campus/schools', [EventSuite::class, 'storeOneCampusSchool'])->middleware('access:one-campus');
     Route::post('one-campus/schools/{id}/update', [EventSuite::class, 'updateOneCampusSchool'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/schools/{id}/delete', [EventSuite::class, 'deleteOneCampusSchool'])->middleware('access:one-campus')->whereNumber('id');

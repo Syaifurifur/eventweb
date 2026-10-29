@@ -1,53 +1,72 @@
-<!doctype html>
-<html lang="id">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= esc($title ?? 'Reset Password') ?> | EventHub</title>
-    @vite('resources/css/app.css')
-    <link rel="icon" href="<?= base_url('favicon.ico?v=' . filemtime(FCPATH . 'favicon.ico')) ?>" sizes="any">
-    <link rel="apple-touch-icon" href="<?= base_url('assets/img/taskbar-icon.png?v=' . filemtime(FCPATH . 'assets/img/taskbar-icon.png')) ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/app.css?v=' . filemtime(FCPATH . 'assets/css/app.css')) ?>">
-</head>
-<body class="login-page">
-    <main class="login-shell">
-        <section class="login-visual" aria-label="Password baru">
-            <a class="brand light brand-logo-link" href="<?= site_url('login') ?>" aria-label="EventHub Login">
-                <img class="brand-logo brand-logo-login" src="<?= base_url('assets/img/eventhub-logo.png') ?>" alt="EventHub">
-            </a>
-            <div class="login-hero">
-                <span class="eyebrow">Password baru</span>
-                <h1>Amankan akun dengan password baru yang mudah diingat dan sulit ditebak.</h1>
-            </div>
-        </section>
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
 
-        <section class="login-card">
-            <span class="eyebrow">Reset password</span>
-            <h2>Buat password baru</h2>
-            <?php if (session('error')): ?>
-                <div class="alert error"><?= esc(session('error')) ?></div>
-            <?php endif; ?>
-            <form action="<?= site_url('reset-password/' . ($token ?? '')) ?>" method="post" class="stacked-form">
-                <?= csrf_field() ?>
-                <label>
-                    Password Baru
-                    <span class="password-field">
-                        <input class="control" type="password" name="password" required minlength="6">
-                        <button class="password-toggle" type="button" data-password-toggle aria-label="Lihat password" aria-pressed="false"></button>
-                    </span>
-                </label>
-                <label>
-                    Konfirmasi Password
-                    <span class="password-field">
-                        <input class="control" type="password" name="password_confirmation" required minlength="6">
-                        <button class="password-toggle" type="button" data-password-toggle aria-label="Lihat password" aria-pressed="false"></button>
-                    </span>
-                </label>
-                <button class="primary-button" type="submit">Simpan Password Baru</button>
-                <a class="ghost-button" href="<?= site_url('login') ?>">Kembali Login</a>
-            </form>
-        </section>
-    </main>
-    <script src="<?= base_url('assets/js/app.js?v=' . filemtime(FCPATH . 'assets/js/app.js')) ?>"></script>
+<x-head :title="$title ?? 'Reset Password'" />
+
+<body class="dark:bg-neutral-800 bg-neutral-100 dark:text-white wowdash-auth-body">
+
+    <section class="bg-white dark:bg-dark-2 flex flex-wrap min-h-[100vh]">
+        <div class="lg:w-1/2 lg:flex hidden bg-gradient-to-br from-slate-900 via-primary-900 to-slate-900 relative overflow-hidden p-12 flex-col justify-between text-white">
+            <div class="relative z-10">
+                <a class="inline-flex items-center gap-3" href="<?= site_url('login') ?>" aria-label="EventHub Login">
+                    <img class="h-12 w-auto object-contain" src="<?= base_url('assets/img/eventhub-logo.png') ?>" alt="EventHub">
+                </a>
+            </div>
+            <div class="relative z-10 my-auto py-8">
+                <div class="max-w-[500px] mx-auto text-center mb-8">
+                    <img src="{{ asset('assets/images/auth/forgot-pass-img.png') }}" alt="Password Baru" class="max-h-[260px] w-auto mx-auto drop-shadow-2xl">
+                </div>
+                <span class="inline-block px-3 py-1 rounded-full bg-primary-600/30 border border-primary-400/30 text-primary-200 text-xs font-semibold uppercase tracking-wider mb-3">Password baru</span>
+                <h1 class="text-3xl font-bold text-white leading-tight">Amankan akun dengan password baru yang mudah diingat dan sulit ditebak.</h1>
+            </div>
+            <div class="relative z-10 text-xs text-neutral-300">© <?= date('Y') ?> EventHub — WowDash UI</div>
+        </div>
+
+        <div class="lg:w-1/2 w-full py-8 px-6 flex flex-col justify-center">
+            <div class="lg:max-w-[464px] mx-auto w-full">
+                <div class="mb-6">
+                    <span class="text-xs font-bold uppercase tracking-wider text-primary-600 block mb-1">Reset password</span>
+                    <h4 class="mb-2 font-bold text-2xl text-neutral-900 dark:text-white">Buat password baru</h4>
+                </div>
+
+                <?php if (session('error')): ?>
+                    <div class="alert error mb-5"><?= esc(session('error')) ?></div>
+                <?php endif; ?>
+
+                <form action="<?= site_url('reset-password/' . ($token ?? '')) ?>" method="post" class="stacked-form">
+                    <?= csrf_field() ?>
+                    <div class="mb-4">
+                        <label class="form-label block text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-2">Password Baru</label>
+                        <div class="relative password-field">
+                            <div class="icon-field">
+                                <span class="absolute start-4 top-1/2 -translate-y-1/2 pointer-events-none flex text-xl text-neutral-500">
+                                    <iconify-icon icon="solar:lock-password-outline"></iconify-icon>
+                                </span>
+                                <input class="form-control control h-[52px] !ps-11 !pe-12 border-neutral-300 bg-neutral-50 dark:bg-dark-2 rounded-xl w-full" type="password" name="password" id="new-password" required minlength="6">
+                            </div>
+                            <span class="toggle-password ri-eye-line cursor-pointer absolute end-0 top-1/2 -translate-y-1/2 me-4 text-secondary-light text-lg" data-toggle="#new-password" data-password-toggle aria-label="Lihat password" aria-pressed="false"></span>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <label class="form-label block text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-2">Konfirmasi Password</label>
+                        <div class="relative password-field">
+                            <div class="icon-field">
+                                <span class="absolute start-4 top-1/2 -translate-y-1/2 pointer-events-none flex text-xl text-neutral-500">
+                                    <iconify-icon icon="solar:lock-password-outline"></iconify-icon>
+                                </span>
+                                <input class="form-control control h-[52px] !ps-11 !pe-12 border-neutral-300 bg-neutral-50 dark:bg-dark-2 rounded-xl w-full" type="password" name="password_confirmation" id="confirm-password" required minlength="6">
+                            </div>
+                            <span class="toggle-password ri-eye-line cursor-pointer absolute end-0 top-1/2 -translate-y-1/2 me-4 text-secondary-light text-lg" data-toggle="#confirm-password" data-password-toggle aria-label="Lihat password" aria-pressed="false"></span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary primary-button justify-center text-sm font-semibold px-4 py-3.5 w-full rounded-xl" type="submit">Simpan Password Baru</button>
+                    <a class="ghost-button justify-center text-sm font-semibold py-3 px-4 w-full rounded-xl mt-3 text-center" href="<?= site_url('login') ?>">Kembali Login</a>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <x-script />
+
 </body>
 </html>

@@ -3,11 +3,16 @@
         <span class="eyebrow">Post event</span>
         <h2>Data laporan event terlaksana</h2>
     </div>
-    <?php if ($isAdminSystem ?? false): ?>
-        <span class="status status-aktif">Mode monitoring admin</span>
-    <?php else: ?>
-        <span class="status">Mode lihat</span>
-    <?php endif; ?>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <a href="<?= site_url('laporan-crm') ?>" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
+            <span>📊 Laporan &amp; Rekomendasi Hasil CRM</span>
+        </a>
+        <?php if ($isAdminSystem ?? false): ?>
+            <span class="status status-aktif">Mode monitoring admin</span>
+        <?php else: ?>
+            <span class="status">Mode lihat</span>
+        <?php endif; ?>
+    </div>
 </div>
 
 <section class="panel">

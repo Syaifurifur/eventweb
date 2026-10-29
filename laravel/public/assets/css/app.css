@@ -1,21 +1,41 @@
 :root {
-    --bg: #f5f7fb;
+    --bg: #f5f6fa;
     --surface: #ffffff;
-    --surface-soft: #eef3f7;
-    --ink: #1f2933;
-    --muted: #6b7280;
-    --line: #dde5ee;
-    --blue: #2563eb;
-    --blue-soft: #dbeafe;
-    --green: #16815d;
-    --green-soft: #dff7ec;
-    --amber: #b7791f;
-    --amber-soft: #fff4d8;
-    --violet: #6d5bd0;
-    --violet-soft: #ece9ff;
-    --red: #b42318;
-    --red-soft: #fee4e2;
-    --shadow: 0 18px 45px rgba(31, 41, 51, .08);
+    --surface-soft: #f3f6fb;
+    --ink: #111827;
+    --muted: #4b5563;
+    --line: #ebecef;
+    --blue: #487fff;
+    --blue-soft: #e4f1ff;
+    --green: #16a34a;
+    --green-soft: #dcfce7;
+    --amber: #ff9f29;
+    --amber-soft: #fff6e5;
+    --violet: #7f27ff;
+    --violet-soft: #f2e8ff;
+    --red: #dc2626;
+    --red-soft: #fee2e2;
+    --shadow: 0 4px 24px -2px rgba(17, 24, 39, .05);
+}
+
+html.dark {
+    --bg: #1b2431;
+    --surface: #273142;
+    --surface-soft: #1f2937;
+    --ink: #f3f4f6;
+    --muted: #9ca3af;
+    --line: #374151;
+    --blue: #487fff;
+    --blue-soft: rgba(72, 127, 255, .2);
+    --green: #22c55e;
+    --green-soft: rgba(34, 197, 94, .2);
+    --amber: #ff9f29;
+    --amber-soft: rgba(255, 159, 41, .2);
+    --violet: #a855f7;
+    --violet-soft: rgba(168, 85, 247, .2);
+    --red: #ef4444;
+    --red-soft: rgba(239, 68, 68, .2);
+    --shadow: 0 10px 30px rgba(0, 0, 0, .28);
 }
 
 * {
@@ -48,7 +68,7 @@ textarea {
     min-height: 100vh;
 }
 
-.sidebar {
+.app-shell > .sidebar {
     position: sticky;
     top: 0;
     height: 100vh;
@@ -124,7 +144,7 @@ textarea {
     gap: 6px;
 }
 
-.nav-item {
+.app-shell .nav-item {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -135,7 +155,7 @@ textarea {
     transition: background .2s ease, color .2s ease;
 }
 
-.nav-item span {
+.app-shell .nav-item span {
     display: grid;
     place-items: center;
     width: 28px;
@@ -146,8 +166,8 @@ textarea {
     font-weight: 800;
 }
 
-.nav-item:hover,
-.nav-item.is-active {
+.app-shell .nav-item:hover,
+.app-shell .nav-item.is-active {
     background: #ffffff;
     color: #111827;
 }
@@ -3289,7 +3309,7 @@ a.calendar-event:focus-visible {
         grid-template-columns: 1fr;
     }
 
-    .sidebar {
+    .app-shell > .sidebar {
         position: fixed;
         inset: 0 auto 0 0;
         z-index: 20;
@@ -3298,7 +3318,7 @@ a.calendar-event:focus-visible {
         transition: transform .2s ease;
     }
 
-    .app-shell.is-menu-open .sidebar {
+    .app-shell.is-menu-open > .sidebar {
         transform: translateX(0);
     }
 
@@ -5680,6 +5700,20 @@ a.calendar-event:focus-visible {
     }
 }
 
+/* CRM Analytics menu views */
+.crm-analytics-page [hidden] {
+    display: none !important;
+}
+
+.crm-analytics-page .crm-scorecard-panel:not([hidden]) {
+    animation: crm-analytics-view-in 180ms ease-out;
+}
+
+@keyframes crm-analytics-view-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* CRM analytics executive mockup */
 .crm-analytics-page {
     background: #f3f6fb;
@@ -6238,4 +6272,182 @@ a.calendar-event:focus-visible {
         grid-template-columns: minmax(80px, 110px) minmax(80px, 1fr) 42px;
         gap: 7px;
     }
+}
+
+
+/* ==========================================================================
+   WowDash Laravel Tailwind Design System Integration Layer
+   ========================================================================== */
+
+body.wowdash-body {
+    background-color: var(--bg);
+    color: var(--ink);
+}
+
+.wowdash-body .content {
+    padding: 0;
+}
+
+/* Sidebar Brand & Active States in WowDash */
+.sidebar.active:not(:hover) .sidebar-brand-text {
+    display: none;
+}
+
+.sidebar-menu li > a.active-page .menu-icon,
+.sidebar-menu li > a.active-page:hover .menu-icon {
+    color: #ffffff !important;
+}
+
+.dark .sidebar-menu li a {
+    color: #d1d5db;
+}
+
+.dark .sidebar-menu li a:hover {
+    color: #487fff;
+}
+
+.dark .sidebar-menu li > a.active-page,
+.dark .sidebar-menu li > a.active-page:hover {
+    color: #ffffff;
+}
+
+/* Mobile Sidebar Backdrop Overlay */
+body.overlay-active::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 25;
+}
+
+/* WowDash Card Styling for EventHub Panels & Metric Cards */
+.wowdash-body .panel,
+.wowdash-body .metric-card,
+.wowdash-body .document-card,
+.wowdash-body .approval-card {
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background-color: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.wowdash-body .metric-card {
+    padding: 20px;
+    border-top-width: 1px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.wowdash-body .metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -4px rgba(72, 127, 255, 0.12);
+}
+
+.wowdash-body .metric-card.tone-blue {
+    background-image: linear-gradient(90deg, rgba(72, 127, 255, 0.1) 0%, var(--surface) 100%);
+    border-left: 4px solid #487fff;
+}
+
+.wowdash-body .metric-card.tone-green {
+    background-image: linear-gradient(90deg, rgba(22, 163, 74, 0.1) 0%, var(--surface) 100%);
+    border-left: 4px solid #16a34a;
+}
+
+.wowdash-body .metric-card.tone-amber {
+    background-image: linear-gradient(90deg, rgba(255, 159, 41, 0.12) 0%, var(--surface) 100%);
+    border-left: 4px solid #ff9f29;
+}
+
+.wowdash-body .metric-card.tone-violet {
+    background-image: linear-gradient(90deg, rgba(127, 39, 255, 0.1) 0%, var(--surface) 100%);
+    border-left: 4px solid #7f27ff;
+}
+
+.wowdash-body .metric-card.tone-red {
+    background-image: linear-gradient(90deg, rgba(220, 38, 38, 0.1) 0%, var(--surface) 100%);
+    border-left: 4px solid #dc2626;
+}
+
+/* WowDash Buttons */
+.primary-button {
+    background-color: #487fff;
+    border-color: #487fff;
+    color: #ffffff;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.primary-button:hover {
+    background-color: #3568e8;
+    border-color: #3568e8;
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(72, 127, 255, 0.28);
+}
+
+.ghost-button {
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background-color: var(--surface);
+    color: var(--ink);
+    font-weight: 600;
+    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.ghost-button:hover,
+.ghost-button.is-active {
+    border-color: #487fff;
+    color: #487fff;
+    background-color: var(--blue-soft);
+}
+
+.danger-button {
+    border-radius: 8px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* WowDash Form Controls */
+.control {
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background-color: var(--surface);
+    color: var(--ink);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+html.dark .control {
+    border-color: #4b5563;
+    background-color: #1f2937;
+    color: #f3f4f6;
+}
+
+.control:focus {
+    outline: none;
+    border-color: #487fff;
+    box-shadow: 0 0 0 3px rgba(72, 127, 255, 0.15);
+}
+
+/* WowDash Table Enhancements */
+.data-table th {
+    background-color: var(--surface-soft);
+    color: var(--ink);
+    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+}
+
+.data-table td {
+    border-bottom: 1px solid var(--line);
+}
+
+.data-table tbody tr:hover {
+    background-color: rgba(72, 127, 255, 0.04);
+}
+
+/* Status Pill Badges */
+.status {
+    border-radius: 9999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
 }

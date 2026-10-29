@@ -72,6 +72,7 @@ $crmLabels = [
         </a>
         <nav class="crm-nav" aria-label="Navigasi CRM">
             <span><?= esc($currentUser['name'] ?? 'Agent') ?></span>
+            <a href="<?= site_url('laporan-crm') ?>">Laporan CRM</a>
             <a href="<?= site_url('crm/monitoring') ?>">Monitoring Agent</a>
             <a href="<?= site_url('dashboard') ?>">Dashboard</a>
             <form action="<?= site_url('crm/logout') ?>" method="post" class="inline-form">

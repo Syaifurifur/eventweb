@@ -11,18 +11,10 @@ $summary = [
     'interested' => array_sum(array_map(static fn (array $row): int => (int) ($row['interested'] ?? 0), $agentMonitoring)),
 ];
 ?>
-<!doctype html>
-<html lang="id">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= esc($title ?? 'Monitoring Agent') ?> | EventHub</title>
-    @vite('resources/css/app.css')
-    <link rel="icon" href="<?= base_url('favicon.ico?v=' . filemtime(FCPATH . 'favicon.ico')) ?>" sizes="any">
-    <link rel="apple-touch-icon" href="<?= base_url('assets/img/taskbar-icon.png?v=' . filemtime(FCPATH . 'assets/img/taskbar-icon.png')) ?>">
-    <link rel="stylesheet" href="<?= base_url('assets/css/app.css?v=' . filemtime(FCPATH . 'assets/css/app.css')) ?>">
-</head>
-<body class="crm-page">
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<x-head :title="$title ?? 'Monitoring Agent'" />
+<body class="crm-page dark:bg-neutral-800 bg-neutral-100 dark:text-white">
     <header class="crm-topbar">
         <a class="crm-brand" href="<?= site_url('crm') ?>">
             <img class="crm-brand-logo" src="<?= base_url('assets/img/eventhub-mark.png') ?>" alt="EventHub">
@@ -31,7 +23,6 @@ $summary = [
         <nav class="crm-nav" aria-label="Navigasi CRM">
             <span><?= esc($currentUser['name'] ?? 'Agent') ?></span>
             <a href="<?= site_url('crm') ?>">Data CRM</a>
-            <a href="<?= site_url('crm/analytics') ?>">Analisis CRM</a>
             <a href="<?= site_url('dashboard') ?>">Dashboard</a>
             <form action="<?= site_url('crm/logout') ?>" method="post" class="inline-form">
                 <?= csrf_field() ?>
@@ -118,5 +109,6 @@ $summary = [
             </div>
         </section>
     </main>
+    <x-script />
 </body>
 </html>

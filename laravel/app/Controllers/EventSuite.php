@@ -34,8 +34,9 @@ class EventSuite extends BaseController
             ->where('type', 'checklist')
             ->where('read_at', null)
             ->countAllResults();
+        $dmerDashboard = $this->buildDmerDashboardData();
 
-        return $this->render('pages/dashboard', [
+        return $this->render('pages/dashboard', array_merge([
             'title' => 'Dashboard',
             'active' => 'dashboard',
             'stats' => $data['stats'],
@@ -44,6 +45,284 @@ class EventSuite extends BaseController
             'notifications' => $data['notifications'],
             'newPicTaskCount' => $newPicTaskCount,
             'isAdminSystem' => session('user.role') === 'Admin Sistem',
+        ], $dmerDashboard));
+    }
+
+    private function buildDmerDashboardData(): array
+    {
+        $allCampuses = (new CampusModel())->orderBy('name', 'ASC')->findAll();
+        $rawEventsAll = (new EventModel())
+            ->withCreator()
+            ->orderBy('event_date', 'ASC')
+            ->findAll();
+        $rawEvents = array_values(array_filter($rawEventsAll, static function (array $ev): bool {
+            return strtolower((string) ($ev['status'] ?? '')) !== 'ditolak';
+        }));
+
+        $allSchoolReports = (new OneCampusSchoolReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
+        $allOjtReports = (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
+        $allBannerReports = (new OneCampusBannerReportModel())->withCampus()->orderBy('installed_at', 'DESC')->findAll();
+
+        $availableYears = [date('Y') => true, '2026' => true, '2025' => true];
+        foreach ($rawEvents as $ev) {
+            $year = substr((string) ($ev['event_date'] ?? ''), 0, 4);
+            if (preg_match('/^\d{4}$/', $year) === 1) {
+                $availableYears[$year] = true;
+            }
+        }
+        $yearList = array_map('strval', array_keys($availableYears));
+        rsort($yearList, SORT_STRING);
+
+        $requestedYear = trim((string) $this->request->getGet('dmer_year'));
+        if ($requestedYear === '') {
+            $selectedYear = in_array('2026', $yearList, true) ? '2026' : (string) ($yearList[0] ?? date('Y'));
+        } elseif ($requestedYear === 'all' || preg_match('/^\d{4}$/', $requestedYear) === 1) {
+            $selectedYear = $requestedYear;
+        } else {
+            $selectedYear = '2026';
+        }
+
+        $monthLabels = $this->shortMonthLabels();
+        $fullMonthNames = [
+            '01' => 'Januari',
+            '02' => 'Februari',
+            '03' => 'Maret',
+            '04' => 'April',
+            '05' => 'Mei',
+            '06' => 'Juni',
+            '07' => 'Juli',
+            '08' => 'Agustus',
+            '09' => 'September',
+            '10' => 'Oktober',
+            '11' => 'November',
+            '12' => 'Desember',
+        ];
+        $requestedMonth = trim((string) $this->request->getGet('dmer_month'));
+        $selectedMonth = isset($monthLabels[$requestedMonth]) ? $requestedMonth : 'all';
+
+        // Filter events for the selected period
+        $filteredEvents = array_values(array_filter($rawEvents, static function (array $ev) use ($selectedYear, $selectedMonth): bool {
+            $date = (string) ($ev['event_date'] ?? '');
+            if ($selectedYear !== 'all' && substr($date, 0, 4) !== $selectedYear) {
+                return false;
+            }
+            if ($selectedMonth !== 'all' && substr($date, 5, 2) !== $selectedMonth) {
+                return false;
+            }
+            return true;
+        }));
+
+        // Filter school reports for the selected period
+        $filteredSchoolReports = array_values(array_filter($allSchoolReports, static function (array $row) use ($selectedYear, $selectedMonth): bool {
+            $date = (string) ($row['created_at'] ?? '');
+            if ($selectedYear !== 'all' && substr($date, 0, 4) !== $selectedYear) {
+                return false;
+            }
+            if ($selectedMonth !== 'all' && substr($date, 5, 2) !== $selectedMonth) {
+                return false;
+            }
+            return true;
+        }));
+
+        // Filter banner reports for the selected period
+        $filteredBannerReports = array_values(array_filter($allBannerReports, static function (array $row) use ($selectedYear, $selectedMonth): bool {
+            $date = (string) (($row['installed_at'] ?? '') !== '' ? $row['installed_at'] : ($row['created_at'] ?? ''));
+            if ($selectedYear !== 'all' && substr($date, 0, 4) !== $selectedYear) {
+                return false;
+            }
+            if ($selectedMonth !== 'all' && substr($date, 5, 2) !== $selectedMonth) {
+                return false;
+            }
+            return true;
+        }));
+
+        // Filter OJT reports for the selected period
+        if ($selectedYear !== 'all' && $selectedMonth !== 'all') {
+            $filteredOjtReports = $this->filterOjtReportsActiveInMonth($allOjtReports, $selectedYear, $selectedMonth);
+        } elseif ($selectedYear !== 'all') {
+            $filteredOjtReports = array_values(array_filter($allOjtReports, function (array $row) use ($selectedYear): bool {
+                $startYear = substr((string) ($row['ojt_start_month'] ?? ''), 0, 4);
+                $endYear = substr((string) ($row['ojt_end_month'] ?? ''), 0, 4);
+                $createdYear = substr((string) ($row['created_at'] ?? ''), 0, 4);
+                if ($startYear !== '' && $endYear !== '') {
+                    return $startYear <= $selectedYear && $endYear >= $selectedYear;
+                }
+                return $createdYear === $selectedYear || str_contains((string) ($row['ojt_period'] ?? ''), $selectedYear);
+            }));
+        } elseif ($selectedMonth !== 'all') {
+            $filteredOjtReports = array_values(array_filter($allOjtReports, function (array $row) use ($selectedMonth, $yearList): bool {
+                foreach ($yearList as $yr) {
+                    if ($this->isOjtReportActiveInMonth($row, $yr . '-' . $selectedMonth)) {
+                        return true;
+                    }
+                }
+                return substr((string) ($row['created_at'] ?? ''), 5, 2) === $selectedMonth;
+            }));
+        } else {
+            $filteredOjtReports = $allOjtReports;
+        }
+
+        $eventsByCampus = [];
+        foreach ($filteredEvents as $ev) {
+            $eventsByCampus[(int) ($ev['campus_id'] ?? 0)][] = $ev;
+        }
+
+        $schoolCountByCampus = [];
+        foreach ($filteredSchoolReports as $row) {
+            $cid = (int) ($row['campus_id'] ?? 0);
+            $schoolCountByCampus[$cid] = ($schoolCountByCampus[$cid] ?? 0) + 1;
+        }
+
+        $ojtCountByCampus = [];
+        foreach ($filteredOjtReports as $row) {
+            $cid = (int) ($row['campus_id'] ?? 0);
+            $ojtCountByCampus[$cid] = ($ojtCountByCampus[$cid] ?? 0) + 1;
+        }
+
+        $bannerCountByCampus = [];
+        foreach ($filteredBannerReports as $row) {
+            $cid = (int) ($row['campus_id'] ?? 0);
+            $bannerCountByCampus[$cid] = ($bannerCountByCampus[$cid] ?? 0) + 1;
+        }
+
+        $dmerCampuses = [];
+        $index = 1;
+        foreach ($allCampuses as $campus) {
+            $cid = (int) ($campus['id'] ?? 0);
+            if ($cid <= 0) {
+                continue;
+            }
+            $campusName = trim((string) preg_replace('/^Kampus\s+/i', '', (string) ($campus['name'] ?? 'Tanpa Kampus')));
+            $campusEvents = $eventsByCampus[$cid] ?? [];
+            $octhCount = count(array_filter($campusEvents, fn (array $ev): bool => $this->isOpenhouseCategory((string) ($ev['category_name'] ?? $ev['category'] ?? ''))));
+            $octeCount = count(array_filter($campusEvents, fn (array $ev): bool => $this->isOneCampusTwoEventCategory((string) ($ev['category_name'] ?? $ev['category'] ?? ''))));
+
+            $dmerCampuses[] = [
+                'no' => $index,
+                'campus_id' => $cid,
+                'kampus' => $campusName !== '' ? $campusName : (string) ($campus['name'] ?? 'Kampus ' . $index),
+                'octh' => $octhCount,
+                'octe' => $octeCount,
+                'octs' => (int) ($schoolCountByCampus[$cid] ?? 0),
+                'ocfo' => (int) ($ojtCountByCampus[$cid] ?? 0),
+                'ocfs' => (int) ($bannerCountByCampus[$cid] ?? 0),
+            ];
+            $index++;
+        }
+
+        $roleName = (string) session('user.role');
+        $normalizedRole = strtolower($this->normalizedRoleName($roleName));
+        $canViewAllDmerTabs = in_array($normalizedRole, ['admin sistem', 'super admin', 'admin', 'dmer'], true)
+            || $this->isGlobalMarkomCampus();
+
+        $userCampusId = (int) session('user.campus_id');
+        if ($userCampusId <= 0 && (int) session('crmUser.campus_id') > 0) {
+            $userCampusId = (int) session('crmUser.campus_id');
+        }
+        if ($userCampusId <= 0 && (int) session('user.id') > 0) {
+            $userRow = (new UserModel())->find((int) session('user.id'));
+            if ($userRow && (int) ($userRow['campus_id'] ?? 0) > 0) {
+                $userCampusId = (int) $userRow['campus_id'];
+            }
+        }
+        if ($userCampusId <= 0 && ! $canViewAllDmerTabs) {
+            foreach ($rawEvents as $ev) {
+                if ((int) ($ev['created_by'] ?? 0) === (int) session('user.id') && (int) ($ev['campus_id'] ?? 0) > 0) {
+                    $userCampusId = (int) $ev['campus_id'];
+                    break;
+                }
+            }
+        }
+
+        $defaultCampusNo = $dmerCampuses[0]['no'] ?? 1;
+        $userCampusName = $dmerCampuses[0]['kampus'] ?? 'Kampus';
+        if ($userCampusId > 0) {
+            foreach ($dmerCampuses as $row) {
+                if ((int) $row['campus_id'] === $userCampusId) {
+                    $defaultCampusNo = (int) $row['no'];
+                    $userCampusName = (string) $row['kampus'];
+                    break;
+                }
+            }
+        }
+
+        $requestedCampusNo = (int) $this->request->getGet('dmer_campus');
+        if ($canViewAllDmerTabs && $requestedCampusNo > 0) {
+            foreach ($dmerCampuses as $row) {
+                if ((int) $row['no'] === $requestedCampusNo) {
+                    $defaultCampusNo = $requestedCampusNo;
+                    break;
+                }
+            }
+        }
+
+        if ($selectedYear === 'all' && $selectedMonth === 'all') {
+            $periodLabel = 'Semua Periode (Akumulasi Real)';
+        } elseif ($selectedYear !== 'all' && $selectedMonth === 'all') {
+            $periodLabel = 'Tahun ' . $selectedYear . ' (Semua Bulan)';
+        } elseif ($selectedYear === 'all' && $selectedMonth !== 'all') {
+            $periodLabel = 'Bulan ' . ($fullMonthNames[$selectedMonth] ?? $selectedMonth) . ' (Semua Tahun)';
+        } else {
+            $periodLabel = ($fullMonthNames[$selectedMonth] ?? $selectedMonth) . ' ' . $selectedYear;
+        }
+
+        return [
+            'dmerCampuses' => $dmerCampuses,
+            'canViewAllDmerTabs' => $canViewAllDmerTabs,
+            'dmerDefaultCampusNo' => $defaultCampusNo,
+            'dmerUserCampusName' => $userCampusName,
+            'dmerSelectedYear' => $selectedYear,
+            'dmerSelectedMonth' => $selectedMonth,
+            'dmerYearOptions' => $yearList,
+            'dmerMonthOptions' => $fullMonthNames,
+            'dmerPeriodLabel' => $periodLabel,
+        ];
+    }
+
+    public function crmRecommendationReport(): string
+    {
+        $roleName = (string) session('user.role');
+        $normalizedRole = strtolower($this->normalizedRoleName($roleName));
+        $canViewAllCrmCampuses = in_array($normalizedRole, ['admin sistem', 'super admin', 'admin', 'dmer'], true)
+            || $this->isGlobalMarkomCampus();
+
+        $userCampusId = (int) session('user.campus_id');
+        if ($userCampusId <= 0 && (int) session('crmUser.campus_id') > 0) {
+            $userCampusId = (int) session('crmUser.campus_id');
+        }
+        if ($userCampusId <= 0 && (int) session('user.id') > 0) {
+            $userRow = (new UserModel())->find((int) session('user.id'));
+            if ($userRow && (int) ($userRow['campus_id'] ?? 0) > 0) {
+                $userCampusId = (int) $userRow['campus_id'];
+            }
+        }
+
+        $userCampusFullName = '';
+        if ($userCampusId > 0) {
+            $campusRow = (new CampusModel())->find($userCampusId);
+            if ($campusRow && ! empty($campusRow['name'])) {
+                $userCampusFullName = strtoupper(trim((string) $campusRow['name']));
+            }
+        }
+        if ($userCampusFullName === '' && ! $canViewAllCrmCampuses && (int) session('user.id') > 0) {
+            $userEvents = (new EventModel())->withCreator()->orderBy('event_date', 'DESC')->findAll();
+            foreach ($userEvents as $ev) {
+                if ((int) ($ev['created_by'] ?? 0) === (int) session('user.id') && ! empty($ev['campus_name'])) {
+                    $userCampusFullName = strtoupper(trim((string) $ev['campus_name']));
+                    break;
+                }
+            }
+        }
+        if ($userCampusFullName === '') {
+            $userCampusFullName = 'UBSI KAMPUS YOGYAKARTA';
+        }
+
+        return $this->render('pages/crm_report', [
+            'title' => 'Laporan & Rekomendasi Hasil CRM',
+            'active' => 'crm-report',
+            'canViewAllCrmCampuses' => $canViewAllCrmCampuses,
+            'userCampusFullName' => $userCampusFullName,
+            'requestedCampusParam' => trim((string) $this->request->getGet('campus')),
         ]);
     }
 
@@ -1518,8 +1797,13 @@ class EventSuite extends BaseController
         return redirect()->to(site_url('reports'))->with('success', 'Laporan berhasil diperbarui.');
     }
 
-    public function oneCampus(): string
+    public function oneCampus(?string $program = null): string
     {
+        $requestedProgram = strtolower(trim((string) ($program ?? $this->request->getGet('program') ?? 'all')));
+        if (! in_array($requestedProgram, ['ojt', 'school', 'banner', 'all'], true)) {
+            $requestedProgram = 'all';
+        }
+
         $campuses = (new CampusModel())->orderBy('name', 'ASC')->findAll();
         $visibleCampuses = $this->visibleOneCampusCampuses($campuses);
         $selectedCampusId = $this->selectedOneCampusId($campuses);
@@ -1531,9 +1815,23 @@ class EventSuite extends BaseController
         $bannerReports = (new OneCampusBannerReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
         $ojtReports = (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
 
+        $activeMap = [
+            'ojt' => 'one-campus-ojt',
+            'school' => 'one-campus-school',
+            'banner' => 'one-campus-banner',
+            'all' => 'one-campus',
+        ];
+        $titleMap = [
+            'ojt' => 'One Campus Five OJT',
+            'school' => 'One Campus Sixty School',
+            'banner' => 'One Campus Five Spanduk',
+            'all' => 'One Campus',
+        ];
+
         return $this->render('pages/one_campus', [
-            'title' => 'One Campus',
-            'active' => 'one-campus',
+            'title' => $titleMap[$requestedProgram] ?? 'One Campus',
+            'active' => $activeMap[$requestedProgram] ?? 'one-campus',
+            'selectedProgram' => $requestedProgram,
             'campuses' => $visibleCampuses,
             'schoolReports' => $this->filterOneCampusReportsByCampus($schoolReports, $selectedCampusId),
             'bannerReports' => $this->filterOneCampusReportsByCampus($bannerReports, $selectedCampusId),
@@ -1541,6 +1839,165 @@ class EventSuite extends BaseController
             'selectedOneCampusId' => $selectedCampusId,
             'selectedOneCampusName' => $this->campusNameById($campuses, $selectedCampusId),
         ]);
+    }
+
+    public function oneCampusOjt(): string
+    {
+        return $this->oneCampus('ojt');
+    }
+
+    public function oneCampusSchools(): string
+    {
+        return $this->oneCampus('school');
+    }
+
+    public function oneCampusBanners(): string
+    {
+        return $this->oneCampus('banner');
+    }
+
+    public function exportOneCampusOjt()
+    {
+        $campuses = (new CampusModel())->orderBy('name', 'ASC')->findAll();
+        $selectedCampusId = $this->selectedOneCampusId($campuses);
+        $campusScope = $this->currentOneCampusScope();
+        if ($campusScope !== null) {
+            $selectedCampusId = $campusScope > 0 ? $campusScope : null;
+        }
+
+        $ojtReports = $this->filterOneCampusReportsByCampus(
+            (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll(),
+            $selectedCampusId
+        );
+
+        $rows = [[
+            'No',
+            'Kampus',
+            'Nama Siswa / Peserta',
+            'Asal Sekolah',
+            'Jurusan',
+            'No. Telepon',
+            'Masa OJT',
+            'Tanggal Mulai',
+            'Tanggal Selesai',
+            'Keterangan',
+            'Tanggal Input',
+        ]];
+
+        foreach (array_values($ojtReports) as $idx => $item) {
+            $rows[] = [
+                (string) ($idx + 1),
+                (string) ($item['campus_name'] ?? 'Tanpa kampus'),
+                (string) ($item['student_name'] ?? '-'),
+                (string) ($item['origin_school'] ?? '-'),
+                (string) ($item['major'] ?? '-'),
+                (string) ($item['phone'] ?? '-'),
+                (string) ($item['ojt_period'] ?? '-'),
+                (string) ($item['ojt_start_month'] ?? '-'),
+                (string) ($item['ojt_end_month'] ?? '-'),
+                (string) ($item['notes'] ?? '-'),
+                (string) ($item['created_at'] ?? '-'),
+            ];
+        }
+
+        $filename = 'laporan-one-campus-five-ojt-' . date('Ymd-His') . '.xlsx';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($this->xlsxFromRows($rows, 'Five OJT'));
+    }
+
+    public function exportOneCampusSchools()
+    {
+        $campuses = (new CampusModel())->orderBy('name', 'ASC')->findAll();
+        $selectedCampusId = $this->selectedOneCampusId($campuses);
+        $campusScope = $this->currentOneCampusScope();
+        if ($campusScope !== null) {
+            $selectedCampusId = $campusScope > 0 ? $campusScope : null;
+        }
+
+        $schoolReports = $this->filterOneCampusReportsByCampus(
+            (new OneCampusSchoolReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll(),
+            $selectedCampusId
+        );
+
+        $rows = [[
+            'No',
+            'Kampus',
+            'Nama Sekolah',
+            'Nama Guru / PIC',
+            'Jabatan',
+            'No. Telepon',
+            'Perolehan PMB',
+            'Keterangan',
+            'Tanggal Input',
+        ]];
+
+        foreach (array_values($schoolReports) as $idx => $item) {
+            $rows[] = [
+                (string) ($idx + 1),
+                (string) ($item['campus_name'] ?? 'Tanpa kampus'),
+                (string) ($item['school_name'] ?? '-'),
+                (string) ($item['teacher_name'] ?? '-'),
+                (string) ($item['position'] ?? '-'),
+                (string) ($item['phone'] ?? '-'),
+                (string) ((int) ($item['pmb_count'] ?? 0)),
+                (string) ($item['notes'] ?? '-'),
+                (string) ($item['created_at'] ?? '-'),
+            ];
+        }
+
+        $filename = 'laporan-one-campus-sixty-school-' . date('Ymd-His') . '.xlsx';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($this->xlsxFromRows($rows, 'Sixty School'));
+    }
+
+    public function exportOneCampusBanners()
+    {
+        $campuses = (new CampusModel())->orderBy('name', 'ASC')->findAll();
+        $selectedCampusId = $this->selectedOneCampusId($campuses);
+        $campusScope = $this->currentOneCampusScope();
+        if ($campusScope !== null) {
+            $selectedCampusId = $campusScope > 0 ? $campusScope : null;
+        }
+
+        $bannerReports = $this->filterOneCampusReportsByCampus(
+            (new OneCampusBannerReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll(),
+            $selectedCampusId
+        );
+
+        $rows = [[
+            'No',
+            'Kampus',
+            'Lokasi Pemasangan',
+            'Tanggal & Jam Pasang',
+            'Tema Spanduk',
+            'Link Foto Google Drive',
+            'Tanggal Input',
+        ]];
+
+        foreach (array_values($bannerReports) as $idx => $item) {
+            $rows[] = [
+                (string) ($idx + 1),
+                (string) ($item['campus_name'] ?? 'Tanpa kampus'),
+                (string) ($item['location'] ?? '-'),
+                (string) ($item['installed_at'] ?? '-'),
+                (string) ($item['theme'] ?? '-'),
+                (string) ($item['drive_photo_link'] ?? '-'),
+                (string) ($item['created_at'] ?? '-'),
+            ];
+        }
+
+        $filename = 'laporan-one-campus-five-spanduk-' . date('Ymd-His') . '.xlsx';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($this->xlsxFromRows($rows, 'Five Spanduk'));
     }
 
     public function storeOneCampusSchool()
@@ -1570,7 +2027,7 @@ class EventSuite extends BaseController
             'created_by' => (int) session('user.id'),
         ]);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Thirty School berhasil disimpan.');
+        return redirect()->to(site_url('one-campus/schools'))->with('success', 'Laporan One Campus Sixty School berhasil disimpan.');
     }
 
     public function updateOneCampusSchool(int $id)
@@ -1578,7 +2035,7 @@ class EventSuite extends BaseController
         $model = new OneCampusSchoolReportModel();
         $report = $model->find($id);
         if (! $report || ! $this->canManageOneCampusReport($report)) {
-            return redirect()->to(site_url('one-campus'))->with('error', 'Data school tidak ditemukan atau tidak bisa diakses.');
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Data school tidak ditemukan atau tidak bisa diakses.');
         }
 
         $rules = [
@@ -1605,7 +2062,7 @@ class EventSuite extends BaseController
             'notes' => $this->request->getPost('notes'),
         ]);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Thirty School berhasil diperbarui.');
+        return redirect()->to(site_url('one-campus/schools'))->with('success', 'Laporan One Campus Sixty School berhasil diperbarui.');
     }
 
     public function deleteOneCampusSchool(int $id)
@@ -1613,12 +2070,12 @@ class EventSuite extends BaseController
         $model = new OneCampusSchoolReportModel();
         $report = $model->find($id);
         if (! $report || ! $this->canManageOneCampusReport($report)) {
-            return redirect()->to(site_url('one-campus'))->with('error', 'Data school tidak ditemukan atau tidak bisa diakses.');
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Data school tidak ditemukan atau tidak bisa diakses.');
         }
 
         $model->delete($id);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Thirty School berhasil dihapus.');
+        return redirect()->to(site_url('one-campus/schools'))->with('success', 'Laporan One Campus Sixty School berhasil dihapus.');
     }
 
     public function storeOneCampusBanner()
@@ -1644,7 +2101,7 @@ class EventSuite extends BaseController
             'created_by' => (int) session('user.id'),
         ]);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Five Spanduk berhasil disimpan.');
+        return redirect()->to(site_url('one-campus/banners'))->with('success', 'Laporan One Campus Five Spanduk berhasil disimpan.');
     }
 
     public function updateOneCampusBanner(int $id)
@@ -1652,7 +2109,7 @@ class EventSuite extends BaseController
         $model = new OneCampusBannerReportModel();
         $report = $model->find($id);
         if (! $report || ! $this->canManageOneCampusReport($report)) {
-            return redirect()->to(site_url('one-campus'))->with('error', 'Data spanduk tidak ditemukan atau tidak bisa diakses.');
+            return redirect()->to(site_url('one-campus/banners'))->with('error', 'Data spanduk tidak ditemukan atau tidak bisa diakses.');
         }
 
         $rules = [
@@ -1675,7 +2132,7 @@ class EventSuite extends BaseController
             'drive_photo_link' => $this->request->getPost('drive_photo_link'),
         ]);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Five Spanduk berhasil diperbarui.');
+        return redirect()->to(site_url('one-campus/banners'))->with('success', 'Laporan One Campus Five Spanduk berhasil diperbarui.');
     }
 
     public function deleteOneCampusBanner(int $id)
@@ -1683,12 +2140,12 @@ class EventSuite extends BaseController
         $model = new OneCampusBannerReportModel();
         $report = $model->find($id);
         if (! $report || ! $this->canManageOneCampusReport($report)) {
-            return redirect()->to(site_url('one-campus'))->with('error', 'Data spanduk tidak ditemukan atau tidak bisa diakses.');
+            return redirect()->to(site_url('one-campus/banners'))->with('error', 'Data spanduk tidak ditemukan atau tidak bisa diakses.');
         }
 
         $model->delete($id);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Five Spanduk berhasil dihapus.');
+        return redirect()->to(site_url('one-campus/banners'))->with('success', 'Laporan One Campus Five Spanduk berhasil dihapus.');
     }
 
     public function storeOneCampusOjt()
@@ -1727,7 +2184,7 @@ class EventSuite extends BaseController
             'created_by' => (int) session('user.id'),
         ]);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Five OJT berhasil disimpan.');
+        return redirect()->to(site_url('one-campus/ojt'))->with('success', 'Laporan One Campus Five OJT berhasil disimpan.');
     }
 
     public function updateOneCampusOjt(int $id)
@@ -1735,7 +2192,7 @@ class EventSuite extends BaseController
         $model = new OneCampusOjtReportModel();
         $report = $model->find($id);
         if (! $report || ! $this->canManageOneCampusReport($report)) {
-            return redirect()->to(site_url('one-campus'))->with('error', 'Data OJT tidak ditemukan atau tidak bisa diakses.');
+            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Data OJT tidak ditemukan atau tidak bisa diakses.');
         }
 
         $rules = [
@@ -1771,7 +2228,7 @@ class EventSuite extends BaseController
             'notes' => $this->request->getPost('notes'),
         ]);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Five OJT berhasil diperbarui.');
+        return redirect()->to(site_url('one-campus/ojt'))->with('success', 'Laporan One Campus Five OJT berhasil diperbarui.');
     }
 
     public function deleteOneCampusOjt(int $id)
@@ -1779,12 +2236,12 @@ class EventSuite extends BaseController
         $model = new OneCampusOjtReportModel();
         $report = $model->find($id);
         if (! $report || ! $this->canManageOneCampusReport($report)) {
-            return redirect()->to(site_url('one-campus'))->with('error', 'Data OJT tidak ditemukan atau tidak bisa diakses.');
+            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Data OJT tidak ditemukan atau tidak bisa diakses.');
         }
 
         $model->delete($id);
 
-        return redirect()->to(site_url('one-campus'))->with('success', 'Laporan One Campus Five OJT berhasil dihapus.');
+        return redirect()->to(site_url('one-campus/ojt'))->with('success', 'Laporan One Campus Five OJT berhasil dihapus.');
     }
 
     public function analytics(): string
@@ -4469,7 +4926,7 @@ class EventSuite extends BaseController
         return $bestDelimiter;
     }
 
-    private function xlsxFromRows(array $rows): string
+    private function xlsxFromRows(array $rows, string $sheetName = 'Event'): string
     {
         if (! class_exists(\ZipArchive::class)) {
             return $this->csvFromRows($rows);
@@ -4490,10 +4947,12 @@ class EventSuite extends BaseController
             . '<sheetData>' . implode('', $sheetRows) . '</sheetData>'
             . '</worksheet>';
 
+        $safeSheetName = $this->xmlValue(substr(preg_replace('/[\\\\\\/?*\\[\\]:]/', ' ', $sheetName) ?: 'Event', 0, 31));
+
         $entries = [
             '[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>',
             '_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
-            'xl/workbook.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Event" sheetId="1" r:id="rId1"/></sheets></workbook>',
+            'xl/workbook.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' . $safeSheetName . '" sheetId="1" r:id="rId1"/></sheets></workbook>',
             'xl/_rels/workbook.xml.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>',
             'xl/worksheets/sheet1.xml' => $sheetXml,
         ];
@@ -6261,7 +6720,7 @@ class EventSuite extends BaseController
         return [
             'octh' => 2,
             'octe' => 2,
-            'octs' => 30,
+            'octs' => 60,
             'ocfo' => 5,
             'ocfs' => 5,
         ];
@@ -6361,8 +6820,8 @@ class EventSuite extends BaseController
         $html[] = '<td colspan="6">Belum Tercapai</td>';
         $html[] = '</tr>';
         $html[] = '<tr><td colspan="7">&nbsp;</td></tr>';
-        $html[] = '<tr><td colspan="7">Target bulanan: OCTH 2, OCTE 2, OCTS 30, OCFO 5, OCFS 5.</td></tr>';
-        $html[] = '<tr><td colspan="7">OCTH = One Campus Two Hangout/Open House; OCTE = One Campus Two Event; OCTS = One Campus Thirty School; OCFO = One Campus Five OJT; OCFS = One Campus Five Spanduk.</td></tr>';
+        $html[] = '<tr><td colspan="7">Target bulanan: OCTH 2, OCTE 2, OCTS 60, OCFO 5, OCFS 5.</td></tr>';
+        $html[] = '<tr><td colspan="7">OCTH = One Campus Two Hangout/Open House; OCTE = One Campus Two Event; OCTS = One Campus Sixty School; OCFO = One Campus Five OJT; OCFS = One Campus Five Spanduk.</td></tr>';
         $html[] = '</table>';
         $html[] = '</body></html>';
 
@@ -6737,7 +7196,7 @@ class EventSuite extends BaseController
     {
         return [
             [
-                'label' => 'One Campus Thirty School',
+                'label' => 'One Campus Sixty School',
                 'count' => count($schoolReports),
                 'meta' => array_sum(array_map(static fn (array $row): int => (int) ($row['pmb_count'] ?? 0), $schoolReports)) . ' PMB',
                 'rows' => array_map(static fn (array $row): array => [
