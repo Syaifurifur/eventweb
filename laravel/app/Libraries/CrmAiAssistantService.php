@@ -23,19 +23,42 @@ class CrmAiAssistantService
         return $this->config->model ?: 'gemini-2.5-flash';
     }
 
+    /**
+     * Membersihkan teks dari emoji/icon dan format cetak tebal (bold asterisk *)
+     * agar pesan terdengar natural, bersih, dan manusiawi.
+     */
+    public static function sanitizeNaturalText(string $text): string
+    {
+        // 1. Hapus tanda bintang formatting bold / italic (*teks* -> teks)
+        $text = preg_replace('/\*+([^*]+)\*+/', '$1', $text);
+        $text = str_replace('*', '', $text);
+
+        // 2. Hapus seluruh icon / emoji dan simbol grafis
+        $emojiPattern = '/[\x{1F600}-\x{1F64F}\x{1F300}-\x{1F5FF}\x{1F680}-\x{1F6FF}\x{1F1E0}-\x{1F1FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{FE00}-\x{FE0F}\x{1F900}-\x{1F9FF}\x{1FA00}-\x{1FA6F}\x{1FA70}-\x{1FAFF}\x{200D}\x{20E3}\x{2B50}\x{231A}\x{23F0}\x{23E9}-\x{23EC}\x{2934}\x{2935}]/u';
+        $text = preg_replace($emojiPattern, '', $text);
+
+        // 3. Normalisasi spasi dan tanda baca
+        $text = preg_replace('/[ \t]{2,}/', ' ', $text);
+        $text = preg_replace('/ +([,.?!])/', '$1', $text);
+        $text = preg_replace('/[ \t]+\n/', "\n", $text);
+        $text = preg_replace('/(\n[ \t]*){3,}/', "\n\n", $text);
+
+        return trim($text);
+    }
+
     public function generateMessage(array $lead, string $intent = 'sapaan_awal', string $customPrompt = '', array $chatHistory = []): array
     {
         $studentName = trim((string) ($lead['student_name'] ?? 'Calon Mahasiswa'));
-        $school = trim((string) ($lead['school_origin'] ?? 'Sekolah Anda'));
-        $campus = trim((string) ($lead['campus_name'] ?? 'Kampus UBSI'));
+        $school = trim((string) ($lead['school_origin'] ?? 'Sekolah'));
+        $campus = trim((string) ($lead['campus_name'] ?? 'UBSI'));
         $eventTitle = trim((string) ($lead['event_title'] ?? 'Kegiatan Kampus'));
         $stage = trim((string) ($lead['stage'] ?? 'Tahap 1'));
         $label = trim((string) ($lead['label'] ?? 'Belum dilabeli'));
         $reason = trim((string) ($lead['rejection_reason'] ?? $lead['notes'] ?? ''));
         $prospectStatus = trim((string) ($lead['prospect_status'] ?? ''));
         $prospectNote = match ($prospectStatus) {
-            'priority' => '⭐ PRIORITAS TINGGI (Siswa memiliki niat kuliah tinggi/berencana kuliah tahun ini/membutuhkan info beasiswa segera dari kuesioner event. Utamakan ajakan pendaftaran langsung, kuota beasiswa, dan kemudahan pembayaran).',
-            'nurture' => '🕒 FOLLOW-UP LANJUTAN (Siswa masih tahap penjajakan/mempertimbangkan. Gunakan pendekatan konsultatif ramah, edukatif, dan jangan terlalu mendesak).',
+            'priority' => 'Prioritas Tinggi (Siswa memiliki minat kuliah tinggi atau membutuhkan informasi beasiswa segera dari kuesioner. Utamakan ajakan pendaftaran langsung, kuota beasiswa, dan kemudahan pembayaran).',
+            'nurture' => 'Follow-up Lanjutan (Siswa masih tahap penjajakan/mempertimbangkan. Gunakan pendekatan konsultatif ramah, edukatif, dan santai).',
             default => 'Standard Follow-Up',
         };
 
@@ -51,43 +74,57 @@ class CrmAiAssistantService
                 $historyText = $historyLines !== [] ? implode("\n", $historyLines) : 'Belum ada riwayat chat.';
 
                 $prompt = <<<PROMPT
-Anda adalah AI CRM WhatsApp Specialist untuk tim Admisi & Marketing Komunikasi (MARKOM) {$campus}.
-Buatkan 3 variasi pesan WhatsApp dalam Bahasa Indonesia yang ramah, natural, sopan, persuasif, dan siap kirim ke calon mahasiswa berikut:
+Anda adalah asisten pesan WhatsApp untuk tim Admisi dan Marketing Komunikasi {$campus}.
+Buatkan 3 variasi pesan WhatsApp dalam Bahasa Indonesia yang ramah, sopan, natural, mengalir santai seperti percakapan sehari-hari staf kampus/kakak admisi dengan calon mahasiswa:
 - Nama Siswa: {$studentName}
 - Asal Sekolah: {$school}
-- Kampus Tujuan: {$campus}
+- Kampus: {$campus}
 - Event yang Diikuti: {$eventTitle}
 - Prioritas Prospek: {$prospectNote}
 - Status CRM Saat Ini: {$stage} | Label: {$label}
 - Catatan/Alasan Sebelumnya: {$reason}
 - Tujuan Pesan (Intent): {$intent}
-- Instruksi Tambahan User: {$customPrompt}
+- Instruksi Tambahan: {$customPrompt}
 - Riwayat Percakapan Terakhir:
 {$historyText}
 
+PANDUAN FORMAT DAN GAYA BAHASA (MUTLAK HARUS DIIKUTI):
+1. TANPA ICON / EMOJI: Dilarang keras menggunakan icon, emotikon, atau emoji apapun di seluruh teks pesan.
+2. TANPA BOLD: Dilarang keras menggunakan tanda bintang (*) atau format cetak tebal (bold). Tulis nama siswa, sekolah, kampus, dan seluruh kata dengan tulisan biasa yang bersih.
+3. NATURAL DAN MENGALIR: Buat pesan terasa hangat, bersahabat, manusiawi, dan tidak kaku seperti template broadcast robotik.
+
 Kembalikan HANYA format JSON murni tanpa markdown codeblock dengan struktur:
 {
-  "primary_message": "pesan utama terbaik siap kirim dengan emoji secukupnya",
+  "primary_message": "pesan utama terbaik siap kirim tanpa emoji dan tanpa bintang/bold",
   "variants": [
-    {"title": "Ramah & Personal", "text": "..."},
-    {"title": "Singkat & To-The-Point", "text": "..."},
-    {"title": "Fokus Beasiswa & Solusi", "text": "..."}
+    {"title": "Ramah & Personal", "text": "pesan ramah mengalir natural tanpa emoji tanpa bold"},
+    {"title": "Singkat & To-The-Point", "text": "pesan singkat langsung ke inti tanpa emoji tanpa bold"},
+    {"title": "Fokus Beasiswa & Solusi", "text": "pesan fokus beasiswa dan solusi tanpa emoji tanpa bold"}
   ],
-  "strategy_tip": "tips singkat 1 kalimat untuk agent saat menghubungi siswa ini"
+  "strategy_tip": "tips singkat 1 kalimat untuk agent saat menghubungi siswa ini (tanpa emoji)"
 }
 PROMPT;
 
                 $raw = $this->callGemini($prompt, 900, 0.55);
                 $decoded = $this->extractJsonObject($raw);
                 if (is_array($decoded) && ! empty($decoded['primary_message'])) {
+                    $rawVariants = is_array($decoded['variants'] ?? null) && $decoded['variants'] !== []
+                        ? $decoded['variants']
+                        : $fallbackVariants['variants'];
+
+                    $cleanVariants = array_map(function ($item) {
+                        return [
+                            'title' => self::sanitizeNaturalText((string) ($item['title'] ?? 'Variasi')),
+                            'text' => self::sanitizeNaturalText((string) ($item['text'] ?? '')),
+                        ];
+                    }, $rawVariants);
+
                     return [
                         'ok' => true,
                         'ai_source' => 'Gemini AI (' . $this->model() . ')',
-                        'primary_message' => (string) $decoded['primary_message'],
-                        'variants' => is_array($decoded['variants'] ?? null) && $decoded['variants'] !== []
-                            ? $decoded['variants']
-                            : $fallbackVariants['variants'],
-                        'strategy_tip' => (string) ($decoded['strategy_tip'] ?? $fallbackVariants['strategy_tip']),
+                        'primary_message' => self::sanitizeNaturalText((string) $decoded['primary_message']),
+                        'variants' => $cleanVariants,
+                        'strategy_tip' => self::sanitizeNaturalText((string) ($decoded['strategy_tip'] ?? $fallbackVariants['strategy_tip'])),
                     ];
                 }
             } catch (\Throwable) {
@@ -98,9 +135,14 @@ PROMPT;
         return [
             'ok' => true,
             'ai_source' => 'Smart Contextual AI Engine',
-            'primary_message' => $fallbackVariants['primary_message'],
-            'variants' => $fallbackVariants['variants'],
-            'strategy_tip' => $fallbackVariants['strategy_tip'],
+            'primary_message' => self::sanitizeNaturalText($fallbackVariants['primary_message']),
+            'variants' => array_map(function ($item) {
+                return [
+                    'title' => self::sanitizeNaturalText((string) ($item['title'] ?? 'Variasi')),
+                    'text' => self::sanitizeNaturalText((string) ($item['text'] ?? '')),
+                ];
+            }, $fallbackVariants['variants']),
+            'strategy_tip' => self::sanitizeNaturalText($fallbackVariants['strategy_tip']),
         ];
     }
 
@@ -145,6 +187,11 @@ Tentukan rekomendasi pembaruan status CRM yang paling akurat. Pilihan yang valid
 - recommended_stage: "Tahap 1", "Tahap 2", atau "Tahap 3"
 - recommended_label: "Closing", "Minat/Tertarik", "Ragu-ragu", "Menolak", atau "Tidak Merespon"
 
+ATURAN FORMAT:
+- DILARANG menggunakan icon/emoji.
+- DILARANG menggunakan tanda bintang (*) atau bold.
+- Tulis saran balasan (suggested_reply) secara natural dan sopan.
+
 Kembalikan HANYA JSON murni tanpa markdown:
 {
   "recommended_stage": "Tahap 2",
@@ -152,7 +199,7 @@ Kembalikan HANYA JSON murni tanpa markdown:
   "recommended_reason": "Ringkasan jelas alasan/minat/kendala siswa (maks 120 karakter)",
   "sentiment": "Positif / Hangat / Ragu-ragu / Menolak",
   "analysis_summary": "Evaluasi singkat 1-2 kalimat tentang respons siswa dan peluang closing",
-  "suggested_reply": "Pesan balasan WhatsApp terbaik yang siap dikirim agent sekarang"
+  "suggested_reply": "Pesan balasan WhatsApp terbaik yang siap dikirim agent sekarang tanpa icon dan tanpa bold"
 }
 PROMPT;
 
@@ -176,10 +223,10 @@ PROMPT;
                         'ai_source' => 'Gemini AI (' . $this->model() . ')',
                         'recommended_stage' => $recStage,
                         'recommended_label' => $recLabel,
-                        'recommended_reason' => (string) ($decoded['recommended_reason'] ?? $heuristic['recommended_reason']),
-                        'sentiment' => (string) ($decoded['sentiment'] ?? $heuristic['sentiment']),
-                        'analysis_summary' => (string) ($decoded['analysis_summary'] ?? $heuristic['analysis_summary']),
-                        'suggested_reply' => (string) ($decoded['suggested_reply'] ?? $heuristic['suggested_reply']),
+                        'recommended_reason' => self::sanitizeNaturalText((string) ($decoded['recommended_reason'] ?? $heuristic['recommended_reason'])),
+                        'sentiment' => self::sanitizeNaturalText((string) ($decoded['sentiment'] ?? $heuristic['sentiment'])),
+                        'analysis_summary' => self::sanitizeNaturalText((string) ($decoded['analysis_summary'] ?? $heuristic['analysis_summary'])),
+                        'suggested_reply' => self::sanitizeNaturalText((string) ($decoded['suggested_reply'] ?? $heuristic['suggested_reply'])),
                     ];
                 }
             } catch (\Throwable) {
@@ -212,12 +259,12 @@ PROMPT;
             'headline' => "Total {$total} Leads aktif (Konversi Closing {$convRate}%). Fokus utama hari ini: eksekusi {$warmCount} Prospek Hangat (Minat & Ragu-ragu) dan percepat sapaan pada {$stage1} data Tahap 1.",
             'priorities' => [
                 $warmCount > 0
-                    ? "Prioritas 1 (Quick Wins): Hubungi {$interested} siswa 'Minat/Tertarik' & {$hesitant} siswa 'Ragu-ragu' menggunakan fitur Chat WA & AI dengan template Info Beasiswa / Diskon Gelombang."
-                    : "Prioritas 1 (Inisiasi Tahap 1): Lakukan sapaan awal WhatsApp pada {$stage1} data Fresh Tahap 1 agar segera berpindah ke Tahap 2.",
+                    ? "Prioritas 1 (Peluang Utama): Hubungi {$interested} siswa yang berminat dan {$hesitant} siswa yang masih ragu-ragu menggunakan template info beasiswa atau potongan gelombang."
+                    : "Prioritas 1 (Inisiasi Tahap 1): Lakukan sapaan awal WhatsApp pada {$stage1} data baru Tahap 1 agar segera berpindah ke Tahap 2.",
                 $unassigned > 0
-                    ? "Prioritas 2 (Distribusi Beban): Terdapat {$unassigned} data belum memiliki agent. Gunakan tombol 'Auto Assign' agar seluruh prospek langsung ditangani."
-                    : "Prioritas 2 (Re-engagement): Kirim pesan follow-up ke {$noResponse} prospek 'Tidak Merespon' pada jam prime-time (15.30 - 19.30 WIB).",
-                "Prioritas 3 (Dokumentasi Bukti Chat): Gunakan tombol 'Simpan Chat Jadi Gambar Bukti CRM' di ruang chat aplikasi agar seluruh percakapan terdokumentasi otomatis sebagai gambar.",
+                    ? "Prioritas 2 (Distribusi Beban): Terdapat {$unassigned} data belum memiliki agent. Gunakan tombol Auto Assign agar seluruh prospek langsung ditangani."
+                    : "Prioritas 2 (Follow-up Lanjutan): Kirim pesan follow-up ke {$noResponse} prospek yang belum merespon pada jam senggang siswa sekolah (15.30 - 19.30 WIB).",
+                "Prioritas 3 (Dokumentasi Chat): Gunakan tombol Simpan Chat Jadi Gambar Bukti CRM di ruang chat aplikasi agar seluruh percakapan tersimpan otomatis sebagai arsip.",
             ],
             'custom_answer' => $customQuestion !== ''
                 ? "Untuk pertanyaan Anda (\"{$customQuestion}\"): Fokuskan pendekatan personal berbasis asal sekolah dan event yang pernah diikuti siswa, tawarkan konsultasi jurusan gratis via WA, lalu simpan bukti tangkapan chat langsung dari panel Workspace."
@@ -235,6 +282,10 @@ Berikut adalah statistik antrean CRM saat ini:
 - Closing: {$closing} ({$convRate}%) | Minat/Tertarik: {$interested} | Ragu-ragu: {$hesitant} | Menolak: {$rejected} | Tidak Merespon: {$noResponse}
 - Pertanyaan Spesifik User: {$customQuestion}
 
+ATURAN FORMAT:
+- DILARANG menggunakan icon/emoji.
+- DILARANG menggunakan tanda bintang (*) atau bold.
+
 Kembalikan HANYA JSON murni tanpa markdown:
 {
   "headline": "Ringkasan analisis taktis 1-2 kalimat berdasarkan angka di atas",
@@ -250,14 +301,16 @@ PROMPT;
                 $raw = $this->callGemini($prompt, 700, 0.45);
                 $decoded = $this->extractJsonObject($raw);
                 if (is_array($decoded) && ! empty($decoded['headline'])) {
+                    $priorities = is_array($decoded['priorities'] ?? null) && $decoded['priorities'] !== []
+                        ? array_values(array_map('strval', $decoded['priorities']))
+                        : $fallback['priorities'];
+
                     return [
                         'ok' => true,
                         'ai_source' => 'Gemini AI (' . $this->model() . ')',
-                        'headline' => (string) $decoded['headline'],
-                        'priorities' => is_array($decoded['priorities'] ?? null) && $decoded['priorities'] !== []
-                            ? array_values(array_map('strval', $decoded['priorities']))
-                            : $fallback['priorities'],
-                        'custom_answer' => (string) ($decoded['custom_answer'] ?? $fallback['custom_answer']),
+                        'headline' => self::sanitizeNaturalText((string) $decoded['headline']),
+                        'priorities' => array_map([self::class, 'sanitizeNaturalText'], $priorities),
+                        'custom_answer' => self::sanitizeNaturalText((string) ($decoded['custom_answer'] ?? $fallback['custom_answer'])),
                     ];
                 }
             } catch (\Throwable) {
@@ -279,54 +332,54 @@ PROMPT;
         string $intent,
         string $customPrompt
     ): array {
-        $schoolMention = $school !== '' && $school !== '-' ? " dari *{$school}*" : '';
-        $eventMention = $eventTitle !== '' && $eventTitle !== '-' ? " pada kegiatan *{$eventTitle}*" : '';
+        $schoolMention = $school !== '' && $school !== '-' ? " dari {$school}" : '';
+        $eventMention = $eventTitle !== '' && $eventTitle !== '-' ? " di kegiatan {$eventTitle}" : '';
 
         switch ($intent) {
             case 'follow_up_minat':
-                $primary = "Halo Kak *{$studentName}*{$schoolMention} 👋😊\n\nTerima kasih sudah antusias mengikuti informasi dari *{$campus}*{$eventMention}. Karena Kakak kemarin sudah tertarik untuk lanjut, saat ini kuota pendaftaran gelombang berjalan masih dibuka dan ada potongan biaya pendidikan khusus lho! 🎓✨\n\nKira-kira Kak {$studentName} ingin ambil program studi/jurusan apa nih? Yuk kita bantu proses pendaftarannya dari sekarang 😊";
-                $tip = 'Siswa sudah menunjukkan minat; arahkan langsung ke pemilihan jurusan dan langkah pengisian formulir PMB.';
+                $primary = "Halo Kak {$studentName}{$schoolMention}, apa kabar? Terima kasih sudah antusias mengikuti informasi dari {$campus}{$eventMention}. Karena kemarin Kakak tertarik untuk lanjut kuliah, saat ini kuota pendaftaran gelombang berjalan masih dibuka dan ada potongan biaya pendidikan khusus. Kira-kira Kak {$studentName} berencana ambil program studi atau jurusan apa? Boleh sharing ya Kak, supaya bisa kami bantu proses pendaftarannya.";
+                $tip = 'Siswa sudah menunjukkan minat. Arahkan langsung ke pemilihan jurusan dan panduan pengisian formulir PMB.';
                 break;
 
             case 'atasi_ragu':
-                $reasonNote = $reason !== '' ? " terkait *{$reason}*" : ' soal pilihan jurusan maupun rincian biaya kuliah';
-                $primary = "Halo Kak *{$studentName}*{$schoolMention} 👋\n\nApa kabar Kak? Menindaklanjuti obrolan kita sebelumnya{$reasonNote}, tim admisi *{$campus}* siap banget bantu kasih solusi terbaik buat Kakak 😊💡\n\nDi {$campus} tersedia skema cicilan biaya kuliah yang sangat ringan, jalur beasiswa, serta pilihan kelas Reguler maupun Karyawan. Kalau Kak {$studentName} ada yang masih ingin ditanyakan atau didiskusikan bareng orang tua, boleh banget balas pesan ini ya Kak! 🙏";
-                $tip = 'Gunakan pendekatan empati & konsultatif; tawarkan rincian cicilan atau brosur digital untuk meyakinkan orang tua.';
+                $reasonNote = $reason !== '' ? " seputar {$reason}" : ' mengenai pilihan jurusan maupun rincian biaya kuliah';
+                $primary = "Halo Kak {$studentName}{$schoolMention}, apa kabar? Menindaklanjuti obrolan kita sebelumnya{$reasonNote}, tim admisi {$campus} siap bantu carikan solusi terbaik buat Kakak. Di {$campus} tersedia skema cicilan biaya kuliah yang terjangkau, program beasiswa, serta pilihan kelas reguler maupun kelas karyawan. Kalau Kak {$studentName} ada yang masih ingin ditanyakan atau didiskusikan bersama orang tua, silakan kabari ya Kak.";
+                $tip = 'Gunakan pendekatan empati dan konsultatif. Tawarkan rincian cicilan atau brosur digital untuk didiskusikan bersama orang tua.';
                 break;
 
             case 'info_beasiswa':
-                $primary = "Halo Kak *{$studentName}*{$schoolMention}! 🌟🎓\n\nKabar gembira dari *{$campus}*! Sebagai peserta{$eventMention}, Kak {$studentName} berkesempatan mendapatkan *Program Beasiswa & Voucher Potongan Dana Pengembangan Pendidikan* untuk pendaftaran mahasiswa baru tahun ini.\n\nKuota voucher terbatas untuk pendaftar minggu ini. Mau saya kirimkan info syarat dan cara klaim beasiswanya sekarang, Kak? 😊";
-                $tip = 'Program beasiswa/potongan biaya sangat efektif untuk mengubah status Ragu-ragu atau Tidak Merespon menjadi Minat.';
+                $primary = "Halo Kak {$studentName}{$schoolMention}, kabar baik dari {$campus}. Sebagai peserta{$eventMention}, Kak {$studentName} berkesempatan mendapatkan program beasiswa dan voucher potongan biaya pendidikan untuk pendaftaran mahasiswa baru tahun ini. Kuota voucher ini terbatas untuk periode pendaftaran minggu ini. Apakah Kakak ingin saya kirimkan info syarat dan cara klaim beasiswanya sekarang?";
+                $tip = 'Program beasiswa atau potongan biaya sangat efektif untuk mengajak siswa yang ragu atau belum merespon.';
                 break;
 
             case 'reengage':
-                $primary = "Halo Kak *{$studentName}*{$schoolMention}, selamat siang 👋😊\n\nSemoga Kak {$studentName} sehat dan lancar selalu kegiatannya di sekolah ya! Saya dari tim informasi *{$campus}* ingin menyapa kembali setelah kegiatan{$eventMention} kemarin.\n\nApakah Kakak sudah punya rencana lanjut kuliah di jurusan apa setelah lulus nanti? Balas *\"INFO\"* aja ya Kak kalau mau saya kirimkan e-brosur jurusan & rincian beasiswa terbaru dari {$campus} 🙌";
-                $tip = 'Berikan Call-to-Action (CTA) yang sangat mudah dijawab (misal balas 1 kata) untuk memancing respons pertama.';
+                $primary = "Halo Kak {$studentName}{$schoolMention}, selamat siang. Semoga kegiatan Kak {$studentName} di sekolah selalu lancar ya. Saya dari tim informasi {$campus} ingin menyapa kembali setelah kegiatan{$eventMention} kemarin. Apakah Kakak sudah memiliki rencana pilihan jurusan setelah lulus nanti? Kalau Kakak berminat, saya bisa kirimkan brosur jurusan dan rincian beasiswa terbaru dari {$campus}.";
+                $tip = 'Berikan pertanyaan santai dan mudah dijawab untuk membuka percakapan kembali.';
                 break;
 
             case 'closing_daftar':
-                $primary = "Selamat Kak *{$studentName}*{$schoolMention}! 🎉🎓\n\nLangkah Kakak untuk bergabung di *{$campus}* sudah hampir selesai. Untuk mengamankan kuota jurusan dan potongan gelombang saat ini, berikut panduan singkat penyelesaian pendaftaran / daftar ulangnya ya Kak.\n\nJika bukti registrasi sudah siap, boleh langsung dikirimkan di chat ini supaya langsung kami verifikasi di sistem PMB {$campus}. Terima kasih Kak! 🙏✨";
-                $tip = 'Pastikan siswa mengirimkan bukti daftar/pembayaran, lalu simpan percakapan ini sebagai gambar bukti Closing.';
+                $primary = "Halo Kak {$studentName}{$schoolMention}, langkah Kakak untuk bergabung di {$campus} sudah hampir selesai. Untuk mengamankan kuota jurusan dan potongan gelombang saat ini, berikut panduan singkat penyelesaian pendaftaran dan daftar ulangnya ya Kak. Jika bukti registrasi sudah ada, boleh langsung dikirimkan di sini agar bisa kami bantu verifikasi di sistem PMB {$campus}. Terima kasih banyak ya Kak.";
+                $tip = 'Pastikan siswa mengirimkan konfirmasi pendaftaran atau bukti transfer untuk verifikasi data.';
                 break;
 
             default:
-                $customLine = $customPrompt !== '' ? "\n\nCatatan khusus untuk Kakak: {$customPrompt}" : '';
-                $primary = "Halo Kak *{$studentName}*{$schoolMention}! 👋😊\n\nPerkenalkan saya dari tim Admisi *{$campus}*. Terima kasih banyak ya sudah berpartisipasi{$eventMention} bersama kami! 🙌\n\nKami ingin berbagi informasi seputar peluang kuliah, pilihan jurusan favorit, serta jalur Beasiswa PMB di *{$campus}*.{$customLine}\n\nNgomong-ngomong, setelah lulus nanti Kak {$studentName} paling tertarik di bidang atau jurusan apa nih? Yuk sharing sebentar Kak! 😊";
-                $tip = 'Sapaan awal yang menyebutkan nama siswa, asal sekolah, dan nama event meningkatkan rasio balasan hingga 3x lipat.';
+                $customLine = $customPrompt !== '' ? "\n\nCatatan khusus: {$customPrompt}" : '';
+                $primary = "Halo Kak {$studentName}{$schoolMention}, perkenalkan saya dari tim admisi {$campus}. Terima kasih banyak ya sudah berpartisipasi{$eventMention} bersama kami. Kami ingin berbagi informasi seputar peluang kuliah, pilihan jurusan favorit, serta jalur beasiswa PMB di {$campus}.{$customLine}\n\nSetelah lulus nanti, Kak {$studentName} paling tertarik di bidang atau jurusan apa? Boleh ngobrol santai sebentar ya Kak.";
+                $tip = 'Sapaan awal yang menyebutkan nama siswa, sekolah, dan event membuat percakapan terasa personal dan bersahabat.';
                 break;
         }
 
-        $shortVariant = "Halo Kak *{$studentName}*{$schoolMention} 👋 Saya dari tim PMB *{$campus}*. Terima kasih sudah ikut{$eventMention}! Saat ini pendaftaran gelombang spesial & jalur beasiswa {$campus} sedang dibuka. Apakah Kakak berminat jika saya kirimkan info jurusan & rincian biayanya? 😊";
-        $scholarshipVariant = "Halo Kak *{$studentName}*{$schoolMention} 🎓✨ Spesial untuk alumni peserta{$eventMention}, *{$campus}* menyediakan jalur prioritas & keringanan biaya masuk kuliah. Boleh tahu jurusan impian Kak {$studentName} apa supaya saya cek kuota beasiswanya? 🙏";
+        $shortVariant = "Halo Kak {$studentName}{$schoolMention}, saya dari tim PMB {$campus}. Terima kasih sudah ikut{$eventMention} kemarin ya. Saat ini pendaftaran gelombang baru dan jalur beasiswa {$campus} sedang dibuka. Apakah Kakak berminat kalau saya kirimkan info jurusan dan rincian biayanya?";
+        $scholarshipVariant = "Halo Kak {$studentName}{$schoolMention}, khusus untuk peserta{$eventMention}, {$campus} menyediakan jalur prioritas dan keringanan biaya kuliah. Boleh tahu jurusan impian Kak {$studentName} apa supaya bisa kami bantu cek kuota beasiswanya?";
 
         return [
-            'primary_message' => $primary,
+            'primary_message' => self::sanitizeNaturalText($primary),
             'variants' => [
-                ['title' => 'Ramah & Personal (Rekomendasi)', 'text' => $primary],
-                ['title' => 'Singkat & To-The-Point', 'text' => $shortVariant],
-                ['title' => 'Fokus Beasiswa & Prioritas Event', 'text' => $scholarshipVariant],
+                ['title' => 'Ramah & Personal (Rekomendasi)', 'text' => self::sanitizeNaturalText($primary)],
+                ['title' => 'Singkat & To-The-Point', 'text' => self::sanitizeNaturalText($shortVariant)],
+                ['title' => 'Fokus Beasiswa & Prioritas Event', 'text' => self::sanitizeNaturalText($scholarshipVariant)],
             ],
-            'strategy_tip' => $tip,
+            'strategy_tip' => self::sanitizeNaturalText($tip),
         ];
     }
 
@@ -350,7 +403,7 @@ PROMPT;
                 'recommended_reason' => 'Belum ada balasan dari siswa di ruang chat.',
                 'sentiment' => 'Belum Merespon',
                 'analysis_summary' => "Siswa {$studentName} belum tercatat mengirimkan balasan di ruang chat. Kirim pesan sapaan atau re-engagement untuk memancing respons.",
-                'suggested_reply' => "Halo Kak *{$studentName}*, izin menyapa kembali dari tim PMB *{$campus}* 😊 Apakah informasi kegiatan dan pendaftaran yang kami kirimkan sebelumnya sudah diterima Kak? Jika ada yang ingin ditanyakan seputar jurusan atau beasiswa, silakan balas pesan ini ya Kak 🙏",
+                'suggested_reply' => self::sanitizeNaturalText("Halo Kak {$studentName}, izin menyapa kembali dari tim PMB {$campus}. Apakah informasi kegiatan dan pendaftaran yang kami kirimkan sebelumnya sudah diterima Kak? Jika ada yang ingin ditanyakan seputar jurusan atau beasiswa, silakan kabari kami ya Kak."),
             ];
         }
 
@@ -360,10 +413,10 @@ PROMPT;
                 'ai_source' => 'Smart Contextual AI Engine',
                 'recommended_stage' => 'Tahap 3',
                 'recommended_label' => 'Closing',
-                'recommended_reason' => 'Siswa konfirmasi sudah melakukan pendaftaran/pembayaran PMB.',
+                'recommended_reason' => 'Siswa konfirmasi sudah melakukan pendaftaran atau pembayaran PMB.',
                 'sentiment' => 'Sangat Positif (Closing)',
                 'analysis_summary' => "Balasan siswa menunjukkan konfirmasi pendaftaran/pembayaran. Direkomendasikan mengubah status ke Tahap 3 - Closing dan menyimpan gambar chat sebagai bukti.",
-                'suggested_reply' => "Alhamdulillah, terima kasih banyak Kak *{$studentName}*! 🎉 Selamat bergabung menjadi bagian dari keluarga besar *{$campus}*. Data pendaftaran Kakak segera kami catat dan verifikasi ya. Jangan ragu hubungi kami jika butuh bantuan jadwal orientasi/perkuliahan! 🙏✨",
+                'suggested_reply' => self::sanitizeNaturalText("Alhamdulillah, terima kasih banyak Kak {$studentName}. Selamat bergabung menjadi bagian dari keluarga besar {$campus}. Data pendaftaran Kakak segera kami catat dan verifikasi. Jangan ragu hubungi kami jika butuh bantuan informasi perkuliahan ya Kak."),
             ];
         }
 
@@ -371,7 +424,7 @@ PROMPT;
             $reason = str_contains($lower, 'kerja')
                 ? 'Memilih langsung bekerja setelah lulus sekolah'
                 : (str_contains($lower, 'kampus lain') || str_contains($lower, 'diterima')
-                    ? 'Sudah diterima / mendaftar di perguruan tinggi lain'
+                    ? 'Sudah diterima atau mendaftar di perguruan tinggi lain'
                     : 'Belum berminat melanjutkan pendaftaran saat ini');
 
             return [
@@ -381,17 +434,17 @@ PROMPT;
                 'recommended_label' => 'Menolak',
                 'recommended_reason' => $reason,
                 'sentiment' => 'Menolak / Negatif',
-                'analysis_summary' => "Siswa menyampaikan penolakan ({$reason}). Catat alasan penolakan di kolom CRM dan berikan penutupan yang sopan (atau tawarkan kelas karyawan jika memilih bekerja).",
-                'suggested_reply' => "Baik Kak *{$studentName}*, terima kasih banyak atas konfirmasinya ya 🙏 Semoga sukses selalu untuk langkah Kakak ke depannya! Sebagai informasi, di *{$campus}* juga tersedia *Kelas Karyawan / Sore-Malam* yang fleksibel sambil bekerja. Jika sewaktu-waktu Kakak atau teman membutuhkan info kuliah, nomor ini selalu aktif ya Kak 😊",
+                'analysis_summary' => "Siswa menyampaikan penolakan ({$reason}). Catat alasan penolakan di kolom CRM dan berikan penutupan yang sopan.",
+                'suggested_reply' => self::sanitizeNaturalText("Baik Kak {$studentName}, terima kasih banyak atas konfirmasinya ya. Semoga sukses selalu untuk langkah Kakak ke depan. Di {$campus} juga tersedia kelas karyawan sore atau malam yang fleksibel sambil bekerja. Jika sewaktu-waktu Kakak atau teman membutuhkan info kuliah, nomor ini selalu aktif ya Kak."),
             ];
         }
 
         if (preg_match('/(ragu|bingung|tanya orang tua|ortu|mahal|biaya|cicilan|pikir-pikir|nanti dulu|belum tahu)/i', $lower)) {
             $reason = str_contains($lower, 'biaya') || str_contains($lower, 'mahal') || str_contains($lower, 'cicil')
-                ? 'Masih mempertimbangkan rincian biaya kuliah & skema cicilan'
+                ? 'Masih mempertimbangkan rincian biaya kuliah dan skema cicilan'
                 : (str_contains($lower, 'ortu') || str_contains($lower, 'orang tua')
                     ? 'Menunggu diskusi dan persetujuan orang tua'
-                    : 'Masih ragu memilih jurusan / waktu pendaftaran');
+                    : 'Masih ragu memilih jurusan atau waktu pendaftaran');
 
             return [
                 'ok' => true,
@@ -401,7 +454,7 @@ PROMPT;
                 'recommended_reason' => $reason,
                 'sentiment' => 'Hangat / Ragu-ragu',
                 'analysis_summary' => "Siswa merespon tetapi memiliki keraguan ({$reason}). Berikan solusi skema pembayaran bertahap atau brosur resmi untuk didiskusikan bersama orang tua.",
-                'suggested_reply' => "Siap Kak *{$studentName}*, tidak apa-apa banget untuk didiskusikan dulu bersama orang tua 😊 Sebagai bahan pertimbangan, di *{$campus}* biaya kuliahnya sangat terjangkau, bisa dicicil bulanan, dan ada potongan khusus gelombang ini. Mau saya kirimkan rincian tabel biaya & brosur PDF-nya supaya mudah ditunjukkan ke orang tua, Kak? 🙏",
+                'suggested_reply' => self::sanitizeNaturalText("Siap Kak {$studentName}, silakan didiskusikan terlebih dahulu bersama orang tua ya. Sebagai bahan pertimbangan, di {$campus} biaya kuliahnya terjangkau, bisa dicicil per bulan, dan ada potongan khusus gelombang ini. Mau saya kirimkan tabel rincian biaya dan brosur digitalnya agar lebih mudah dibaca bersama orang tua, Kak?"),
             ];
         }
 
@@ -412,14 +465,13 @@ PROMPT;
             'recommended_label' => 'Minat/Tertarik',
             'recommended_reason' => 'Siswa merespon positif dan menanyakan info pendaftaran/jurusan.',
             'sentiment' => 'Positif (Prospek Hangat)',
-            'analysis_summary' => "Siswa memberikan respons positif terhadap informasi kampus. Segera arahkan ke pemilihan program studi dan panduan link/formulir pendaftaran.",
-            'suggested_reply' => "Terima kasih responsnya Kak *{$studentName}*! 😊 Senang sekali mendengar Kakak tertarik bergabung di *{$campus}*. Untuk langkah selanjutnya, Kakak bisa mendaftar secara online maupun dibantu langsung oleh tim kami agar mendapat potongan gelombang saat ini. Kira-kira Kakak ingin masuk di jurusan apa dan kelas Reguler Pagi atau Sore nih Kak? 🎓✨",
+            'analysis_summary' => "Siswa memberikan respons positif terhadap informasi kampus. Segera arahkan ke pemilihan program studi dan panduan pendaftaran.",
+            'suggested_reply' => self::sanitizeNaturalText("Terima kasih responsnya Kak {$studentName}. Senang sekali mendengar Kakak tertarik bergabung di {$campus}. Untuk langkah selanjutnya, Kakak bisa mendaftar secara online maupun dibantu langsung oleh tim kami agar mendapat potongan gelombang saat ini. Kira-kira Kakak ingin masuk di jurusan apa nih Kak?"),
         ];
     }
 
     private function callGemini(string $prompt, int $maxTokens = 800, float $temperature = 0.45): string
     {
-        $url = rtrim($this->config->baseURL, '/') . '/models/' . rawurlencode($this->model()) . ':generateContent';
         $payload = [
             'contents' => [
                 [
@@ -435,6 +487,8 @@ PROMPT;
             ],
         ];
 
+        $url = rtrim($this->config->baseURL, '/') . '/models/' . rawurlencode($this->model()) . ':generateContent';
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -444,8 +498,7 @@ PROMPT;
                 'x-goog-api-key: ' . $this->config->apiKey,
             ],
             CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_TIMEOUT => 18,
-            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT => (int) ($this->config->timeout ?? 20),
         ]);
 
         $body = curl_exec($ch);
@@ -454,38 +507,34 @@ PROMPT;
         curl_close($ch);
 
         if ($body === false || $error !== '' || $status < 200 || $status >= 300) {
-            throw new \RuntimeException('Gemini request failed: ' . ($error ?: 'HTTP ' . $status));
+            throw new \RuntimeException('Gemini API call failed: ' . ($error ?: 'HTTP ' . $status));
         }
 
         $decoded = json_decode((string) $body, true);
-        $parts = $decoded['candidates'][0]['content']['parts'] ?? [];
-        $text = '';
-        foreach ($parts as $part) {
-            $text .= (string) ($part['text'] ?? '');
+        if (! is_array($decoded)) {
+            throw new \RuntimeException('Invalid Gemini response.');
         }
 
-        return trim($text);
+        $candidates = $decoded['candidates'] ?? [];
+        $text = $candidates[0]['content']['parts'][0]['text'] ?? '';
+
+        return trim((string) $text);
     }
 
     private function extractJsonObject(string $raw): ?array
     {
-        $clean = trim($raw);
-        $clean = preg_replace('/^```(?:json)?\s*/i', '', $clean) ?? $clean;
-        $clean = preg_replace('/\s*```$/', '', $clean) ?? $clean;
-
-        $decoded = json_decode($clean, true);
-        if (is_array($decoded)) {
-            return $decoded;
+        $raw = trim($raw);
+        if ($raw === '') {
+            return null;
         }
 
-        if (preg_match('/\{[\s\S]*\}/', $clean, $matches) === 1) {
-            $decoded = json_decode($matches[0], true);
-            if (is_array($decoded)) {
-                return $decoded;
-            }
+        if (preg_match('/```(?:json)?\s*(\{.*?\})\s*```/s', $raw, $matches)) {
+            $raw = $matches[1];
+        } elseif (preg_match('/(\{.*\})/s', $raw, $matches)) {
+            $raw = $matches[1];
         }
 
-        return null;
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : null;
     }
 }
-

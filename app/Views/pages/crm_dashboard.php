@@ -1432,9 +1432,7 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                 ✨ Buat Pesan AI
                             </button>
                         </div>
-                        <div id="crm-ai-strategy-tip" style="margin-top:7px;font-size:11.5px;color:#065f46;background:#ecfdf5;padding:6px 9px;border-radius:7px;border:1px solid #a7f3d0;">
-                            💡 Pilih skenario di atas untuk menyusun pesan WhatsApp yang dipersonalisasi bagi siswa ini.
-                        </div>
+                        <div id="crm-ai-strategy-tip" style="margin-top:7px;font-size:11.5px;color:#065f46;background:#ecfdf5;padding:6px 9px;border-radius:7px;border:1px solid #a7f3d0;">Tips AI: Pilih skenario di atas untuk menyusun pesan WhatsApp yang dipersonalisasi bagi siswa ini.</div>
                         <div class="crm-ai-variants-list" id="crm-ai-variants-list"></div>
                     </div>
 
@@ -1666,13 +1664,15 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
             if (!aiData) return;
             aiSourceLabel.textContent = aiData.ai_source || 'AI Ready';
             if (aiData.strategy_tip) {
-                aiStrategyTip.textContent = '💡 Tips AI: ' + aiData.strategy_tip;
+                var cleanTip = (aiData.strategy_tip || '').replace(/^[^a-zA-Z0-9]+/, '').trim();
+                aiStrategyTip.textContent = 'Tips AI: ' + cleanTip;
             }
             aiVariantsList.innerHTML = '';
             const variants = aiData.variants || [];
             variants.forEach((v, idx) => {
                 const card = document.createElement('div');
                 card.className = 'crm-ai-variant-item';
+                const cleanText = (v.text || '').replace(/\*+([^*]+)\*+/g, '').replace(/\*/g, '');
                 card.innerHTML =
                     '<div class="crm-ai-variant-head">' +
                         '<span>' + escapeHtml(v.title || ('Variasi ' + (idx + 1))) + '</span>' +
@@ -1680,18 +1680,18 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                             '<button type="button" class="crm-ai-use-btn" data-use-variant="' + idx + '">Gunakan ke Chat</button>' +
                         '</div>' +
                     '</div>' +
-                    '<div class="crm-ai-variant-text">' + escapeHtml(v.text || '') + '</div>';
+                    '<div class="crm-ai-variant-text">' + escapeHtml(cleanText) + '</div>';
                 card.querySelector('[data-use-variant]').addEventListener('click', () => {
                     setSenderMode('agent');
-                    msgInput.value = v.text || '';
+                    msgInput.value = cleanText;
                     msgInput.focus();
-                    showToast('✓ Script AI dimasukkan ke kotak chat WA!');
+                    showToast('Script AI dimasukkan ke kotak chat WA!');
                 });
                 aiVariantsList.appendChild(card);
             });
 
             if (aiData.primary_message && msgInput.value.trim() === '') {
-                msgInput.value = aiData.primary_message;
+                msgInput.value = (aiData.primary_message || '').replace(/\*+([^*]+)\*+/g, '').replace(/\*/g, '');
             }
         }
 
