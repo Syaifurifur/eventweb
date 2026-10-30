@@ -68,6 +68,7 @@ $dxIcon = static function (string $name, int $size = 18): string {
         'home' => '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
         'arrow-up' => '<path d="M12 19V5M5 12l7-7 7 7"/>',
         'arrow-down' => '<path d="M12 5v14M19 12l-7 7-7-7"/>',
+        'sparkles' => '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>',
         'external' => '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>',
         'trash' => '<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
         'bell' => '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
@@ -138,6 +139,8 @@ $baseQuery = $documentPagination['query'] ?? [];
     .dx-btn-primary:hover { background:var(--dx-primary-dark); border-color:var(--dx-primary-dark); }
     .dx-btn-outline { color:var(--dx-primary); border-color:#bfdbfe; }
     .dx-btn-outline:hover, .dx-btn-outline.is-active { background:#eff6ff; border-color:#93c5fd; }
+    .dx-btn-ai { background:linear-gradient(135deg, #2563eb, #7c3aed); border-color:#7c3aed; color:#fff !important; box-shadow:0 4px 12px rgba(37,99,235,.28); text-decoration:none; }
+    .dx-btn-ai:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(37,99,235,.38); color:#fff !important; }
     .dx-btn-sm { height:34px; padding:0 14px; font-size:12.5px; border-radius:8px; }
 
     .dx-stats { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:16px; }
@@ -554,6 +557,8 @@ $baseQuery = $documentPagination['query'] ?? [];
                                             $formId = 'dx-form-' . $rowIndex . '-' . $type;
                                             $statusText = (string) ($document['status'] ?? '-');
                                             $docCode = (string) ($document['code'] ?? '-');
+                                            $docType = in_array($type, ['proposal', 'report'], true) ? $type : 'proposal';
+                                            $eventDbId = (string) ($event['db_id'] ?? $event['id'] ?? $eventCode);
                                         ?>
                                         <div class="dx-doc-row">
                                             <div class="dx-doc-name">
@@ -579,7 +584,10 @@ $baseQuery = $documentPagination['query'] ?? [];
                                                     Belum ada dokumen dari upload event.
                                                 <?php endif; ?>
                                             </div>
-                                            <div>
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <a class="dx-btn dx-btn-ai dx-btn-sm" href="<?= site_url('documents/generate?event_id=' . urlencode((string) $eventDbId) . '&type=' . urlencode((string) $docType)) ?>" title="Generate <?= esc($document['label'] ?? 'Dokumen') ?> dengan bantuan AI">
+                                                    <?= $dxIcon('sparkles', 13) ?> <span>Generate AI</span>
+                                                </a>
                                                 <?php if ($isAdminSystem): ?>
                                                     <button type="button" class="dx-btn dx-btn-outline dx-btn-sm" data-dx-upload="<?= esc($formId, 'attr') ?>"><?= $dxIcon('upload', 14) ?> Upload</button>
                                                 <?php else: ?>
@@ -589,6 +597,9 @@ $baseQuery = $documentPagination['query'] ?? [];
                                             <details class="dx-menu">
                                                 <summary aria-label="Menu dokumen"><?= $dxIcon('more', 18) ?></summary>
                                                 <div class="dx-menu-pop">
+                                                    <a href="<?= site_url('documents/generate?event_id=' . urlencode((string) $eventDbId) . '&type=' . urlencode((string) $docType)) ?>">
+                                                        <?= $dxIcon('sparkles', 14) ?> Generate dengan AI
+                                                    </a>
                                                     <?php if ($documentHref !== ''): ?>
                                                         <a href="<?= esc($documentHref) ?>" target="_blank" rel="noopener"><?= $dxIcon('external', 14) ?> Buka dokumen</a>
                                                     <?php endif; ?>

@@ -94,12 +94,22 @@ Route::middleware('legacy.auth')->group(function (): void {
 
     Route::get('documents', [EventSuite::class, 'documents'])->middleware('access:documents');
     Route::get('documents/notification/open', [EventSuite::class, 'openDocumentNotification'])->middleware('access:documents');
+    Route::get('documents/generate', [EventSuite::class, 'aiGenerateDocument'])->middleware('access:documents');
+    Route::post('documents/generate/process', [EventSuite::class, 'aiProcessGenerateDocument'])->middleware('access:documents');
+    Route::post('documents/generate/save', [EventSuite::class, 'aiSaveGeneratedDocument'])->middleware('access:documents');
+    Route::get('documents/generate/export-word', [EventSuite::class, 'aiExportWordDocument'])->middleware('access:documents');
+    Route::get('documents/generate/export-pdf', [EventSuite::class, 'aiExportPdfDocument'])->middleware('access:documents');
     Route::get('documents/{type}', [EventSuite::class, 'documents'])->middleware('access:documents');
     Route::get('documents/{code}/{type}/preview', [EventSuite::class, 'previewDocument'])->middleware('access:documents');
     Route::get('documents/{code}/{type}/download', [EventSuite::class, 'downloadDocument'])->middleware('access:documents');
     Route::post('documents/{code}/{type}/template', [EventSuite::class, 'uploadDocumentTemplate'])->middleware('role:Admin Sistem');
     Route::post('documents/{code}/{type}/link', [EventSuite::class, 'updateDocumentLink'])->middleware('role:Admin Sistem');
     Route::post('documents/{code}/{type}/delete', [EventSuite::class, 'deleteDocumentLink'])->middleware('role:Admin Sistem');
+
+    Route::get('document-templates', [EventSuite::class, 'documentTemplates'])->middleware('access:documents');
+    Route::post('document-templates/create', [EventSuite::class, 'createDocumentTemplate'])->middleware('role:Admin Sistem');
+    Route::post('document-templates/{id}/update', [EventSuite::class, 'updateDocumentTemplate'])->middleware('role:Admin Sistem');
+    Route::post('document-templates/{id}/delete', [EventSuite::class, 'deleteDocumentTemplate'])->middleware('role:Admin Sistem');
 
     Route::get('generate-documents', [EventSuite::class, 'generateDocuments'])->middleware('access:documents');
     Route::get('generate-documents/{type}', [EventSuite::class, 'generateDocuments'])->middleware('access:documents');
@@ -138,6 +148,8 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('notifications/read-all', [EventSuite::class, 'markNotificationsRead'])->middleware('access:notifications');
 
     Route::get('users', [EventSuite::class, 'users'])->middleware('role:Admin Sistem');
+    Route::match(['get', 'post'], 'impersonate/leave', [EventSuite::class, 'leaveImpersonation']);
+    Route::match(['get', 'post'], 'impersonate/{id}', [EventSuite::class, 'impersonateUser'])->whereNumber('id');
     Route::post('users', [EventSuite::class, 'storeUser'])->middleware('role:Admin Sistem');
     Route::post('users/{id}/update', [EventSuite::class, 'updateUser'])->middleware('role:Admin Sistem')->whereNumber('id');
     Route::post('users/{id}/delete', [EventSuite::class, 'deleteUser'])->middleware('role:Admin Sistem')->whereNumber('id');

@@ -20,8 +20,8 @@ $navGroups = [
     [
         'title' => 'Dokumen & Laporan',
         'items' => [
-            ['key' => 'documents', 'label' => 'Dokumen', 'url' => site_url('documents'), 'icon' => 'solar:document-text-outline'],
-            ['key' => 'generate-documents', 'label' => 'Generate Otomatis', 'url' => site_url('generate-documents/proposal'), 'icon' => 'hugeicons:ai-brain-03'],
+            ['key' => 'documents', 'label' => 'Dokumen Event', 'url' => site_url('documents'), 'icon' => 'solar:document-text-outline'],
+            ['key' => 'document-templates', 'label' => 'Template Dokumen', 'url' => site_url('document-templates'), 'icon' => 'solar:documents-minimalistic-outline'],
             ['key' => 'crm-report', 'label' => 'Laporan CRM', 'url' => site_url('laporan-crm'), 'icon' => 'solar:pie-chart-3-outline'],
         ],
     ],
@@ -60,6 +60,7 @@ $canAccessItem = static function (string $key) use ($isAdminSystem, $userPermiss
         || in_array($key, $userPermissions, true)
         || ($key === 'task-manager' && in_array('dashboard', $userPermissions, true))
         || ($key === 'crm-report' && (in_array('reports', $userPermissions, true) || in_array('crm', $userPermissions, true) || in_array('dashboard', $userPermissions, true)))
+        || ($key === 'document-templates' && (in_array('documents', $userPermissions, true) || $isAdminSystem))
         || ($key === 'generate-documents' && in_array('documents', $userPermissions, true))
         || ($key === 'special-analytics' && $canViewSpecialAnalytics);
 };
@@ -152,6 +153,24 @@ $userInitial = strtoupper(substr($userName, 0, 1));
     </aside>
 
     <main class="dashboard-main">
+        <?php if (session('impersonator')): ?>
+            <div style="background:linear-gradient(90deg, #7c3aed 0%, #4f46e5 100%); color:#ffffff; padding:10px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; font-size:13px; box-shadow:0 4px 14px rgba(124,58,237,0.35); position:sticky; top:0; z-index:9999;">
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <span style="background:rgba(255,255,255,0.22); padding:3px 10px; border-radius:999px; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:5px;">
+                        <iconify-icon icon="solar:user-hand-up-bold" style="font-size:14px;"></iconify-icon>
+                        Mode Impersonate Super Admin
+                    </span>
+                    <span>Anda sedang login & memantau kegiatan sebagai: <strong><?= esc($currentUser['name'] ?? session('user.name')) ?></strong> <span style="background:rgba(255,255,255,0.18); padding:2px 8px; border-radius:4px; font-size:11.5px;"><?= esc($currentUser['role'] ?? session('user.role')) ?></span></span>
+                    <span style="opacity:0.85; font-size:12px;">&bull; Akun Asli: <strong><?= esc(session('impersonator.name')) ?></strong> (Super Admin)</span>
+                </div>
+                <div>
+                    <a href="<?= site_url('impersonate/leave') ?>" style="display:inline-flex; align-items:center; gap:6px; background:#ffffff; color:#4f46e5; font-weight:700; font-size:12.5px; padding:6px 14px; border-radius:6px; text-decoration:none; box-shadow:0 2px 6px rgba(0,0,0,0.12); transition:all .15s ease;">
+                        <iconify-icon icon="solar:logout-2-outline" style="font-size:16px;"></iconify-icon>
+                        <span>Kembali ke Akun Super Admin</span>
+                    </a>
+                </div>
+            </div>
+        <?php endif; ?>
         <div class="navbar-header border-b border-neutral-200 dark:border-neutral-600">
             <div class="flex items-center justify-between gap-4">
                 <div class="col-auto">

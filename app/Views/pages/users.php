@@ -663,8 +663,18 @@ $reviewCrmUsers = array_values(array_filter($crmUsers, static fn (array $user): 
                             </div>
                         </td>
                         <td>
-                            <details class="row-drawer">
-                                <summary class="ghost-button compact-button">Kelola</summary>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <?php if (! $isDeleted && (int) $user['id'] !== (int) session('user.id')): ?>
+                                    <form action="<?= site_url('impersonate/' . $user['id']) ?>" method="post" class="inline-form" onsubmit="return confirm('Masuk dan pantau kegiatan sebagai user <?= esc($user['name'], 'js') ?> (<?= esc($user['role'], 'js') ?>)?\n\nAnda dapat kembali ke akun Super Admin kapan saja.');">
+                                        <?= csrf_field() ?>
+                                        <button class="ghost-button compact-button" type="submit" style="color:#4f46e5; border-color:#c7d2fe; background:#eef2ff; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Masuk dan pantau kegiatan sebagai <?= esc($user['name'], 'attr') ?>">
+                                            <iconify-icon icon="solar:user-hand-up-outline" class="text-sm"></iconify-icon>
+                                            <span>Impersonate</span>
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                                <details class="row-drawer">
+                                    <summary class="ghost-button compact-button">Kelola</summary>
                                 <div class="row-edit-panel">
                                     <div class="form-grid compact-edit-grid">
                                         <label>
@@ -751,6 +761,7 @@ $reviewCrmUsers = array_values(array_filter($crmUsers, static fn (array $user): 
                                     </div>
                                 </div>
                             </details>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>

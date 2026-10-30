@@ -14,6 +14,13 @@ final class LegacyResponse
         return $this;
     }
 
+    public function setJSON(mixed $data, int $status = 200): Response
+    {
+        $response = response()->json($data, $status, $this->headers);
+        $this->headers = [];
+        return $response;
+    }
+
     public function setBody(string $body): Response
     {
         $response = response($body, 200, $this->headers);

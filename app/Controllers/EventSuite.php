@@ -6,6 +6,7 @@ use App\Models\CalendarIntegrationModel;
 use App\Libraries\GoogleCalendarService;
 use App\Libraries\GeminiDocumentService;
 use App\Models\CampusModel;
+use App\Models\DocumentTemplateModel;
 use App\Models\CrmLeadModel;
 use App\Models\CrmUploadBatchModel;
 use App\Models\CrmUserModel;
@@ -1856,6 +1857,647 @@ class EventSuite extends BaseController
         return redirect()->to(site_url('events/' . $code . '/documents/' . $type . '/file'));
     }
 
+    public function documentTemplates(): string
+    {
+        $activeDocType = trim((string) $this->request->getGet('type'));
+        if (! in_array($activeDocType, ['proposal', 'report'], true)) {
+            $activeDocType = 'proposal';
+        }
+
+        $q = trim((string) $this->request->getGet('q'));
+        $category = trim((string) $this->request->getGet('category'));
+        $status = trim((string) $this->request->getGet('status'));
+
+        $builder = (new DocumentTemplateModel())
+            ->where('doc_type', $activeDocType)
+            ->orderBy('id', 'ASC');
+
+        if ($category !== '') {
+            $builder->where('event_category', $category);
+        }
+        if ($status !== '') {
+            $builder->where('status', $status);
+        }
+
+        $templates = $builder->findAll();
+
+        if ($q !== '') {
+            $qLower = strtolower($q);
+            $templates = array_values(array_filter($templates, static function ($item) use ($qLower) {
+                return str_contains(strtolower((string) ($item['name'] ?? '')), $qLower)
+                    || str_contains(strtolower((string) ($item['description'] ?? '')), $qLower)
+                    || str_contains(strtolower((string) ($item['event_category'] ?? '')), $qLower);
+            }));
+        }
+
+        $eventCategories = ['Sosialisasi', 'Seminar', 'Workshop', 'Lomba', 'Pelatihan', 'Lainnya'];
+
+        return $this->render('pages/document_templates', [
+            'title' => 'Template Dokumen',
+            'active' => 'document-templates',
+            'templates' => $templates,
+            'activeDocType' => $activeDocType,
+            'filters' => [
+                'q' => $q,
+                'category' => $category,
+                'status' => $status,
+            ],
+            'eventCategories' => $eventCategories,
+            'isAdminSystem' => session('user.role') === 'Admin Sistem',
+        ]);
+    }
+
+    public function createDocumentTemplate()
+    {
+        if (session('user.role') !== 'Admin Sistem') {
+            return redirect()->to(site_url('document-templates'))->with('error', 'Hanya Admin Sistem yang dapat menambah template dokumen.');
+        }
+
+        $name = trim((string) $this->request->getPost('name'));
+        $docType = trim((string) $this->request->getPost('doc_type'));
+        $eventCategory = trim((string) $this->request->getPost('event_category'));
+        $description = trim((string) $this->request->getPost('description'));
+        $status = trim((string) $this->request->getPost('status')) ?: 'Aktif';
+
+        if ($name === '') {
+            return redirect()->back()->withInput()->with('error', 'Nama template wajib diisi.');
+        }
+        if (! in_array($docType, ['proposal', 'report'], true)) {
+            $docType = 'proposal';
+        }
+
+        $targetDir = FCPATH . 'uploads' . DIRECTORY_SEPARATOR . 'templates';
+        if (! is_dir($targetDir)) {
+            @mkdir($targetDir, 0777, true);
+        }
+
+        $format = 'DOCX';
+        $filePath = null;
+
+        $file = $this->request->getFile('template_file');
+        if ($file && $file->isValid() && ! $file->hasMoved()) {
+            $ext = strtolower($file->getClientExtension());
+            $format = in_array($ext, ['doc', 'docx', 'pdf', 'dotx'], true) ? strtoupper($ext) : 'DOCX';
+            $newName = 'template_' . $docType . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            $file->move($targetDir, $newName);
+            $filePath = 'uploads/templates/' . $newName;
+        }
+
+        $catSlug = strtolower(explode(' ', trim($eventCategory))[0] ?? 'lainnya');
+        if (! in_array($catSlug, ['sosialisasi', 'seminar', 'lomba', 'lainnya'], true)) {
+            $catSlug = 'lainnya';
+        }
+        $thumbnailPath = 'assets/img/templates/' . ($docType === 'report' ? 'report_' : 'proposal_') . $catSlug . '.svg';
+
+        $model = new DocumentTemplateModel();
+        $model->insert([
+            'name' => $name,
+            'doc_type' => $docType,
+            'event_category' => $eventCategory ?: 'Umum',
+            'description' => $description,
+            'file_path' => $filePath,
+            'file_format' => $format,
+            'thumbnail_path' => $thumbnailPath,
+            'status' => $status,
+            'created_by' => (int) session('user.id'),
+        ]);
+
+        return redirect()->to(site_url('document-templates?type=' . $docType))->with('success', 'Template ' . ucfirst($docType) . ' berhasil ditambahkan.');
+    }
+
+    public function updateDocumentTemplate($id)
+    {
+        if (session('user.role') !== 'Admin Sistem') {
+            return redirect()->to(site_url('document-templates'))->with('error', 'Hanya Admin Sistem yang dapat mengedit template dokumen.');
+        }
+
+        $model = new DocumentTemplateModel();
+        $template = $model->find((int) $id);
+        if (! $template) {
+            return redirect()->to(site_url('document-templates'))->with('error', 'Template tidak ditemukan.');
+        }
+
+        $name = trim((string) $this->request->getPost('name'));
+        $eventCategory = trim((string) $this->request->getPost('event_category'));
+        $description = trim((string) $this->request->getPost('description'));
+        $status = trim((string) $this->request->getPost('status')) ?: ($template['status'] ?? 'Aktif');
+
+        $updateData = [
+            'name' => $name !== '' ? $name : $template['name'],
+            'event_category' => $eventCategory !== '' ? $eventCategory : $template['event_category'],
+            'description' => $description,
+            'status' => $status,
+        ];
+
+        $file = $this->request->getFile('template_file');
+        if ($file && $file->isValid() && ! $file->hasMoved()) {
+            $targetDir = FCPATH . 'uploads' . DIRECTORY_SEPARATOR . 'templates';
+            if (! is_dir($targetDir)) {
+                @mkdir($targetDir, 0777, true);
+            }
+            $ext = strtolower($file->getClientExtension());
+            $updateData['file_format'] = in_array($ext, ['doc', 'docx', 'pdf', 'dotx'], true) ? strtoupper($ext) : 'DOCX';
+            $newName = 'template_' . $template['doc_type'] . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            $file->move($targetDir, $newName);
+            $updateData['file_path'] = 'uploads/templates/' . $newName;
+        }
+
+        $model->update($template['id'], $updateData);
+
+        return redirect()->to(site_url('document-templates?type=' . $template['doc_type']))->with('success', 'Template berhasil diperbarui.');
+    }
+
+    public function deleteDocumentTemplate($id)
+    {
+        if (session('user.role') !== 'Admin Sistem') {
+            return redirect()->to(site_url('document-templates'))->with('error', 'Hanya Admin Sistem yang dapat menghapus template dokumen.');
+        }
+
+        $model = new DocumentTemplateModel();
+        $template = $model->find((int) $id);
+        if (! $template) {
+            return redirect()->to(site_url('document-templates'))->with('error', 'Template tidak ditemukan.');
+        }
+
+        $docType = $template['doc_type'] ?? 'proposal';
+        $model->delete($template['id']);
+
+        return redirect()->to(site_url('document-templates?type=' . $docType))->with('success', 'Template berhasil dihapus.');
+    }
+
+    public function aiGenerateDocument(): string
+    {
+        $eventIdentifier = trim((string) ($this->request->getGet('event') ?: $this->request->getGet('code') ?: $this->request->getGet('event_id')));
+        $type = trim((string) $this->request->getGet('type')) ?: 'proposal';
+        if (! in_array($type, ['proposal', 'report'], true)) {
+            $type = 'proposal';
+        }
+
+        $eventModel = new EventModel();
+        $event = null;
+        if ($eventIdentifier !== '') {
+            $event = $eventModel->withCreator()->where('events.code', $eventIdentifier)->first();
+            if (! $event && is_numeric($eventIdentifier)) {
+                $event = $eventModel->withCreator()->where('events.id', (int) $eventIdentifier)->first();
+            }
+            if (! $event) {
+                $event = $eventModel->findByCode($eventIdentifier);
+            }
+            if (! $event && is_numeric($eventIdentifier)) {
+                $event = $eventModel->find((int) $eventIdentifier);
+            }
+        }
+
+        if (! $event) {
+            $event = $eventModel->withCreator()->orderBy('id', 'DESC')->first();
+        }
+
+        if ($event) {
+            $event = $this->normalizeEvent($event);
+        } else {
+            $event = [
+                'id' => 'EVT-3835',
+                'db_id' => 1,
+                'code' => 'EVT-3835',
+                'title' => 'Sosialisasi PMB dan BJU di SMAN 1 Sungai Kakap',
+                'campus' => 'UBSI Kampus Pontianak',
+                'campus_name' => 'UBSI Kampus Pontianak',
+                'date_range_label' => '13 Januari 2025',
+                'location' => 'SMAN 1 Sungai Kakap',
+                'category' => 'Sosialisasi',
+                'pic_name' => 'John Doe',
+                'pic_phone' => '0812-3456-7890',
+            ];
+        }
+
+        $templates = (new DocumentTemplateModel())
+            ->where('doc_type', $type)
+            ->where('status', 'Aktif')
+            ->orderBy('id', 'ASC')
+            ->findAll();
+
+        if (empty($templates)) {
+            $templates = (new DocumentTemplateModel())
+                ->where('doc_type', $type)
+                ->orderBy('id', 'ASC')
+                ->findAll();
+        }
+
+        $selectedTemplateId = (int) ($this->request->getGet('template_id') ?: ($templates[0]['id'] ?? 0));
+
+        $eventId = (int) ($event['db_id'] ?? $event['id'] ?? 0);
+        $existingDocument = null;
+        if ($type === 'report') {
+            $existingDocument = (new ReportModel())->where('event_id', $eventId)->first();
+        } else {
+            $existingDocument = (new ProposalModel())->where('event_id', $eventId)->first();
+        }
+
+        $allEventsRaw = (new EventModel())->withCreator()->orderBy('id', 'DESC')->findAll();
+        $allEvents = array_map(fn ($ev) => $this->normalizeEvent($ev), $allEventsRaw);
+
+        return $this->render('pages/document_ai_generate', [
+            'title' => 'Generate ' . ($type === 'proposal' ? 'Proposal' : 'Laporan') . ' dengan AI',
+            'active' => 'documents',
+            'event' => $event,
+            'allEvents' => $allEvents,
+            'templates' => $templates,
+            'selectedDocType' => $type,
+            'selectedTemplateId' => $selectedTemplateId,
+            'existingDocument' => $existingDocument,
+            'initialContent' => $existingDocument['content'] ?? '',
+            'isAdminSystem' => session('user.role') === 'Admin Sistem',
+        ]);
+    }
+
+    public function aiProcessGenerateDocument()
+    {
+        $eventId = (int) ($this->request->getPost('event_id') ?: 0);
+        $type = trim((string) ($this->request->getPost('type') ?: 'proposal'));
+        if (! in_array($type, ['proposal', 'report'], true)) {
+            $type = 'proposal';
+        }
+
+        $templateId = (int) ($this->request->getPost('template_id') ?: 0);
+        $template = (new DocumentTemplateModel())->find($templateId);
+        $templateName = $template['name'] ?? ($type === 'proposal' ? 'Template Proposal Standar' : 'Template Laporan Standar');
+
+        $event = (new EventModel())->withCreator()->find($eventId);
+        if (! $event) {
+            $event = (new EventModel())->withCreator()->orderBy('id', 'DESC')->first();
+        }
+        $event = $event ? $this->normalizeEvent($event) : [];
+
+        $goals = trim((string) $this->request->getPost('goals'));
+        $target = trim((string) $this->request->getPost('target_participants'));
+        $customBrief = trim((string) $this->request->getPost('custom_brief'));
+        $sections = (array) ($this->request->getPost('sections') ?: []);
+
+        $structure = [
+            'Tujuan kegiatan' => $goals,
+            'Sasaran peserta' => $target,
+            'Catatan tambahan' => $customBrief,
+        ];
+
+        $service = new GeminiDocumentService();
+        $content = '';
+
+        if ($service->isConfigured()) {
+            try {
+                $content = $service->generateDocument($type, $event, $templateName, $structure);
+            } catch (\Throwable $e) {
+                $content = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections);
+            }
+        } else {
+            $content = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections);
+        }
+
+        return $this->response->setJSON([
+            'ok' => true,
+            'content_html' => $content,
+            'template_name' => $templateName,
+            'type' => $type,
+        ]);
+    }
+
+    public function aiSaveGeneratedDocument()
+    {
+        $eventId = (int) ($this->request->getPost('event_id') ?: 0);
+        $type = trim((string) ($this->request->getPost('type') ?: 'proposal'));
+        if (! in_array($type, ['proposal', 'report'], true)) {
+            $type = 'proposal';
+        }
+
+        $templateId = (int) ($this->request->getPost('template_id') ?: 0);
+        $template = (new DocumentTemplateModel())->find($templateId);
+        $templateName = $template['name'] ?? ($type === 'proposal' ? 'Template Proposal Standar' : 'Template Laporan Standar');
+
+        $content = (string) $this->request->getPost('content');
+        if (trim($content) === '') {
+            return $this->response->setJSON(['ok' => false, 'message' => 'Konten dokumen kosong.']);
+        }
+
+        $event = (new EventModel())->find($eventId);
+        if (! $event) {
+            return $this->response->setJSON(['ok' => false, 'message' => 'Event tidak ditemukan.']);
+        }
+
+        $code = (string) ($event['code'] ?? 'EVT-' . $eventId);
+
+        $generatedPath = $this->writeGeneratedDocument($type, $code, $content);
+
+        if ($type === 'report') {
+            $report = $this->ensureReportRecord((int) $event['id']);
+            (new ReportModel())->update($report['id'], [
+                'content' => $content,
+                'template_name' => $templateName,
+                'generated_path' => $generatedPath,
+                'document_link' => $generatedPath,
+                'generated_at' => date('Y-m-d H:i:s'),
+                'ai_model' => 'Gemini Document Generator',
+                'ai_notes' => 'Laporan dibuat menggunakan AI dengan ' . $templateName . ' pada ' . date('d M Y H:i'),
+                'realization_status' => 'Review Admin',
+            ]);
+        } else {
+            $doc = $this->ensureDocumentRecord('proposal', (int) $event['id']);
+            (new ProposalModel())->update($doc['id'], [
+                'content' => $content,
+                'template_name' => $templateName,
+                'generated_path' => $generatedPath,
+                'document_link' => $generatedPath,
+                'generated_at' => date('Y-m-d H:i:s'),
+                'ai_model' => 'Gemini Document Generator',
+                'ai_notes' => 'Proposal dibuat menggunakan AI dengan ' . $templateName . ' pada ' . date('d M Y H:i'),
+                'status' => 'Review Admin',
+            ]);
+        }
+
+        $this->syncChecklistDocumentUpload((int) $event['id'], $type, $generatedPath);
+        $this->updateEventProgressFromChecklist((int) $event['id']);
+
+        return $this->response->setJSON([
+            'ok' => true,
+            'message' => 'Dokumen ' . ucfirst($type) . ' berhasil disimpan ke Dokumen Event dengan status "Review Admin".',
+            'redirect_url' => site_url('documents'),
+        ]);
+    }
+
+    public function aiExportWordDocument()
+    {
+        $eventId = (int) ($this->request->getGet('event_id') ?: 0);
+        $type = trim((string) ($this->request->getGet('type') ?: 'proposal'));
+        if (! in_array($type, ['proposal', 'report'], true)) {
+            $type = 'proposal';
+        }
+
+        $event = (new EventModel())->find($eventId);
+        $code = (string) ($event['code'] ?? 'EVT-' . $eventId);
+
+        $doc = null;
+        if ($type === 'report') {
+            $doc = (new ReportModel())->where('event_id', $eventId)->first();
+        } else {
+            $doc = (new ProposalModel())->where('event_id', $eventId)->first();
+        }
+
+        $content = $doc['content'] ?? '';
+        if (trim($content) === '') {
+            $content = $this->buildOfficialDocumentHtml($type, $this->normalizeEvent($event ?: []), 'Template Resmi', '', '', '', []);
+        }
+
+        $wordHtml = $this->wordDocumentHtml($type, $code, $content);
+        $fileName = ucfirst($type) . '_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $code) . '.doc';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/msword; charset=utf-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $fileName . '"')
+            ->setHeader('Cache-Control', 'max-age=0')
+            ->setBody($wordHtml);
+    }
+
+    public function aiExportPdfDocument()
+    {
+        $eventId = (int) ($this->request->getGet('event_id') ?: 0);
+        $type = trim((string) ($this->request->getGet('type') ?: 'proposal'));
+        if (! in_array($type, ['proposal', 'report'], true)) {
+            $type = 'proposal';
+        }
+
+        $event = (new EventModel())->find($eventId);
+        $code = (string) ($event['code'] ?? 'EVT-' . $eventId);
+        $title = (string) ($event['title'] ?? 'Dokumen Event');
+
+        $doc = null;
+        if ($type === 'report') {
+            $doc = (new ReportModel())->where('event_id', $eventId)->first();
+        } else {
+            $doc = (new ProposalModel())->where('event_id', $eventId)->first();
+        }
+
+        $content = $doc['content'] ?? '';
+        if (trim($content) === '') {
+            $content = $this->buildOfficialDocumentHtml($type, $this->normalizeEvent($event ?: []), 'Template Resmi', '', '', '', []);
+        }
+
+        $html = '<!DOCTYPE html><html><head><meta charset="utf-8">';
+        $html .= '<title>' . htmlspecialchars(ucfirst($type) . ' - ' . $title) . '</title>';
+        $html .= '<style>';
+        $html .= '@page { size: A4; margin: 2cm; }';
+        $html .= 'body { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #1e293b; background:#fff; margin:0; padding:20px; }';
+        $html .= '.print-bar { background:#2563eb; color:#fff; padding:10px 16px; border-radius:6px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }';
+        $html .= '.print-btn { background:#fff; color:#2563eb; font-weight:700; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; }';
+        $html .= '@media print { .print-bar { display:none; } body { padding:0; } }';
+        $html .= '</style></head><body>';
+        $html .= '<div class="print-bar"><span>Dokumen Resmi UBSI - Siap Cetak / Simpan PDF</span><button class="print-btn" onclick="window.print()">Cetak / Simpan PDF</button></div>';
+        $html .= $content;
+        $html .= '<script>window.onload = function() { setTimeout(function(){ window.print(); }, 600); };</script>';
+        $html .= '</body></html>';
+
+        return $this->response
+            ->setHeader('Content-Type', 'text/html; charset=utf-8')
+            ->setBody($html);
+    }
+
+    private function buildOfficialDocumentHtml(string $type, array $event, string $templateName, string $goals = '', string $target = '', string $customBrief = '', array $sections = []): string
+    {
+        $isProposal = $type === 'proposal';
+        $docTitle = $isProposal ? 'PROPOSAL KEGIATAN' : 'LAPORAN KEGIATAN';
+        $eventTitle = htmlspecialchars((string) ($event['title'] ?? 'Sosialisasi PMB dan BJU di SMAN 1 Sungai Kakap'));
+        $campus = htmlspecialchars((string) ($event['campus_name'] ?? $event['campus'] ?? 'UBSI Kampus Pontianak'));
+        $dateLabel = htmlspecialchars((string) ($event['date_range_label'] ?? $event['date'] ?? date('d F Y')));
+        $location = htmlspecialchars((string) ($event['location'] ?? 'SMAN 1 Sungai Kakap'));
+        $category = htmlspecialchars((string) ($event['category'] ?? 'Sosialisasi'));
+        $picName = htmlspecialchars((string) ($event['pic_name'] ?? 'John Doe'));
+        $picPhone = htmlspecialchars((string) ($event['pic_phone'] ?? '0812-3456-7890'));
+
+        $goalsText = htmlspecialchars($goals !== '' ? $goals : 'Menjelaskan program PMB, Beasiswa Jalur Undangan (BJU), dan memperkenalkan kampus UBSI kepada siswa kelas XII.');
+        $targetText = htmlspecialchars($target !== '' ? $target : 'Siswa kelas XII, guru BK, dan perwakilan sekolah.');
+        $customBriefText = htmlspecialchars($customBrief);
+
+        $shouldInclude = function(string $secKey) use ($sections): bool {
+            return empty($sections) || in_array($secKey, $sections, true);
+        };
+
+        $html = '';
+
+        // Cover Page
+        $html .= '<div class="doc-cover-page" style="page-break-after:always; padding:40px 24px; text-align:center; min-height:850px; display:flex; flex-direction:column; justify-content:space-between; box-sizing:border-box;">';
+        $html .= '  <div>';
+        $html .= '    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #2563eb; padding-bottom:12px; margin-bottom:40px;">';
+        $html .= '      <div style="text-align:left;">';
+        $html .= '        <div style="font-size:22px; font-weight:800; color:#1e3a8a; letter-spacing:1px;">BSI GROUP</div>';
+        $html .= '        <div style="font-size:12px; color:#475569; font-weight:600;">Kampus Digital Kreatif</div>';
+        $html .= '      </div>';
+        $html .= '      <div style="text-align:right; font-size:11px; color:#64748b;">';
+        $html .= '        <div>Universitas Bina Sarana Informatika</div>';
+        $html .= '        <div>' . $campus . '</div>';
+        $html .= '      </div>';
+        $html .= '    </div>';
+
+        $html .= '    <div style="margin-top:60px; margin-bottom:30px;">';
+        $html .= '      <div style="font-size:15px; font-weight:700; color:#2563eb; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;">' . ($isProposal ? 'DOKUMEN PENGAJUAN RESMI' : 'DOKUMEN PERTANGGUNGJAWABAN RESMI') . '</div>';
+        $html .= '      <h1 style="font-size:26px; font-weight:800; color:#0f172a; margin:0 0 16px; line-height:1.3; text-transform:uppercase;">' . $docTitle . '</h1>';
+        $html .= '      <h2 style="font-size:18px; font-weight:700; color:#1e40af; margin:0; line-height:1.4;">' . $eventTitle . '</h2>';
+        $html .= '    </div>';
+
+        $html .= '    <div style="display:inline-block; margin:30px auto; padding:16px 28px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; text-align:left; max-width:480px; width:100%; box-sizing:border-box;">';
+        $html .= '      <table style="width:100%; font-size:13px; border-collapse:collapse;">';
+        $html .= '        <tr><td style="padding:6px 0; color:#64748b; width:120px; font-weight:600;">Tanggal Kegiatan</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $dateLabel . '</td></tr>';
+        $html .= '        <tr><td style="padding:6px 0; color:#64748b; font-weight:600;">Lokasi / Tempat</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $location . '</td></tr>';
+        $html .= '        <tr><td style="padding:6px 0; color:#64748b; font-weight:600;">Kampus Pelaksana</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $campus . '</td></tr>';
+        $html .= '        <tr><td style="padding:6px 0; color:#64748b; font-weight:600;">Jenis Event</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $category . '</td></tr>';
+        $html .= '        <tr><td style="padding:6px 0; color:#64748b; font-weight:600;">PIC Pelaksana</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $picName . ' (' . $picPhone . ')</td></tr>';
+        $html .= '      </table>';
+        $html .= '    </div>';
+        $html .= '  </div>';
+
+        $html .= '  <div style="border-top:1px solid #e2e8f0; padding-top:20px; font-size:12px; color:#64748b;">';
+        $html .= '    <div style="font-weight:700; color:#0f172a;">PANITIA PELAKSANA EVENT BSI GROUP</div>';
+        $html .= '    <div>Tahun Akademik ' . date('Y') . '/' . (date('Y') + 1) . ' • Digenerate otomatis dengan ' . htmlspecialchars($templateName) . '</div>';
+        $html .= '  </div>';
+        $html .= '</div>';
+
+        // Content Pages
+        $html .= '<div class="doc-body-page" style="padding:20px 24px; font-size:13px; line-height:1.7; color:#1e293b;">';
+
+        if ($shouldInclude('latar_belakang')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">A. LATAR BELAKANG</h3>';
+            $html .= '  <p style="text-align:justify; margin:0 0 10px;">Pendidikan tinggi memegang peranan strategis dalam mencetak generasi muda yang kompeten dan siap menghadapi era revolusi industri serta transformasi digital. Dalam rangka mendukung peningkatan angka partisipasi pendidikan tinggi dan memberikan akses seluas-luasnya bagi calon mahasiswa, Universitas Bina Sarana Informatika (UBSI) senantiasa proaktif menyelenggarakan program sosialisasi, seminar, dan kemitraan strategis bersama sekolah-sekolah di wilayah sekitar kampus.</p>';
+            $html .= '  <p style="text-align:justify; margin:0;">Kegiatan <strong>' . $eventTitle . '</strong> diselenggarakan sebagai wadah edukatif dan komunikatif untuk memberikan pemahaman menyeluruh seputar program studi berbasis teknologi digital, peluang karir masa depan, serta mekanisme pendaftaran melalui jalur beasiswa unggulan UBSI.</p>';
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('tujuan')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">B. TUJUAN KEGIATAN</h3>';
+            $html .= '  <p style="margin:0 0 8px;">Adapun tujuan diselenggarakannya kegiatan ini adalah sebagai berikut:</p>';
+            $html .= '  <ul style="margin:0; padding-left:22px;">';
+            $html .= '    <li style="margin-bottom:6px;">' . $goalsText . '</li>';
+            $html .= '    <li style="margin-bottom:6px;">Membangun hubungan kelembagaan yang harmonis dan berkelanjutan antara UBSI dengan pihak sekolah mitra.</li>';
+            $html .= '    <li style="margin-bottom:6px;">Memberikan wawasan karier dan tren kebutuhan talenta digital di dunia usaha dan dunia industri (DUDI).</li>';
+            $html .= '    <li style="margin-bottom:6px;">Memfasilitasi siswa berprestasi agar mendapatkan kemudahan beasiswa kuliah melalui program Beasiswa Juara dan Jalur Undangan.</li>';
+            $html .= '  </ul>';
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('manfaat')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">C. MANFAAT KEGIATAN</h3>';
+            $html .= '  <ul style="margin:0; padding-left:22px;">';
+            $html .= '    <li style="margin-bottom:6px;"><strong>Bagi Siswa:</strong> Mendapatkan informasi valid mengenai pemilihan jurusan, peluang beasiswa, dan konsultasi minat bakat pendidikan tinggi.</li>';
+            $html .= '    <li style="margin-bottom:6px;"><strong>Bagi Sekolah:</strong> Membantu guru BK dalam membimbing studi lanjut siswa kelas XII secara terarah.</li>';
+            $html .= '    <li style="margin-bottom:6px;"><strong>Bagi Universitas:</strong> Meningkatkan brand awareness dan intake mahasiswa baru di lingkungan kampus pelaksana.</li>';
+            $html .= '  </ul>';
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('sasaran')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">D. SASARAN PESERTA</h3>';
+            $html .= '  <p style="margin:0;">Sasaran utama dari kegiatan ini meliputi: ' . $targetText . ' dengan estimasi jumlah partisipan aktif sebanyak 150 hingga 300 orang.</p>';
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('konsep')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">E. KONSEP DAN BENTUK KEGIATAN</h3>';
+            $html .= '  <p style="margin:0 0 6px;">Kegiatan dilaksanakan secara tatap muka (luring) interaktif dengan format pemaparan presentasi multimedia, sesi tanya jawab, kuis berhadiah merchandise resmi UBSI, serta booth mini pendaftaran on-the-spot.</p>';
+            if ($customBriefText !== '') {
+                $html .= '  <p style="margin:0; font-style:italic; background:#eff6ff; padding:8px 12px; border-radius:6px; border-left:3px solid #2563eb;">Catatan Khusus: ' . $customBriefText . '</p>';
+            }
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('panitia')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">F. SUSUNAN PANITIA PELAKSANA</h3>';
+            $html .= '  <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;">';
+            $html .= '    <thead><tr style="background:#f1f5f9;"><th style="border:1px solid #cbd5e1; padding:8px; text-align:center; width:40px;">No</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; width:180px;">Jabatan</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">Nama Petugas / PIC</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">Deskripsi Tanggung Jawab</th></tr></thead>';
+            $html .= '    <tbody>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">1</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:600;">Penanggung Jawab</td><td style="border:1px solid #cbd5e1; padding:6px;">Kepala Kampus ' . $campus . '</td><td style="border:1px solid #cbd5e1; padding:6px;">Pengarah kebijakan umum kegiatan</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">2</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:600;">Ketua Pelaksana / PIC</td><td style="border:1px solid #cbd5e1; padding:6px;">' . $picName . '</td><td style="border:1px solid #cbd5e1; padding:6px;">Koordinasi operasional lapangan dan laporan</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">3</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:600;">Sie Acara & Presenter</td><td style="border:1px solid #cbd5e1; padding:6px;">Tim Markom & Dosen UBSI</td><td style="border:1px solid #cbd5e1; padding:6px;">Penyampaian materi dan pemanduan forum</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">4</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:600;">Sie Logistik & Dokumentasi</td><td style="border:1px solid #cbd5e1; padding:6px;">Staf IT & Humas Kampus</td><td style="border:1px solid #cbd5e1; padding:6px;">Perlengkapan, soundsystem, foto & video</td></tr>';
+            $html .= '    </tbody>';
+            $html .= '  </table>';
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('rundown')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">G. RUNDOWN SUSUNAN ACARA</h3>';
+            $html .= '  <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;">';
+            $html .= '    <thead><tr style="background:#f1f5f9;"><th style="border:1px solid #cbd5e1; padding:8px; text-align:center; width:100px;">Waktu</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:center; width:60px;">Durasi</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">Agenda Kegiatan</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">Keterangan / PIC</th></tr></thead>';
+            $html .= '    <tbody>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">08.00 - 08.30</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">30 menit</td><td style="border:1px solid #cbd5e1; padding:6px;">Registrasi peserta dan pengisian form kehadiran</td><td style="border:1px solid #cbd5e1; padding:6px;">Sie Kesekretariatan</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">08.30 - 08.45</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">15 menit</td><td style="border:1px solid #cbd5e1; padding:6px;">Pembukaan oleh MC & Sambutan Pihak Sekolah Mitra</td><td style="border:1px solid #cbd5e1; padding:6px;">MC & Kepala Sekolah / Guru BK</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">08.45 - 09.45</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">60 menit</td><td style="border:1px solid #cbd5e1; padding:6px;">Pemaparan Materi Sosialisasi PMB, BJU, & Digital Talent</td><td style="border:1px solid #cbd5e1; padding:6px;">Narasumber UBSI</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">09.45 - 10.15</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">30 menit</td><td style="border:1px solid #cbd5e1; padding:6px;">Sesi Tanya Jawab Interaktif & Kuis Berhadiah</td><td style="border:1px solid #cbd5e1; padding:6px;">Tim Markom</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">10.15 - 10.30</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">15 menit</td><td style="border:1px solid #cbd5e1; padding:6px;">Penyerahan Cinderamata, Foto Bersama, & Penutupan</td><td style="border:1px solid #cbd5e1; padding:6px;">Seluruh Panitia</td></tr>';
+            $html .= '    </tbody>';
+            $html .= '  </table>';
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('indikator')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">H. INDIKATOR KEBERHASILAN</h3>';
+            $html .= '  <ul style="margin:0; padding-left:22px;">';
+            $html .= '    <li style="margin-bottom:6px;">Tingkat kehadiran peserta mencapai minimal 85% dari target yang ditetapkan.</li>';
+            $html .= '    <li style="margin-bottom:6px;">Minimal 30% responden mengisi kuisioner dan form peminatan kampus secara lengkap.</li>';
+            $html .= '    <li style="margin-bottom:6px;">Tercapainya database prospek calon mahasiswa baru yang terintegrasi langsung dengan CRM Workspace UBSI.</li>';
+            $html .= '  </ul>';
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('rab')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">I. RENCANA ANGGARAN BIAYA (RAB)</h3>';
+            $html .= '  <table style="width:100%; border-collapse:collapse; font-size:12px; margin-top:8px;">';
+            $html .= '    <thead><tr style="background:#f1f5f9;"><th style="border:1px solid #cbd5e1; padding:8px; text-align:center; width:40px;">No</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">Pos Anggaran / Item</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:center; width:60px;">Volume</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:center; width:60px;">Satuan</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:right; width:100px;">Harga Satuan</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:right; width:110px;">Total (Rp)</th></tr></thead>';
+            $html .= '    <tbody>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">1</td><td style="border:1px solid #cbd5e1; padding:6px;">Konsumsi Snack & Minuman Peserta</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">200</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">Paket</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">15.000</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">3.000.000</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">2</td><td style="border:1px solid #cbd5e1; padding:6px;">Merchandise & Hadiah Kuis Siswa</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">10</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">Pcs</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">50.000</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">500.000</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">3</td><td style="border:1px solid #cbd5e1; padding:6px;">Plakat / Cinderamata Sekolah Mitra</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">1</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">Paket</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">250.000</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">250.000</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">4</td><td style="border:1px solid #cbd5e1; padding:6px;">Brosur, Banner, & Media Promosi PMB</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">1</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">Paket</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">750.000</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">750.000</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">5</td><td style="border:1px solid #cbd5e1; padding:6px;">Transportasi & Operasional Tim</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">1</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">Kegiatan</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">500.000</td><td style="border:1px solid #cbd5e1; padding:6px; text-align:right;">500.000</td></tr>';
+            $html .= '      <tr style="background:#f8fafc; font-weight:700;"><td colspan="5" style="border:1px solid #cbd5e1; padding:8px; text-align:right;">Total Anggaran yang Dibutuhkan:</td><td style="border:1px solid #cbd5e1; padding:8px; text-align:right; color:#1e3a8a;">Rp 5.000.000</td></tr>';
+            $html .= '    </tbody>';
+            $html .= '  </table>';
+            $html .= '</div>';
+        }
+
+        if ($shouldInclude('penutup')) {
+            $html .= '<div style="margin-bottom:24px;">';
+            $html .= '  <h3 style="font-size:15px; font-weight:700; color:#1e3a8a; border-bottom:1.5px solid #2563eb; padding-bottom:4px; margin-bottom:10px;">J. PENUTUP & LEMBAR PENGESAHAN</h3>';
+            $html .= '  <p style="text-align:justify; margin:0 0 24px;">Demikian proposal kegiatan ini kami susun dengan sebaik-baiknya sebagai pedoman pelaksanaan dan bahan pertimbangan bagi pihak pimpinan. Atas perhatian, dukungan, dan kerja sama yang baik dari seluruh pihak terkait, kami ucapkan terima kasih.</p>';
+
+            $html .= '  <div style="display:flex; justify-content:space-between; margin-top:30px; font-size:12px; text-align:center;">';
+            $html .= '    <div style="width:200px;">';
+            $html .= '      <div>Mengetahui,</div>';
+            $html .= '      <div style="font-weight:700;">Kepala Kampus UBSI</div>';
+            $html .= '      <div style="height:60px;"></div>';
+            $html .= '      <div style="font-weight:700; text-decoration:underline;">(............................................)</div>';
+            $html .= '      <div style="color:#64748b; font-size:11px;">NIP. 198204152010121002</div>';
+            $html .= '    </div>';
+
+            $html .= '    <div style="width:200px;">';
+            $html .= '      <div>Pontianak, ' . $dateLabel . '</div>';
+            $html .= '      <div style="font-weight:700;">Ketua Pelaksana / PIC</div>';
+            $html .= '      <div style="height:60px;"></div>';
+            $html .= '      <div style="font-weight:700; text-decoration:underline;">' . $picName . '</div>';
+            $html .= '      <div style="color:#64748b; font-size:11px;">Staf Markom UBSI</div>';
+            $html .= '    </div>';
+            $html .= '  </div>';
+            $html .= '</div>';
+        }
+
+        $html .= '</div>'; // close doc-body-page
+
+        return $html;
+    }
+
     public function generateDocuments(string $type = 'proposal'): string
     {
         $data = $this->applicationData();
@@ -2963,6 +3605,103 @@ class EventSuite extends BaseController
         ]);
     }
 
+    public function impersonateUser($id)
+    {
+        $currentRole = (string) session('user.role');
+        $impersonator = session('impersonator');
+        $isSuperAdmin = $currentRole === 'Admin Sistem' || (($impersonator['role'] ?? '') === 'Admin Sistem');
+
+        if (! $isSuperAdmin) {
+            return redirect()->to(site_url('dashboard'))->with('error', 'Hanya Super Admin yang memiliki akses fasilitas impersonate.');
+        }
+
+        $userModel = new UserModel();
+        $targetUser = $userModel->withDeleted()->find((int) $id);
+        if (! $targetUser) {
+            return redirect()->to(site_url('users'))->with('error', 'User tujuan tidak ditemukan.');
+        }
+
+        if (! empty($targetUser['deleted_at']) || ($targetUser['status'] ?? '') !== 'Aktif') {
+            return redirect()->to(site_url('users'))->with('error', 'Hanya akun user yang berstatus Aktif yang dapat di-impersonate.');
+        }
+
+        $originalAdmin = $impersonator ?: session('user');
+        if ((int) $targetUser['id'] === (int) $originalAdmin['id']) {
+            return redirect()->to(site_url('users'))->with('error', 'Anda sudah berada di akun tersebut.');
+        }
+
+        $permissions = [];
+        $decoded = json_decode((string) ($targetUser['access_permissions'] ?? '[]'), true);
+        if (is_array($decoded) && ! empty($decoded)) {
+            $permissions = $decoded;
+        } else {
+            $role = (new RoleModel())->where('name', $targetUser['role'])->first();
+            $decodedRole = json_decode((string) ($role['default_permissions'] ?? '[]'), true);
+            $permissions = is_array($decodedRole) ? $decodedRole : ['dashboard'];
+        }
+
+        if (! in_array('dashboard', $permissions, true)) {
+            array_unshift($permissions, 'dashboard');
+        }
+
+        $sessionData = [
+            'isLoggedIn' => true,
+            'is_impersonating' => true,
+            'impersonator' => [
+                'id' => (int) $originalAdmin['id'],
+                'name' => (string) $originalAdmin['name'],
+                'username' => (string) ($originalAdmin['username'] ?? ''),
+                'email' => (string) $originalAdmin['email'],
+                'role' => (string) $originalAdmin['role'],
+                'campus_id' => $originalAdmin['campus_id'] ?? null,
+                'permissions' => $originalAdmin['permissions'] ?? ['dashboard'],
+            ],
+            'user' => [
+                'id' => (int) $targetUser['id'],
+                'name' => (string) $targetUser['name'],
+                'username' => (string) ($targetUser['username'] ?? ''),
+                'email' => (string) $targetUser['email'],
+                'role' => (string) $targetUser['role'],
+                'campus_id' => $targetUser['campus_id'] ?? null,
+                'permissions' => $permissions,
+            ],
+        ];
+
+        if (method_exists(session(), 'set')) {
+            session()->set($sessionData);
+        } else {
+            session()->put($sessionData);
+        }
+
+        return redirect()->to(site_url('dashboard'))->with('success', 'Mode Impersonate Aktif: Anda sedang masuk dan memantau sistem sebagai ' . $targetUser['name'] . ' (' . $targetUser['role'] . ').');
+    }
+
+    public function leaveImpersonation()
+    {
+        $impersonator = session('impersonator');
+        if (! $impersonator) {
+            return redirect()->to(site_url('dashboard'))->with('error', 'Anda tidak sedang dalam sesi impersonate.');
+        }
+
+        $targetUserName = (string) (session('user.name') ?: 'User');
+
+        $sessionData = [
+            'isLoggedIn' => true,
+            'user' => $impersonator,
+        ];
+
+        if (method_exists(session(), 'set')) {
+            session()->set($sessionData);
+            session()->remove('impersonator');
+            session()->remove('is_impersonating');
+        } else {
+            session()->put($sessionData);
+            session()->forget(['impersonator', 'is_impersonating']);
+        }
+
+        return redirect()->to(site_url('users'))->with('success', 'Telah keluar dari akun ' . $targetUserName . ' dan kembali ke akun Super Admin (' . $impersonator['name'] . ').');
+    }
+
     public function masterData(): string
     {
         return $this->render('pages/master_data', [
@@ -3711,7 +4450,19 @@ class EventSuite extends BaseController
     {
         $eventDate = (string) ($event['event_date'] ?? '');
         $eventEndDate = (string) ($event['event_end_date'] ?? '');
-        $campus = (string) ($event['campus_name'] ?? 'Belum ditentukan');
+        $campus = trim((string) ($event['campus_name'] ?? $event['campus'] ?? ''));
+        if ($campus === '' || $campus === 'Belum ditentukan') {
+            $campusId = (int) ($event['campus_id'] ?? 0);
+            if ($campusId > 0) {
+                $campusRow = (new CampusModel())->find($campusId);
+                if ($campusRow && ! empty($campusRow['name'])) {
+                    $campus = (string) $campusRow['name'];
+                }
+            }
+        }
+        if ($campus === '') {
+            $campus = 'UBSI Kampus Pelaksana';
+        }
 
         return [
             'id' => $event['code'],
@@ -3720,6 +4471,7 @@ class EventSuite extends BaseController
             'category' => $event['category'],
             'campus_id' => $event['campus_id'] ?? null,
             'campus' => $campus,
+            'campus_name' => $campus,
             'calendar_campus' => $this->calendarCampusKey($campus),
             'date' => $eventDate,
             'end_date' => $eventEndDate,

@@ -21,8 +21,8 @@ $navGroups = [
     [
         'title' => 'Dokumen & Laporan',
         'items' => [
-            ['key' => 'documents', 'label' => 'Dokumen', 'url' => site_url('documents'), 'icon' => 'solar:document-text-outline'],
-            ['key' => 'generate-documents', 'label' => 'Generate Otomatis', 'url' => site_url('generate-documents/proposal'), 'icon' => 'hugeicons:ai-brain-03'],
+            ['key' => 'documents', 'label' => 'Dokumen Event', 'url' => site_url('documents'), 'icon' => 'solar:document-text-outline'],
+            ['key' => 'document-templates', 'label' => 'Template Dokumen', 'url' => site_url('document-templates'), 'icon' => 'solar:documents-minimalistic-outline'],
             ['key' => 'crm-report', 'label' => 'Laporan CRM', 'url' => site_url('laporan-crm'), 'icon' => 'solar:pie-chart-3-outline'],
         ],
     ],
@@ -62,6 +62,7 @@ $canAccessItem = static function (string $key) use ($isAdminSystem, $userPermiss
         || in_array($key, $userPermissions, true)
         || ($key === 'task-manager' && in_array('dashboard', $userPermissions, true))
         || ($key === 'crm-report' && (in_array('reports', $userPermissions, true) || in_array('crm', $userPermissions, true) || in_array('dashboard', $userPermissions, true)))
+        || ($key === 'document-templates' && (in_array('documents', $userPermissions, true) || $isAdminSystem))
         || ($key === 'generate-documents' && in_array('documents', $userPermissions, true))
         || ($key === 'special-analytics' && $canViewSpecialAnalytics);
 };

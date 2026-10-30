@@ -11,6 +11,7 @@ final class LegacyUploadedFile
     }
 
     public function isValid(): bool { return $this->file->isValid(); }
+    public function hasMoved(): bool { return false; }
     public function getError(): int { return $this->file->getError(); }
     public function getClientExtension(): string { return (string) $this->file->getClientOriginalExtension(); }
     public function getClientName(): string { return $this->file->getClientOriginalName(); }
