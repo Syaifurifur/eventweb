@@ -23,6 +23,55 @@ $hasDriveLink = ! empty($school['mou_drive_link']);
     </div>
 </div>
 
+<!-- CARD STATUS VERIFIKASI BJS OLEH ADMIN -->
+<?php $isBjsActive = ($school['bjs_status'] ?? '') === 'Aktif'; ?>
+<div style="background: <?= $isBjsActive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)' ?>; border: 1px solid <?= $isBjsActive ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)' ?>; border-radius: 10px; padding: 16px 20px; margin-bottom: 22px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+    <div style="display: flex; align-items: flex-start; gap: 14px;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: <?= $isBjsActive ? '#10b981' : '#f59e0b' ?>; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 800; shrink-0;">
+            <?= $isBjsActive ? '&#10003;' : '&#9203;' ?>
+        </div>
+        <div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #64748b);">
+                    Program Beasiswa Juara Sekolah (BJS)
+                </span>
+                <span class="status <?= $isBjsActive ? 'status-selesai' : 'status-menunggu' ?>" style="font-size: 0.8rem; font-weight: 800; padding: 3px 10px;">
+                    <?= $isBjsActive ? '✓ BJS AKTIF &amp; TERVERIFIKASI' : '⏳ BJS BELUM AKTIF (MENUNGGU VERIFIKASI ADMIN)' ?>
+                </span>
+            </div>
+            <div style="margin-top: 4px; font-size: 0.84rem; color: var(--text-main, #1e293b);">
+                <?php if ($isBjsActive): ?>
+                    Sekolah ini <strong>resmi aktif</strong> sebagai mitra penerima Beasiswa Juara Sekolah (BJS).
+                    <?php if (! empty($school['bjs_verified_at'])): ?>
+                        <span style="color: var(--text-muted, #64748b);">
+                            &bull; Diverifikasi oleh: <strong><?= esc($school['bjs_verifier_name'] ?? 'Admin') ?></strong>
+                            pada <?= esc(date('d M Y H:i', strtotime($school['bjs_verified_at']))) ?>
+                        </span>
+                    <?php endif; ?>
+                <?php else: ?>
+                    Sekolah ini terdaftar di Sixty School namun <strong>belum diverifikasi aktif</strong> menerima kuota Beasiswa Juara Sekolah (BJS). Admin dapat menekan tombol verifikasi di samping untuk mengaktifkannya.
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tombol Aksi Verifikasi BJS Cepat -->
+    <form action="<?= site_url('one-campus/schools/' . $schoolId . '/verify-bjs') ?>" method="post" style="margin: 0;">
+        <?= csrf_field() ?>
+        <?php if ($isBjsActive): ?>
+            <input type="hidden" name="action" value="unverify">
+            <button type="submit" class="ghost-button" style="color: #ef4444; border-color: #fca5a5; font-weight: 600; padding: 8px 16px; font-size: 0.82rem;" onclick="return confirm('Batalkan verifikasi BJS untuk sekolah ini? Status akan kembali menjadi Belum Aktif.');">
+                ✕ Batalkan Verifikasi BJS
+            </button>
+        <?php else: ?>
+            <input type="hidden" name="action" value="verify">
+            <button type="submit" class="primary-button" style="background: #059669; border-color: #059669; color: #ffffff; font-weight: 700; padding: 9px 18px; font-size: 0.86rem; box-shadow: 0 4px 12px rgba(5,150,105,0.25); display: inline-flex; align-items: center; gap: 6px;" onclick="return confirm('Verifikasi dan aktifkan status penerima Beasiswa Juara Sekolah (BJS) untuk <?= esc($school['school_name'], 'attr') ?>?');">
+                <span>&#10003;</span> Verifikasi &amp; Aktifkan BJS
+            </button>
+        <?php endif; ?>
+    </form>
+</div>
+
 <section class="panel" style="border-top: 3px solid #0d9488; padding: 22px 24px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
         <div>
@@ -103,13 +152,20 @@ $hasDriveLink = ! empty($school['mou_drive_link']);
             </label>
         </div>
 
-        <!-- Baris 4: Status Skl, Tahun PMB, Kampus Pelaksana, Perolehan PMB -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px;">
+        <!-- Baris 4: Status Skl, Status BJS, Tahun PMB, Kampus Pelaksana, Perolehan PMB -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px;">
             <label>
-                <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Status</span>
+                <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Status Sekolah</span>
                 <select class="control" name="status">
                     <option value="Aktif" <?= ($school['status'] ?? 'Aktif') === 'Aktif' ? 'selected' : '' ?>>Aktif</option>
                     <option value="Nonaktif" <?= ($school['status'] ?? '') === 'Nonaktif' ? 'selected' : '' ?>>Nonaktif</option>
+                </select>
+            </label>
+            <label>
+                <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Status BJS</span>
+                <select class="control" name="bjs_status">
+                    <option value="Belum Aktif" <?= ($school['bjs_status'] ?? '') !== 'Aktif' ? 'selected' : '' ?>>⏳ Belum Aktif</option>
+                    <option value="Aktif" <?= ($school['bjs_status'] ?? '') === 'Aktif' ? 'selected' : '' ?>>✓ Aktif (Terverifikasi)</option>
                 </select>
             </label>
             <label>

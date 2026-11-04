@@ -277,7 +277,301 @@ $totalCampusesCount = count($dmerCampusesData);
         }
     }
 
-    /* Dark Mode Overrides for Main DMER Dashboard */
+    /* ==================== DARK MODE COMPREHENSIVE OVERRIDES ==================== */
+    html.dark .dmer-dashboard-wrap,
+    [data-theme="dark"] .dmer-dashboard-wrap,
+    .dark .dmer-dashboard-wrap {
+        color: #f1f5f9;
+    }
+
+    /* All Cards and Containers with .bg-white */
+    html.dark .dmer-dashboard-wrap .bg-white,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-white,
+    .dark .dmer-dashboard-wrap .bg-white {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #f1f5f9;
+    }
+
+    /* Sub-containers & panels with bg-slate-50 or bg-slate-100 */
+    html.dark .dmer-dashboard-wrap .bg-slate-50,
+    html.dark .dmer-dashboard-wrap .bg-slate-100,
+    html.dark .dmer-dashboard-wrap .bg-slate-50\/50,
+    html.dark .dmer-dashboard-wrap .bg-slate-50\/60,
+    html.dark .dmer-dashboard-wrap .bg-slate-50\/70,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-slate-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-slate-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-slate-50\/50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-slate-50\/60,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-slate-50\/70 {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+        color: #f1f5f9;
+    }
+
+    /* Borders */
+    html.dark .dmer-dashboard-wrap .border-slate-200,
+    html.dark .dmer-dashboard-wrap .border-slate-200\/80,
+    html.dark .dmer-dashboard-wrap .border-slate-200\/70,
+    html.dark .dmer-dashboard-wrap .border-slate-200\/60,
+    html.dark .dmer-dashboard-wrap .border-slate-100,
+    html.dark .dmer-dashboard-wrap .border-slate-300,
+    [data-theme="dark"] .dmer-dashboard-wrap .border-slate-200,
+    [data-theme="dark"] .dmer-dashboard-wrap .border-slate-200\/80,
+    [data-theme="dark"] .dmer-dashboard-wrap .border-slate-100 {
+        border-color: #334155 !important;
+    }
+
+    /* Headings and High Contrast Texts */
+    html.dark .dmer-dashboard-wrap .text-slate-900,
+    html.dark .dmer-dashboard-wrap .text-slate-800,
+    html.dark .dmer-dashboard-wrap .text-slate-700,
+    [data-theme="dark"] .dmer-dashboard-wrap .text-slate-900,
+    [data-theme="dark"] .dmer-dashboard-wrap .text-slate-800,
+    [data-theme="dark"] .dmer-dashboard-wrap .text-slate-700 {
+        color: #f8fafc !important;
+    }
+
+    /* Muted Texts */
+    html.dark .dmer-dashboard-wrap .text-slate-500,
+    html.dark .dmer-dashboard-wrap .text-slate-600,
+    html.dark .dmer-dashboard-wrap .text-slate-400,
+    [data-theme="dark"] .dmer-dashboard-wrap .text-slate-500,
+    [data-theme="dark"] .dmer-dashboard-wrap .text-slate-600,
+    [data-theme="dark"] .dmer-dashboard-wrap .text-slate-400 {
+        color: #94a3b8 !important;
+    }
+
+    /* Filter Form & Summary Box */
+    html.dark .dmer-dashboard-wrap .dmer-period-form,
+    html.dark .dmer-dashboard-wrap .dmer-summary-box,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-period-form,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-summary-box {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+
+    /* Selects and Inputs */
+    html.dark .dmer-dashboard-wrap select,
+    html.dark .dmer-dashboard-wrap input[type="text"],
+    html.dark .dmer-dashboard-wrap input[type="search"],
+    [data-theme="dark"] .dmer-dashboard-wrap select,
+    [data-theme="dark"] .dmer-dashboard-wrap input[type="text"],
+    [data-theme="dark"] .dmer-dashboard-wrap input[type="search"] {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+        color: #f8fafc !important;
+    }
+
+    /* Tabs Bar */
+    html.dark .dmer-dashboard-wrap .dmer-tabs-bar,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-tabs-bar {
+        border-top-color: #334155 !important;
+    }
+    html.dark .dmer-dashboard-wrap .dmer-tabs-list,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-tabs-list {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-dashboard-wrap .dmer-tabs-list .tab-btn,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-tabs-list .tab-btn {
+        color: #94a3b8 !important;
+    }
+    html.dark .dmer-dashboard-wrap .dmer-tabs-list .tab-btn.bg-white,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-tabs-list .tab-btn.bg-white {
+        background-color: #1e293b !important;
+        color: #60a5fa !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
+    }
+    html.dark .dmer-dashboard-wrap .dmer-tabs-list .tab-btn:hover,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-tabs-list .tab-btn:hover {
+        color: #f8fafc !important;
+    }
+
+    /* Top Badges in Header */
+    html.dark .dmer-dashboard-wrap .bg-blue-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-blue-50 {
+        background-color: rgba(59, 130, 246, 0.15) !important;
+        color: #93c5fd !important;
+        border-color: rgba(59, 130, 246, 0.3) !important;
+    }
+    html.dark .dmer-dashboard-wrap .bg-emerald-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-emerald-50 {
+        background-color: rgba(16, 185, 129, 0.15) !important;
+        color: #6ee7b7 !important;
+        border-color: rgba(16, 185, 129, 0.3) !important;
+    }
+    html.dark .dmer-dashboard-wrap .bg-indigo-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-indigo-50 {
+        background-color: rgba(99, 102, 241, 0.15) !important;
+        color: #a5b4fc !important;
+        border-color: rgba(99, 102, 241, 0.3) !important;
+    }
+    html.dark .dmer-dashboard-wrap .bg-amber-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-amber-50 {
+        background-color: rgba(245, 158, 11, 0.15) !important;
+        color: #fcd34d !important;
+        border-color: rgba(245, 158, 11, 0.3) !important;
+    }
+    html.dark .dmer-dashboard-wrap .bg-teal-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-teal-50 {
+        background-color: rgba(20, 184, 166, 0.15) !important;
+        color: #5eead4 !important;
+        border-color: rgba(20, 184, 166, 0.3) !important;
+    }
+
+    /* Benchmark targets */
+    html.dark .dmer-benchmark-grid > div,
+    [data-theme="dark"] .dmer-benchmark-grid > div {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+
+    /* AI Widget Dark Mode */
+    html.dark .dmer-ai-widget,
+    [data-theme="dark"] .dmer-ai-widget {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-ai-widget .border-b,
+    [data-theme="dark"] .dmer-ai-widget .border-b {
+        border-bottom-color: #334155 !important;
+    }
+    html.dark .dmer-ai-widget .ai-metric-total,
+    [data-theme="dark"] .dmer-ai-widget .ai-metric-total {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-ai-widget .ai-metric-mou,
+    [data-theme="dark"] .dmer-ai-widget .ai-metric-mou {
+        background-color: rgba(225, 29, 72, 0.15) !important;
+        border-color: rgba(225, 29, 72, 0.4) !important;
+    }
+    html.dark .dmer-ai-widget .ai-metric-champion,
+    [data-theme="dark"] .dmer-ai-widget .ai-metric-champion {
+        background-color: rgba(16, 185, 129, 0.15) !important;
+        border-color: rgba(16, 185, 129, 0.4) !important;
+    }
+    html.dark .dmer-ai-widget .ai-metric-eval,
+    [data-theme="dark"] .dmer-ai-widget .ai-metric-eval {
+        background-color: rgba(245, 158, 11, 0.15) !important;
+        border-color: rgba(245, 158, 11, 0.4) !important;
+    }
+    html.dark .dmer-ai-widget .ai-school-card,
+    [data-theme="dark"] .dmer-ai-widget .ai-school-card {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-ai-widget .ai-school-card:hover,
+    [data-theme="dark"] .dmer-ai-widget .ai-school-card:hover {
+        background-color: #141f32 !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+    }
+    html.dark .dmer-ai-widget .ai-advice-box,
+    [data-theme="dark"] .dmer-ai-widget .ai-advice-box {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #cbd5e1 !important;
+    }
+    html.dark .dmer-ai-widget .ai-card-footer,
+    [data-theme="dark"] .dmer-ai-widget .ai-card-footer {
+        border-top-color: #334155 !important;
+    }
+    html.dark .dmer-ai-widget .ai-card-footer strong,
+    [data-theme="dark"] .dmer-ai-widget .ai-card-footer strong {
+        color: #5eead4 !important;
+    }
+    html.dark .dmer-ai-widget .ai-card-footer a,
+    [data-theme="dark"] .dmer-ai-widget .ai-card-footer a {
+        color: #2dd4bf !important;
+    }
+    html.dark .dmer-ai-widget .ai-card-footer a:hover,
+    [data-theme="dark"] .dmer-ai-widget .ai-card-footer a:hover {
+        color: #5eead4 !important;
+    }
+
+    /* Badges in dark mode */
+    html.dark .dmer-badge-blue,
+    [data-theme="dark"] .dmer-badge-blue {
+        background-color: rgba(59, 130, 246, 0.2) !important;
+        color: #93c5fd !important;
+        border-color: rgba(59, 130, 246, 0.35) !important;
+    }
+    html.dark .dmer-badge-indigo,
+    [data-theme="dark"] .dmer-badge-indigo {
+        background-color: rgba(99, 102, 241, 0.2) !important;
+        color: #a5b4fc !important;
+        border-color: rgba(99, 102, 241, 0.35) !important;
+    }
+    html.dark .dmer-badge-emerald,
+    [data-theme="dark"] .dmer-badge-emerald {
+        background-color: rgba(16, 185, 129, 0.2) !important;
+        color: #6ee7b7 !important;
+        border-color: rgba(16, 185, 129, 0.35) !important;
+    }
+    html.dark .dmer-badge-rose,
+    [data-theme="dark"] .dmer-badge-rose {
+        background-color: rgba(244, 63, 94, 0.2) !important;
+        color: #fda4af !important;
+        border-color: rgba(244, 63, 94, 0.35) !important;
+    }
+    html.dark .dmer-badge-amber,
+    [data-theme="dark"] .dmer-badge-amber {
+        background-color: rgba(245, 158, 11, 0.2) !important;
+        color: #fcd34d !important;
+        border-color: rgba(245, 158, 11, 0.35) !important;
+    }
+
+    /* Tables in dark mode */
+    html.dark .dmer-dashboard-wrap table,
+    [data-theme="dark"] .dmer-dashboard-wrap table {
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-dashboard-wrap thead tr,
+    [data-theme="dark"] .dmer-dashboard-wrap thead tr {
+        background-color: #0f172a !important;
+    }
+    html.dark .dmer-dashboard-wrap thead th,
+    [data-theme="dark"] .dmer-dashboard-wrap thead th {
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-dashboard-wrap tbody tr,
+    [data-theme="dark"] .dmer-dashboard-wrap tbody tr {
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-dashboard-wrap tbody tr.bg-slate-50,
+    [data-theme="dark"] .dmer-dashboard-wrap tbody tr.bg-slate-50 {
+        background-color: #0f172a !important;
+    }
+    html.dark .dmer-dashboard-wrap tbody tr.bg-slate-100,
+    [data-theme="dark"] .dmer-dashboard-wrap tbody tr.bg-slate-100 {
+        background-color: #1e293b !important;
+    }
+    html.dark .dmer-dashboard-wrap tbody tr:hover,
+    [data-theme="dark"] .dmer-dashboard-wrap tbody tr:hover {
+        background-color: #1e293b !important;
+    }
+    html.dark .dmer-dashboard-wrap td,
+    [data-theme="dark"] .dmer-dashboard-wrap td {
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-dashboard-wrap .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+    [data-theme="dark"] .dmer-dashboard-wrap .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+        border-color: #334155 !important;
+    }
+
+    /* KPI Grid & Status details in dark mode */
+    html.dark .dmer-dashboard-wrap .dmer-kpi-grid-5 > div,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-kpi-grid-5 > div {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+    html.dark .dmer-dashboard-wrap .dmer-cards-grid > div,
+    [data-theme="dark"] .dmer-dashboard-wrap .dmer-cards-grid > div {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+    }
+
     html.dark .dmer-dashboard-wrap .cell-achieved { background-color: rgba(16, 185, 129, 0.2) !important; color: #6ee7b7 !important; }
     html.dark .dmer-dashboard-wrap .cell-unachieved { background-color: rgba(244, 63, 94, 0.2) !important; color: #fda4af !important; }
     html.dark .dmer-dashboard-wrap .custom-scrollbar::-webkit-scrollbar-track { background: #1f2937; }
@@ -382,151 +676,6 @@ $totalCampusesCount = count($dmerCampusesData);
                 </div>
             </div>
         <?php endif; ?>
-    </div>
-
-    <!-- ==================== WIDGET REKOMENDASI CERDAS AI: INTERAKSI & KONVERSI SEKOLAH (SIXTY SCHOOL) ==================== -->
-    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 shrink-0">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                </div>
-                <div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <h2 class="text-base sm:text-lg font-extrabold text-slate-900">
-                            Rekomendasi Cerdas AI: Analisis Interaksi &amp; Konversi Sekolah
-                        </h2>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
-                            AI Markom Engine
-                        </span>
-                        <?php if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_name'])): ?>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                Khusus Kampus: <?= esc($schoolAiInsight['scoped_campus_name']) ?>
-                            </span>
-                        <?php else: ?>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                Semua Kampus (Super Admin)
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                    <p class="text-xs text-slate-500 mt-0.5">
-                        <?php if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_name'])): ?>
-                            Analisis khusus cakupan kemitraan sekolah di <strong><?= esc($schoolAiInsight['scoped_campus_name']) ?></strong> &bull; Perolehan PMB &bull; Kunjungan &bull; Event &bull; MoU Sekolah
-                        <?php else: ?>
-                            Integrasi Real-Time 4 Data: Perolehan Mahasiswa PMB &bull; Riwayat Kunjungan Sekolah &bull; Event Kampus &bull; Status Dokumen MoU Sekolah (Seluruh Kampus)
-                        <?php endif; ?>
-                    </p>
-                </div>
-            </div>
-            <?php
-                $schoolManageUrl = site_url('one-campus/schools?sort=pmb_desc');
-                if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_id'])) {
-                    $schoolManageUrl .= '&campus_id=' . (int) $schoolAiInsight['scoped_campus_id'];
-                }
-            ?>
-            <a href="<?= $schoolManageUrl ?>" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors">
-                <span>Kelola Sixty School &rarr;</span>
-            </a>
-        </div>
-
-        <!-- 4 Metric Cards Ringkasan Interaksi -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-            <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200/80">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Sekolah Mitra</div>
-                <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1"><?= esc((string) ($schoolAiInsight['total_schools'] ?? 0)) ?></div>
-                <div class="text-[11px] text-slate-500 mt-0.5">Sekolah terdaftar di Sixty School</div>
-            </div>
-            <div class="p-3.5 sm:p-4 rounded-xl bg-rose-50/60 border border-rose-200/80">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-rose-700">Peluang MoU Kunci</div>
-                <div class="text-xl sm:text-2xl font-black text-rose-700 mt-1"><?= esc((string) ($schoolAiInsight['needs_mou_urgently'] ?? 0)) ?></div>
-                <div class="text-[11px] text-rose-600 mt-0.5">PMB tinggi tapi belum MoU</div>
-            </div>
-            <div class="p-3.5 sm:p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Mitra Unggulan (Champion)</div>
-                <div class="text-xl sm:text-2xl font-black text-emerald-700 mt-1"><?= esc((string) ($schoolAiInsight['champions'] ?? 0)) ?></div>
-                <div class="text-[11px] text-emerald-600 mt-0.5">PMB tinggi &amp; MoU aktif</div>
-            </div>
-            <div class="p-3.5 sm:p-4 rounded-xl bg-amber-50/60 border border-amber-200/80">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Evaluasi Sosialisasi</div>
-                <div class="text-xl sm:text-2xl font-black text-amber-700 mt-1"><?= esc((string) ($schoolAiInsight['needs_evaluation'] ?? 0)) ?></div>
-                <div class="text-[11px] text-amber-600 mt-0.5">Kunjungan banyak, konversi rendah</div>
-            </div>
-        </div>
-
-        <!-- Rekomendasi Prioritas AI Card List -->
-        <div class="space-y-3">
-            <div class="flex items-center justify-between">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Prioritas Rekomendasi Aksi Markom:
-                </span>
-                <span class="text-xs text-slate-400">Diperbarui berdasarkan riwayat real-time</span>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <?php foreach (($schoolAiInsight['top_recommendations'] ?? []) as $rec): ?>
-                    <div class="rounded-xl border border-slate-200 p-3.5 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-start justify-between gap-2 mb-2">
-                                <div class="min-w-0">
-                                    <h4 class="text-xs sm:text-sm font-bold text-slate-900 truncate" title="<?= esc($rec['school_name']) ?>">
-                                        <?= esc($rec['school_name']) ?>
-                                    </h4>
-                                    <div class="text-[11px] text-slate-500 truncate">
-                                        <?= esc($rec['city']) ?> &bull; <?= esc($rec['campus_name']) ?>
-                                    </div>
-                                </div>
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border <?= esc($rec['badge_class']) ?> shrink-0">
-                                    <?= esc($rec['priority']) ?>
-                                </span>
-                            </div>
-
-                            <!-- 3 Mini Badges: PMB, Kunjungan, MOU -->
-                            <div class="flex flex-wrap gap-1.5 my-2">
-                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100/70 text-blue-800 border border-blue-200">
-                                    &#127891; PMB: <?= esc((string) $rec['pmb_count']) ?> Mhs
-                                </span>
-                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100/70 text-indigo-800 border border-indigo-200">
-                                    &#128663; Kunjungan: <?= esc((string) $rec['visit_count']) ?>x
-                                </span>
-                                <?php if ($rec['has_mou']): ?>
-                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100/70 text-emerald-800 border border-emerald-200">
-                                        &#128196; MOU Aktif
-                                    </span>
-                                <?php else: ?>
-                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100/70 text-rose-800 border border-rose-200">
-                                        &#9888; Belum MOU
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-
-                            <!-- Teks AI Advice -->
-                            <p class="text-[11px] leading-relaxed text-slate-600 mt-2 p-2 rounded-lg bg-white border border-slate-200/60">
-                                <?= esc($rec['ai_advice']) ?>
-                            </p>
-                        </div>
-
-                        <!-- Footer Link Aksi -->
-                        <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs">
-                            <span class="text-[10px] font-bold text-slate-400">Skor Interaksi: <strong class="text-teal-700"><?= esc((string) $rec['score']) ?>/100</strong></span>
-                            <a href="<?= site_url('one-campus/schools/' . $rec['id'] . '/edit') ?>" class="text-[11px] font-bold text-teal-700 hover:text-teal-900 inline-flex items-center gap-1">
-                                Kelola Sekolah &rarr;
-                            </a>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-                <?php if (empty($schoolAiInsight['top_recommendations'])): ?>
-                    <div class="col-span-full text-center py-6 text-xs text-slate-500">
-                        <?php if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_name'])): ?>
-                            Belum ada data sekolah untuk <?= esc($schoolAiInsight['scoped_campus_name']) ?> yang cukup untuk dianalisis oleh AI. Tambahkan data di One Campus Sixty School.
-                        <?php else: ?>
-                            Belum ada data sekolah yang cukup untuk dianalisis oleh AI. Masukkan data di One Campus Sixty School.
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
     </div>
 
     <!-- Legend & Target Reference Bar -->
@@ -998,6 +1147,151 @@ $totalCampusesCount = count($dmerCampusesData);
 
         </div>
     <?php endif; ?>
+
+    <!-- ==================== WIDGET REKOMENDASI CERDAS AI: INTERAKSI & KONVERSI SEKOLAH (SIXTY SCHOOL) ==================== -->
+    <div id="aiSchoolRecommendationWidget" class="dmer-card dmer-ai-widget bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-6 mt-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center text-white shadow-md shadow-teal-500/20 shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h2 class="text-base sm:text-lg font-extrabold text-slate-900">
+                            Rekomendasi Cerdas AI: Analisis Interaksi &amp; Konversi Sekolah
+                        </h2>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                            AI Markom Engine
+                        </span>
+                        <?php if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_name'])): ?>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                Khusus Kampus: <?= esc($schoolAiInsight['scoped_campus_name']) ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                Semua Kampus (Super Admin)
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        <?php if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_name'])): ?>
+                            Analisis khusus cakupan kemitraan sekolah di <strong><?= esc($schoolAiInsight['scoped_campus_name']) ?></strong> &bull; Perolehan PMB &bull; Kunjungan &bull; Event &bull; MoU Sekolah
+                        <?php else: ?>
+                            Integrasi Real-Time 4 Data: Perolehan Mahasiswa PMB &bull; Riwayat Kunjungan Sekolah &bull; Event Kampus &bull; Status Dokumen MoU Sekolah (Seluruh Kampus)
+                        <?php endif; ?>
+                    </p>
+                </div>
+            </div>
+            <?php
+                $schoolManageUrl = site_url('one-campus/schools?sort=pmb_desc');
+                if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_id'])) {
+                    $schoolManageUrl .= '&campus_id=' . (int) $schoolAiInsight['scoped_campus_id'];
+                }
+            ?>
+            <a href="<?= $schoolManageUrl ?>" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition-colors">
+                <span>Kelola Sixty School &rarr;</span>
+            </a>
+        </div>
+
+        <!-- 4 Metric Cards Ringkasan Interaksi -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+            <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200/80 ai-metric-total">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Sekolah Mitra</div>
+                <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1"><?= esc((string) ($schoolAiInsight['total_schools'] ?? 0)) ?></div>
+                <div class="text-[11px] text-slate-500 mt-0.5">Sekolah terdaftar di Sixty School</div>
+            </div>
+            <div class="p-3.5 sm:p-4 rounded-xl bg-rose-50/60 border border-rose-200/80 ai-metric-mou">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-rose-700">Peluang MoU Kunci</div>
+                <div class="text-xl sm:text-2xl font-black text-rose-700 mt-1"><?= esc((string) ($schoolAiInsight['needs_mou_urgently'] ?? 0)) ?></div>
+                <div class="text-[11px] text-rose-600 mt-0.5">PMB tinggi tapi belum MoU</div>
+            </div>
+            <div class="p-3.5 sm:p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80 ai-metric-champion">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Mitra Unggulan (Champion)</div>
+                <div class="text-xl sm:text-2xl font-black text-emerald-700 mt-1"><?= esc((string) ($schoolAiInsight['champions'] ?? 0)) ?></div>
+                <div class="text-[11px] text-emerald-600 mt-0.5">PMB tinggi &amp; MoU aktif</div>
+            </div>
+            <div class="p-3.5 sm:p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 ai-metric-eval">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Evaluasi Sosialisasi</div>
+                <div class="text-xl sm:text-2xl font-black text-amber-700 mt-1"><?= esc((string) ($schoolAiInsight['needs_evaluation'] ?? 0)) ?></div>
+                <div class="text-[11px] text-amber-600 mt-0.5">Kunjungan banyak, konversi rendah</div>
+            </div>
+        </div>
+
+        <!-- Rekomendasi Prioritas AI Card List -->
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Prioritas Rekomendasi Aksi Markom:
+                </span>
+                <span class="text-xs text-slate-400">Diperbarui berdasarkan riwayat real-time</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <?php foreach (($schoolAiInsight['top_recommendations'] ?? []) as $rec): ?>
+                    <div class="rounded-xl border border-slate-200 p-3.5 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all flex flex-col justify-between ai-school-card">
+                        <div>
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <div class="min-w-0">
+                                    <h4 class="text-xs sm:text-sm font-bold text-slate-900 truncate" title="<?= esc($rec['school_name']) ?>">
+                                        <?= esc($rec['school_name']) ?>
+                                    </h4>
+                                    <div class="text-[11px] text-slate-500 truncate">
+                                        <?= esc($rec['city']) ?> &bull; <?= esc($rec['campus_name']) ?>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border <?= esc($rec['badge_class']) ?> shrink-0">
+                                    <?= esc($rec['priority']) ?>
+                                </span>
+                            </div>
+
+                            <!-- 3 Mini Badges: PMB, Kunjungan, MOU -->
+                            <div class="flex flex-wrap gap-1.5 my-2">
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100/70 text-blue-800 border border-blue-200 dmer-badge-blue">
+                                    &#127891; PMB: <?= esc((string) $rec['pmb_count']) ?> Mhs
+                                </span>
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100/70 text-indigo-800 border border-indigo-200 dmer-badge-indigo">
+                                    &#128663; Kunjungan: <?= esc((string) $rec['visit_count']) ?>x
+                                </span>
+                                <?php if ($rec['has_mou']): ?>
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100/70 text-emerald-800 border border-emerald-200 dmer-badge-emerald">
+                                        &#128196; MOU Aktif
+                                    </span>
+                                <?php else: ?>
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100/70 text-rose-800 border border-rose-200 dmer-badge-rose">
+                                        &#9888; Belum MOU
+                                    </span>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Teks AI Advice -->
+                            <p class="text-[11px] leading-relaxed text-slate-600 mt-2 p-2 rounded-lg bg-white border border-slate-200/60 ai-advice-box">
+                                <?= esc($rec['ai_advice']) ?>
+                            </p>
+                        </div>
+
+                        <!-- Footer Link Aksi -->
+                        <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs ai-card-footer">
+                            <span class="text-[10px] font-bold text-slate-400">Skor Interaksi: <strong class="text-teal-700"><?= esc((string) $rec['score']) ?>/100</strong></span>
+                            <a href="<?= site_url('one-campus/schools/' . $rec['id'] . '/edit') ?>" class="text-[11px] font-bold text-teal-700 hover:text-teal-900 inline-flex items-center gap-1">
+                                Kelola Sekolah &rarr;
+                            </a>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (empty($schoolAiInsight['top_recommendations'])): ?>
+                    <div class="col-span-full text-center py-6 text-xs text-slate-500">
+                        <?php if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_name'])): ?>
+                            Belum ada data sekolah untuk <?= esc($schoolAiInsight['scoped_campus_name']) ?> yang cukup untuk dianalisis oleh AI. Tambahkan data di One Campus Sixty School.
+                        <?php else: ?>
+                            Belum ada data sekolah yang cukup untuk dianalisis oleh AI. Masukkan data di One Campus Sixty School.
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
 
 </div>
 

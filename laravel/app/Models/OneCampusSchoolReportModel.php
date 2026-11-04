@@ -27,6 +27,10 @@ class OneCampusSchoolReportModel extends Model
         'position',
         'pmb_count',
         'status',
+        'bjs_status',
+        'bjs_verified_at',
+        'bjs_verified_by',
+        'bjs_notes',
         'pmb_period',
         'mou_file',
         'mou_drive_link',
@@ -39,8 +43,9 @@ class OneCampusSchoolReportModel extends Model
     public function withCampus(): self
     {
         return $this
-            ->select('one_campus_school_reports.*, campuses.name AS campus_name, users.name AS creator_name')
+            ->select('one_campus_school_reports.*, campuses.name AS campus_name, campuses.kode_ubsi AS campus_kode_ubsi, campuses.campus_code AS campus_kode_kampus, users.name AS creator_name, verifiers.name AS bjs_verifier_name')
             ->join('campuses', 'campuses.id = one_campus_school_reports.campus_id', 'left')
-            ->join('users', 'users.id = one_campus_school_reports.created_by', 'left');
+            ->join('users', 'users.id = one_campus_school_reports.created_by', 'left')
+            ->join('users AS verifiers', 'verifiers.id = one_campus_school_reports.bjs_verified_by', 'left');
     }
 }

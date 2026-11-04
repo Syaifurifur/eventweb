@@ -682,6 +682,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                     <th>Tahun PMB</th>
                     <th>Dokumen MOU</th>
                     <th>Status</th>
+                    <th>Status BJS</th>
                     <th>
                         <a href="<?= $baseSortUrl ?>&sort=<?= $selectedSort === 'pmb_desc' ? 'pmb_asc' : 'pmb_desc' ?>" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Klik untuk mengurutkan perolehan PMB">
                             Perolehan PMB
@@ -710,6 +711,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                         $row['contact_email'] ?? '',
                         $row['pmb_period'] ?? '',
                         $row['status'] ?? '',
+                        $row['bjs_status'] ?? '',
                         (string) ($row['pmb_count'] ?? ''),
                         $row['notes'] ?? '',
                     ]);
@@ -718,7 +720,14 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                     ?>
                     <tr data-page-row data-search-text="<?= esc($schoolSearchText, 'attr') ?>">
                         <td><?= esc((string) ($index + 1)) ?></td>
-                        <td><strong><?= esc($row['campus_name'] ?? '-') ?></strong></td>
+                        <td>
+                            <div style="font-weight: 600;">
+                                <?php if (! empty($row['campus_kode_kampus'])): ?>
+                                    <span class="status status-aktif" style="font-size: 0.7rem; padding: 1px 6px; margin-right: 4px; font-weight: 700;"><?= esc($row['campus_kode_kampus']) ?></span>
+                                <?php endif; ?>
+                                <?= esc($row['campus_name'] ?? '-') ?>
+                            </div>
+                        </td>
                         <td><code><?= esc($row['npsn'] ?: '-') ?></code></td>
                         <td>
                             <div style="font-weight: 700; color: var(--text-main, #1e293b);"><?= esc($row['school_name']) ?></div>
@@ -782,6 +791,38 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                             </span>
                         </td>
                         <td>
+                            <?php $isBjsActive = ($row['bjs_status'] ?? '') === 'Aktif'; ?>
+                            <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                                <?php if ($isBjsActive): ?>
+                                    <span class="status status-selesai" style="font-size: 0.74rem; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;" title="Diverifikasi oleh <?= esc($row['bjs_verifier_name'] ?? 'Admin') ?> pada <?= esc($row['bjs_verified_at'] ?? '-') ?>">
+                                        ✓ BJS Aktif
+                                    </span>
+                                    <?php if (! empty($row['bjs_verifier_name'])): ?>
+                                        <span style="font-size: 0.68rem; color: var(--text-muted, #64748b);" title="<?= esc($row['bjs_verified_at'] ?? '') ?>">Oleh: <?= esc($row['bjs_verifier_name']) ?></span>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span class="status status-menunggu" style="font-size: 0.74rem; font-weight: 700; background: #fffbeb; color: #b45309; border: 1px solid #fde68a;">
+                                        ⏳ Belum Aktif
+                                    </span>
+                                <?php endif; ?>
+
+                                <!-- Tombol Verifikasi / Batalkan untuk Admin -->
+                                <form action="<?= site_url('one-campus/schools/' . $row['id'] . '/verify-bjs') ?>" method="post" style="display: inline-block; margin-top: 2px;">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="action" value="<?= $isBjsActive ? 'unverify' : 'verify' ?>">
+                                    <?php if ($isBjsActive): ?>
+                                        <button type="submit" class="ghost-button compact-button" style="font-size: 0.68rem; padding: 1px 6px; color: #94a3b8; border-color: #cbd5e1;" onclick="return confirm('Batalkan status verifikasi BJS untuk <?= esc($row['school_name'], 'attr') ?>?');" title="Batalkan verifikasi BJS">
+                                            Batalkan
+                                        </button>
+                                    <?php else: ?>
+                                        <button type="submit" class="primary-button compact-button" style="font-size: 0.7rem; padding: 2px 8px; background: #059669; border-color: #059669; color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" onclick="return confirm('Verifikasi dan aktifkan program Beasiswa Juara Sekolah (BJS) untuk <?= esc($row['school_name'], 'attr') ?>?');" title="Verifikasi dan aktifkan BJS">
+                                            <span>&#10003;</span> Verifikasi BJS
+                                        </button>
+                                    <?php endif; ?>
+                                </form>
+                            </div>
+                        </td>
+                        <td>
                             <?php $pmbVal = (int) ($row['pmb_count'] ?? 0); ?>
                             <?php if ($pmbVal > 0): ?>
                                 <button type="button" class="ghost-button compact-button" onclick="showSchoolStudents(<?= (int) $row['id'] ?>, '<?= esc($row['school_name'], 'js') ?>')" style="color: #0284c7; border-color: #7dd3fc; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; cursor: pointer;" title="Klik untuk melihat rincian nama mahasiswa baru dari sekolah ini">
@@ -803,7 +844,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                 <?php endforeach; ?>
                 <?php if ($schoolReports === []): ?>
                     <tr data-empty-row>
-                        <td colspan="10"><span class="muted-note">Tidak ada rekap One Campus Sixty School untuk kampus atau klaster PMB ini.</span></td>
+                        <td colspan="11"><span class="muted-note">Tidak ada rekap One Campus Sixty School untuk kampus atau klaster PMB ini.</span></td>
                     </tr>
                 <?php endif; ?>
             </tbody>

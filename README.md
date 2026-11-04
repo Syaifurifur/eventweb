@@ -202,15 +202,17 @@ Kredensial Default Login:
 - `app/Database/Migrations/2026-11-04-000001_CreateOneCampusPmbStudents.php`: Migrasi skema tabel mahasiswa baru.
 - `app/Views/pages/one_campus.php`: UI klaster PMB, tombol buat klaster Superadmin, toolbar upload PMB & template, kontrol sorting PMB banyak ke sedikit, modal rincian mahasiswa baru.
 - `app/Views/pages/one_campus_school_edit.php`: Halaman khusus kelola / edit data sekolah, MOU, dan tabel lengkap mahasiswa baru terdaftar.
-- `app/Views/pages/dashboard.php`: Widget Rekomendasi Cerdas AI Analisis Interaksi & Konversi Sekolah.
+- `app/Views/pages/dashboard.php`: Widget Rekomendasi Cerdas AI Analisis Interaksi & Konversi Sekolah (ditempatkan di bagian paling bawah dashboard dengan dukungan penuh Dark Mode).
+- `app/Views/pages/one_campus.php`: UI klaster PMB, tombol buat klaster Superadmin, toolbar upload PMB & template, kontrol sorting PMB banyak ke sedikit, modal rincian mahasiswa baru, tombol & badge verifikasi BJS.
+- `app/Views/pages/one_campus_school_edit.php`: Halaman khusus kelola / edit data sekolah, MOU, verifikasi BJS, dan tabel lengkap mahasiswa baru terdaftar.
 
 ### Laravel (Parity):
-- `laravel/routes/web.php`: Route MOU download, edit school, Google Drive settings, test webhook, sync drive, PMB clusters, PMB template, PMB Excel upload, school students JSON, & delete student.
+- `laravel/routes/web.php`: Route MOU download, edit school, Google Drive settings, test webhook, sync drive, PMB clusters, PMB template, PMB Excel upload, school students JSON, delete student, & verify BJS.
 - `laravel/app/Controllers/EventSuite.php`: Paritas controller lengkap dengan CodeIgniter 4.
 - `laravel/app/Libraries/GoogleDriveUploadService.php`: Service cURL Google Apps Script webhook uploader.
-- `laravel/app/Models/OneCampusSchoolReportModel.php`: Field allowed Sixty School.
+- `laravel/app/Models/OneCampusSchoolReportModel.php`: Field allowed Sixty School (`bjs_status`, `bjs_verified_at`, `bjs_verified_by`, `bjs_notes`).
 - `laravel/app/Models/OneCampusPmbStudentModel.php`: Model data mahasiswa baru hasil import Excel PMB.
 - `laravel/app/Models/SystemSettingModel.php`: Model setting konfigurasi Google Drive admin & custom PMB periods.
 - `laravel/resources/views/pages/one_campus.blade.php`: Paritas view Blade lengkap dengan CodeIgniter 4.
-- `laravel/resources/views/pages/one_campus_school_edit.blade.php`: Halaman khusus kelola / edit data sekolah, MOU, dan tabel mahasiswa baru Blade.
-- `laravel/resources/views/pages/dashboard.blade.php`: Widget Rekomendasi Cerdas AI Analisis Interaksi & Konversi Sekolah Blade.
+- `laravel/resources/views/pages/one_campus_school_edit.blade.php`: Halaman khusus kelola / edit data sekolah, MOU, verifikasi BJS, dan tabel mahasiswa baru Blade.
+- `laravel/resources/views/pages/dashboard.blade.php`: Widget Rekomendasi Cerdas AI Analisis Interaksi & Konversi Sekolah Blade (posisi paling bawah dashboard & dukungan penuh Dark Mode).

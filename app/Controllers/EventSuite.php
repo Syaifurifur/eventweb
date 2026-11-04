@@ -3491,6 +3491,10 @@ class EventSuite extends BaseController
 
         $mouUploadedAt = ($mouFile !== null || $mouDriveLink !== '') ? date('Y-m-d H:i:s') : null;
 
+        $bjsStatus = trim((string) $this->request->getPost('bjs_status')) ?: 'Belum Aktif';
+        $bjsVerifiedAt = $bjsStatus === 'Aktif' ? date('Y-m-d H:i:s') : null;
+        $bjsVerifiedBy = $bjsStatus === 'Aktif' ? (int) session('user.id') : null;
+
         (new OneCampusSchoolReportModel())->insert([
             'campus_id' => $this->oneCampusInputCampusId(),
             'npsn' => $npsn !== '' ? $npsn : null,
@@ -3509,6 +3513,9 @@ class EventSuite extends BaseController
             'position' => trim((string) $this->request->getPost('position')) ?: 'Kontak Sekolah',
             'pmb_count' => (int) $this->request->getPost('pmb_count'),
             'status' => trim((string) $this->request->getPost('status')) ?: 'Aktif',
+            'bjs_status' => $bjsStatus,
+            'bjs_verified_at' => $bjsVerifiedAt,
+            'bjs_verified_by' => $bjsVerifiedBy,
             'pmb_period' => $pmbPeriod,
             'mou_file' => $mouFile,
             'mou_drive_link' => $mouDriveLink !== '' ? $mouDriveLink : null,
@@ -3632,6 +3639,17 @@ class EventSuite extends BaseController
         }
         $mouUploadedAt = ($mouFile !== null || $mouDriveLink !== null) ? ($report['mou_uploaded_at'] ?? date('Y-m-d H:i:s')) : null;
 
+        $bjsStatus = trim((string) $this->request->getPost('bjs_status'));
+        $bjsVerifiedAt = $report['bjs_verified_at'] ?? null;
+        $bjsVerifiedBy = $report['bjs_verified_by'] ?? null;
+        if ($bjsStatus === 'Aktif' && ($report['bjs_status'] ?? '') !== 'Aktif') {
+            $bjsVerifiedAt = date('Y-m-d H:i:s');
+            $bjsVerifiedBy = (int) session('user.id');
+        } elseif ($bjsStatus === 'Belum Aktif') {
+            $bjsVerifiedAt = null;
+            $bjsVerifiedBy = null;
+        }
+
         $model->update($id, [
             'campus_id' => $this->oneCampusInputCampusId($report['campus_id'] ?? null),
             'npsn' => $npsn !== '' ? $npsn : null,
@@ -3650,6 +3668,9 @@ class EventSuite extends BaseController
             'position' => trim((string) $this->request->getPost('position')) ?: 'Kontak Sekolah',
             'pmb_count' => (int) $this->request->getPost('pmb_count'),
             'status' => trim((string) $this->request->getPost('status')) ?: 'Aktif',
+            'bjs_status' => in_array($bjsStatus, ['Aktif', 'Belum Aktif'], true) ? $bjsStatus : ($report['bjs_status'] ?? 'Belum Aktif'),
+            'bjs_verified_at' => $bjsVerifiedAt,
+            'bjs_verified_by' => $bjsVerifiedBy,
             'pmb_period' => $pmbPeriod,
             'mou_file' => $mouFile,
             'mou_drive_link' => $mouDriveLink,
@@ -3763,6 +3784,56 @@ class EventSuite extends BaseController
         }
 
         return redirect()->back()->with('error', 'Gagal mengunggah ke Google Drive: ' . $uploadResult['message']);
+    }
+
+    public function verifyOneCampusSchoolBjs(int $id)
+    {
+        $role = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($role));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer', 'admin', 'marketing akademik', 'markom'], true);
+
+        $model = new OneCampusSchoolReportModel();
+        $report = $model->find($id);
+
+        if (! $report) {
+            return redirect()->back()->with('error', 'Data sekolah penerima BJS tidak ditemukan.');
+        }
+
+        if (! $isAdmin && ! $this->canManageOneCampusReport($report)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk memverifikasi program BJS sekolah ini.');
+        }
+
+        $currentStatus = (string) ($report['bjs_status'] ?? 'Belum Aktif');
+        $targetAction = trim((string) $this->request->getPost('action'));
+        $notes = trim((string) $this->request->getPost('bjs_notes'));
+
+        $newStatus = 'Aktif';
+        if ($targetAction === 'unverify' || $targetAction === 'nonaktif' || ($targetAction === '' && $currentStatus === 'Aktif')) {
+            $newStatus = 'Belum Aktif';
+        }
+
+        $userId = (int) session('user.id');
+        $userName = (string) (session('user.name') ?: 'Admin');
+
+        if ($newStatus === 'Aktif') {
+            $model->update($id, [
+                'bjs_status' => 'Aktif',
+                'bjs_verified_at' => date('Y-m-d H:i:s'),
+                'bjs_verified_by' => $userId,
+                'bjs_notes' => $notes !== '' ? $notes : ($report['bjs_notes'] ?? null),
+            ]);
+            $msg = "Sukses! Program Beasiswa Juara Sekolah (BJS) untuk {$report['school_name']} telah BERHASIL DIVERIFIKASI dan DIAKTIFKAN oleh {$userName}!";
+        } else {
+            $model->update($id, [
+                'bjs_status' => 'Belum Aktif',
+                'bjs_verified_at' => null,
+                'bjs_verified_by' => null,
+                'bjs_notes' => $notes !== '' ? $notes : null,
+            ]);
+            $msg = "Verifikasi program BJS untuk {$report['school_name']} telah dibatalkan (Status: Belum Aktif).";
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     public function getAvailablePmbPeriods(): array

@@ -129,6 +129,7 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
     $routes->post('one-campus/gdrive-settings', 'EventSuite::saveOneCampusGdriveSettings', ['filter' => 'access:one-campus']);
     $routes->post('one-campus/gdrive-test', 'EventSuite::testOneCampusGdriveConnection', ['filter' => 'access:one-campus']);
     $routes->post('one-campus/schools/(:num)/sync-drive', 'EventSuite::syncOneCampusSchoolToDrive/$1', ['filter' => 'access:one-campus']);
+    $routes->post('one-campus/schools/(:num)/verify-bjs', 'EventSuite::verifyOneCampusSchoolBjs/$1', ['filter' => 'access:one-campus']);
     $routes->post('one-campus/pmb-clusters', 'EventSuite::storeOneCampusPmbCluster', ['filter' => 'access:one-campus']);
     $routes->get('one-campus/pmb-template', 'EventSuite::downloadOneCampusPmbTemplate', ['filter' => 'access:one-campus']);
     $routes->post('one-campus/upload-pmb', 'EventSuite::uploadOneCampusPmbExcel', ['filter' => 'access:one-campus']);
