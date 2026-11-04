@@ -675,49 +675,116 @@ textarea {
 .status {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     width: max-content;
     max-width: 100%;
-    min-height: 28px;
-    padding: 5px 9px;
+    min-height: 26px;
+    padding: 4px 12px;
     border-radius: 999px;
     background: var(--surface-soft);
     color: var(--ink);
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: capitalize;
+    border: 1px solid var(--line);
+    white-space: nowrap;
 }
 
 .status-draft,
+.status-Draft,
 .status-review,
-.status-nonaktif {
-    background: var(--surface-soft);
-    color: #475569;
+.status-Review,
+.status-nonaktif,
+.status-Nonaktif {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+}
+html.dark .status-draft,
+html.dark .status-Draft,
+html.dark .status-review,
+html.dark .status-Review,
+html.dark .status-nonaktif,
+html.dark .status-Nonaktif {
+    background: rgba(148, 163, 184, 0.16);
+    color: #cbd5e1;
+    border-color: rgba(148, 163, 184, 0.28);
 }
 
 .status-diajukan,
+.status-Diajukan,
 .status-approval,
-.status-submitted {
-    background: var(--amber-soft);
-    color: var(--amber);
+.status-Approval,
+.status-submitted,
+.status-Submitted {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+html.dark .status-diajukan,
+html.dark .status-Diajukan,
+html.dark .status-approval,
+html.dark .status-Approval,
+html.dark .status-submitted,
+html.dark .status-Submitted {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fde047;
+    border-color: rgba(245, 158, 11, 0.35);
 }
 
 .status-disetujui,
+.status-Disetujui,
 .status-aktif,
+.status-Aktif,
 .status-calendar,
-.status-done {
-    background: var(--green-soft);
-    color: var(--green);
+.status-Calendar,
+.status-done,
+.status-Done {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+html.dark .status-disetujui,
+html.dark .status-Disetujui,
+html.dark .status-aktif,
+html.dark .status-Aktif,
+html.dark .status-calendar,
+html.dark .status-Calendar,
+html.dark .status-done,
+html.dark .status-Done {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.35);
 }
 
 .status-selesai,
-.status-report {
-    background: var(--blue-soft);
-    color: var(--blue);
+.status-Selesai,
+.status-report,
+.status-Report {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+html.dark .status-selesai,
+html.dark .status-Selesai,
+html.dark .status-report,
+html.dark .status-Report {
+    background: rgba(59, 130, 246, 0.2);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.35);
 }
 
-.status-ditolak {
-    background: var(--red-soft);
-    color: var(--red);
+.status-ditolak,
+.status-Ditolak {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+html.dark .status-ditolak,
+html.dark .status-Ditolak {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.35);
 }
 
 .timeline-item {
@@ -1188,10 +1255,10 @@ textarea {
 
 .progress-stats span {
     min-height: 56px;
-    padding: 10px 12px;
+    padding: 10px 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft);
     color: var(--muted);
     font-size: 12px;
     font-weight: 800;
@@ -1201,8 +1268,9 @@ textarea {
 .progress-stats strong {
     display: block;
     color: var(--ink);
-    font-size: 17px;
+    font-size: 18px;
     text-transform: none;
+    margin-bottom: 2px;
 }
 
 .phase-title span,
@@ -1226,12 +1294,18 @@ textarea {
     padding: 14px 16px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft);
+    color: var(--ink);
 }
 
 .checklist-item-row.is-done {
     border-color: #b7ebd0;
-    background: #f4fcf8;
+    background: rgba(34, 197, 94, 0.08);
+}
+
+html.dark .checklist-item-row.is-done {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(34, 197, 94, 0.12);
 }
 
 .checklist-row-status {
@@ -1972,19 +2046,31 @@ textarea {
 
 .hero-panel {
     grid-column: 1 / -1;
-    color: #ffffff;
-    background: #123c3a;
+    color: var(--ink);
+    background-color: var(--surface);
+}
+
+.hero-panel h2 {
+    color: var(--ink);
+    font-size: 26px;
+    font-weight: 800;
+    margin: 10px 0 6px;
+    letter-spacing: -0.01em;
 }
 
 .hero-panel p {
     max-width: 780px;
-    color: #d9f2ee;
+    color: var(--muted);
+    font-size: 14.5px;
+    line-height: 1.6;
+    margin: 0 0 16px;
 }
 
 .detail-meta {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
+    margin-bottom: 8px;
 }
 
 .event-submit-row {
@@ -1992,10 +2078,15 @@ textarea {
 }
 
 .detail-meta span {
-    padding: 8px 10px;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, .12);
-    font-weight: 700;
+    background: var(--surface-soft);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    font-weight: 600;
+    font-size: 13px;
 }
 
 .progress-track,
@@ -2251,19 +2342,45 @@ textarea {
     align-content: start;
     gap: 10px;
     padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+}
+
+.document-card span {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.document-card strong {
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.document-card small {
+    color: var(--muted);
+    font-size: 12.5px;
 }
 
 .document-checklist-upload {
     display: grid;
     gap: 6px;
-    padding: 10px;
+    padding: 10px 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft);
+    color: var(--ink);
 }
 
 .document-checklist-upload small {
     color: var(--muted);
+    font-size: 12px;
 }
 
 .document-card-upload-form {
@@ -6403,8 +6520,29 @@ body.overlay-active::before {
 
 .danger-button {
     border-radius: 8px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
     font-weight: 600;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.danger-button:hover {
+    background: #fecaca;
+    color: #7f1d1d;
+    border-color: #fca5a5;
+}
+
+html.dark .danger-button {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+html.dark .danger-button:hover {
+    background: rgba(239, 68, 68, 0.3);
+    color: #fecaca;
+    border-color: rgba(239, 68, 68, 0.5);
 }
 
 /* WowDash Form Controls */

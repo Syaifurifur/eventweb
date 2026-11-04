@@ -671,6 +671,83 @@ $allSections = [
     @media (max-width: 800px) {
         .ai-gen-layout { grid-template-columns: 1fr; }
     }
+
+    /* Dark Mode Overrides for AI Document Generator */
+    html.dark .ai-gen-page {
+        --ai-border: var(--line, #374151);
+        --ai-ink: var(--ink, #f3f4f6);
+        --ai-muted: var(--muted, #9ca3af);
+    }
+    html.dark .ai-card {
+        background: var(--surface, #273142);
+        border-color: var(--line, #374151);
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .ai-card-head h2,
+    html.dark .ai-card-head h3 {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .ai-event-meta-row {
+        color: var(--muted, #9ca3af);
+    }
+    html.dark .ai-event-meta-row strong {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .ai-doc-type-choice,
+    html.dark .ai-tmpl-card,
+    html.dark .ai-preview-card,
+    html.dark .ai-system-info-grid,
+    html.dark .ai-config-section,
+    html.dark .ai-brief-tab-panel {
+        background: var(--surface-soft, #1f2937);
+        border-color: var(--line, #374151);
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .ai-form-input,
+    html.dark .ai-form-textarea,
+    html.dark .ai-form-select {
+        background: #111827;
+        color: #f3f4f6;
+        border-color: #374151;
+    }
+    html.dark .ai-form-input:disabled,
+    html.dark .ai-form-textarea:disabled {
+        background: #1f2937;
+        color: #9ca3af;
+    }
+    html.dark .ai-preview-frame {
+        background: #111827;
+        border-color: var(--line, #374151);
+    }
+    html.dark .ai-step-num {
+        background: #374151;
+        color: #cbd5e1;
+    }
+    html.dark .ai-step-line {
+        background: #374151;
+    }
+    html.dark .ai-step-item {
+        color: #64748b;
+    }
+    html.dark .ai-step-item.is-active {
+        color: var(--ai-primary);
+    }
+    html.dark .ai-step-item.is-active .ai-step-num {
+        background: var(--ai-primary);
+        color: #fff;
+    }
+    html.dark .ai-section-label,
+    html.dark .ai-check-label span,
+    html.dark .ai-doc-type-info h4 {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .ai-tmpl-info h4 {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .ai-tmpl-info p,
+    html.dark .ai-doc-type-info p {
+        color: var(--muted, #9ca3af);
+    }
 </style>
 
 <div class="ai-gen-page">

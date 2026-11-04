@@ -132,8 +132,18 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::get('one-campus/schools/export', [EventSuite::class, 'exportOneCampusSchools'])->middleware('access:one-campus');
     Route::get('one-campus/banners/export', [EventSuite::class, 'exportOneCampusBanners'])->middleware('access:one-campus');
     Route::post('one-campus/schools', [EventSuite::class, 'storeOneCampusSchool'])->middleware('access:one-campus');
+    Route::get('one-campus/schools/{id}/edit', [EventSuite::class, 'editOneCampusSchool'])->middleware('access:one-campus')->whereNumber('id');
+    Route::get('one-campus/schools/{id}/mou', [EventSuite::class, 'downloadOneCampusSchoolMou'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/schools/{id}/update', [EventSuite::class, 'updateOneCampusSchool'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/schools/{id}/delete', [EventSuite::class, 'deleteOneCampusSchool'])->middleware('access:one-campus')->whereNumber('id');
+    Route::post('one-campus/gdrive-settings', [EventSuite::class, 'saveOneCampusGdriveSettings'])->middleware('access:one-campus');
+    Route::post('one-campus/gdrive-test', [EventSuite::class, 'testOneCampusGdriveConnection'])->middleware('access:one-campus');
+    Route::post('one-campus/schools/{id}/sync-drive', [EventSuite::class, 'syncOneCampusSchoolToDrive'])->middleware('access:one-campus')->whereNumber('id');
+    Route::post('one-campus/pmb-clusters', [EventSuite::class, 'storeOneCampusPmbCluster'])->middleware('access:one-campus');
+    Route::get('one-campus/pmb-template', [EventSuite::class, 'downloadOneCampusPmbTemplate'])->middleware('access:one-campus');
+    Route::post('one-campus/upload-pmb', [EventSuite::class, 'uploadOneCampusPmbExcel'])->middleware('access:one-campus');
+    Route::get('one-campus/schools/{id}/students', [EventSuite::class, 'oneCampusSchoolStudents'])->middleware('access:one-campus')->whereNumber('id');
+    Route::post('one-campus/students/{id}/delete', [EventSuite::class, 'deleteOneCampusStudent'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/banners', [EventSuite::class, 'storeOneCampusBanner'])->middleware('access:one-campus');
     Route::post('one-campus/banners/{id}/update', [EventSuite::class, 'updateOneCampusBanner'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/banners/{id}/delete', [EventSuite::class, 'deleteOneCampusBanner'])->middleware('access:one-campus')->whereNumber('id');

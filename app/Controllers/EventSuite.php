@@ -39,6 +39,7 @@ class EventSuite extends BaseController
             ->where('read_at', null)
             ->countAllResults();
         $dmerDashboard = $this->buildDmerDashboardData();
+        $schoolAiInsight = $this->buildSchoolInteractionAiRecommendations();
 
         return $this->render('pages/dashboard', array_merge([
             'title' => 'Dashboard',
@@ -49,6 +50,7 @@ class EventSuite extends BaseController
             'notifications' => $data['notifications'],
             'newPicTaskCount' => $newPicTaskCount,
             'isAdminSystem' => session('user.role') === 'Admin Sistem',
+            'schoolAiInsight' => $schoolAiInsight,
         ], $dmerDashboard));
     }
 
@@ -280,6 +282,166 @@ class EventSuite extends BaseController
             'dmerYearOptions' => $yearList,
             'dmerMonthOptions' => $fullMonthNames,
             'dmerPeriodLabel' => $periodLabel,
+        ];
+    }
+
+    private function buildSchoolInteractionAiRecommendations(): array
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isSuperAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer'], true);
+
+        $campusScope = null;
+        $scopedCampusName = null;
+
+        if (! $isSuperAdmin) {
+            // Kepala Kampus atau peran berbasis kampus tertentu
+            $campusScope = $this->currentOneCampusScope();
+            if ($campusScope === null) {
+                $campusScope = $this->currentEventCampusScope();
+            }
+            if ($campusScope === null) {
+                $cId = (int) session('user.campus_id');
+                if ($cId > 0) {
+                    $campusScope = $cId;
+                }
+            }
+        }
+
+        $campuses = (new \App\Models\CampusModel())->findAll();
+        if ($campusScope !== null && $campusScope > 0) {
+            foreach ($campuses as $c) {
+                if ((int) $c['id'] === $campusScope) {
+                    $scopedCampusName = $c['name'];
+                    break;
+                }
+            }
+        }
+
+        $schoolModel = new \App\Models\OneCampusSchoolReportModel();
+        $schools = $schoolModel->withCampus()->orderBy('pmb_count', 'DESC')->findAll();
+        $events = (new \App\Models\EventModel())->findAll();
+
+        // Jika Kepala Kampus: saring hanya sekolah dan event milik kampusnya
+        if ($campusScope !== null && $campusScope > 0) {
+            $schools = array_values(array_filter(
+                $schools,
+                fn (array $sch): bool => (int) ($sch['campus_id'] ?? 0) === $campusScope
+            ));
+            $events = array_values(array_filter(
+                $events,
+                fn (array $ev): bool => (int) ($ev['campus_id'] ?? 0) === $campusScope
+            ));
+        }
+
+        $totalSchools = count($schools);
+        $needsMouUrgently = 0;
+        $champions = 0;
+        $needsEvaluation = 0;
+        $recommendations = [];
+
+        foreach ($schools as $sch) {
+            $name = (string) ($sch['school_name'] ?? '');
+            if ($name === '') continue;
+
+            $pmbCount = (int) ($sch['pmb_count'] ?? 0);
+            $hasMou = (! empty($sch['mou_file'])) || (! empty($sch['mou_drive_link']));
+            $campusName = (string) ($sch['campus_name'] ?? 'Semua Kampus');
+            $headmaster = (string) ($sch['headmaster_name'] ?? 'Kepala Sekolah');
+            $contact = (string) ($sch['contact_name'] ?? ($sch['contact_phone'] ?? 'PIC Sekolah'));
+
+            // Search related events (kunjungan / visit / sosialisasi / edufair di sekolah)
+            $visitCount = 0;
+            $nameLower = strtolower($name);
+            $shortName = trim(preg_replace('/^(sman?|smkn?|mas?|smpn?)\s*\d*\s*/i', '', $nameLower));
+            foreach ($events as $ev) {
+                $evTitle = strtolower((string) ($ev['title'] ?? ''));
+                $evLoc = strtolower((string) ($ev['location'] ?? ''));
+                if (
+                    str_contains($evTitle, $nameLower) ||
+                    str_contains($evLoc, $nameLower) ||
+                    ($shortName !== '' && strlen($shortName) > 4 && (str_contains($evTitle, $shortName) || str_contains($evLoc, $shortName)))
+                ) {
+                    $visitCount++;
+                }
+            }
+
+            // Hitung Engagement Score (0 - 100)
+            $score = min(100, ($pmbCount * 10) + ($visitCount * 15) + ($hasMou ? 30 : 5));
+
+            // Klasifikasi Strategis AI
+            if ($pmbCount >= 5 && ! $hasMou) {
+                $needsMouUrgently++;
+                $priority = 'Tinggi';
+                $badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
+                $category = 'Peluang MoU Kunci';
+                $aiAdvice = "Sekolah ini menyumbang {$pmbCount} mahasiswa baru namun belum memiliki ikatan MoU resmi. Sangat disarankan segera mengajukan draf MoU Beasiswa BJS ke {$headmaster} untuk mengunci kemitraan eksklusif.";
+                $actionType = 'mou';
+            } elseif ($pmbCount >= 5 && $hasMou) {
+                $champions++;
+                $priority = 'Sinergi Kuat';
+                $badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                $category = 'Mitra Unggulan (Champion)';
+                $aiAdvice = "Kemitraan sangat solid dengan perolehan {$pmbCount} mahasiswa baru dan MoU aktif. Pertahankan hubungan dengan mengundang Guru BK ke gathering kampus atau apresiasi penghargaan.";
+                $actionType = 'view';
+            } elseif ($visitCount >= 2 && $pmbCount <= 1) {
+                $needsEvaluation++;
+                $priority = 'Evaluasi';
+                $badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+                $category = 'Evaluasi Sosialisasi';
+                $aiAdvice = "Telah terlaksana {$visitCount} kegiatan sosialisasi namun konversi PMB masih minim ({$pmbCount} siswa). Rekomendasi: Evaluasi materi presentasi, libatkan testimoni alumni, dan tawarkan beasiswa khusus.";
+                $actionType = 'visit';
+            } elseif ($hasMou && $visitCount === 0) {
+                $priority = 'Aktivasi';
+                $badgeClass = 'bg-sky-100 text-sky-800 border-sky-300';
+                $category = 'Aktivasi MoU';
+                $aiAdvice = "MoU telah aktif namun belum ada agenda kunjungan/event tahun ini. Agendakan kunjungan silaturahmi atau workshop teknologi untuk siswa kelas XII.";
+                $actionType = 'visit';
+            } else {
+                $priority = 'Peluang';
+                $badgeClass = 'bg-slate-100 text-slate-800 border-slate-300';
+                $category = 'Prospek Baru';
+                $aiAdvice = "Sekolah berstatus aktif namun belum tersentuh event atau kunjungan. Hubungi kontak PIC ({$contact}) untuk penjadwalan presentasi pengenalan kampus.";
+                $actionType = 'view';
+            }
+
+            $recommendations[] = [
+                'id' => (int) $sch['id'],
+                'school_name' => $name,
+                'city' => (string) ($sch['city'] ?? '-'),
+                'campus_name' => $campusName,
+                'pmb_count' => $pmbCount,
+                'visit_count' => $visitCount,
+                'has_mou' => $hasMou,
+                'mou_drive_link' => (string) ($sch['mou_drive_link'] ?? ''),
+                'score' => $score,
+                'priority' => $priority,
+                'badge_class' => $badgeClass,
+                'category' => $category,
+                'ai_advice' => $aiAdvice,
+                'action_type' => $actionType,
+            ];
+        }
+
+        // Sort: Priority weight first, then score
+        usort($recommendations, function ($a, $b) {
+            $pOrder = ['Tinggi' => 1, 'Evaluasi' => 2, 'Aktivasi' => 3, 'Sinergi Kuat' => 4, 'Peluang' => 5];
+            $diff = ($pOrder[$a['priority']] ?? 99) <=> ($pOrder[$b['priority']] ?? 99);
+            if ($diff !== 0) return $diff;
+            return $b['score'] <=> $a['score'];
+        });
+
+        return [
+            'total_schools' => $totalSchools,
+            'needs_mou_urgently' => $needsMouUrgently,
+            'champions' => $champions,
+            'needs_evaluation' => $needsEvaluation,
+            'top_recommendations' => array_slice($recommendations, 0, 6),
+            'all_recommendations' => $recommendations,
+            'is_scoped' => ($campusScope !== null && $campusScope > 0),
+            'scoped_campus_name' => $scopedCampusName,
+            'scoped_campus_id' => $campusScope,
+            'is_super_admin' => $isSuperAdmin,
         ];
     }
 
@@ -2989,6 +3151,58 @@ class EventSuite extends BaseController
         $bannerReports = (new OneCampusBannerReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
         $ojtReports = (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
 
+        $selectedPmbPeriod = trim((string) ($this->request->getGet('pmb_period') ?? ''));
+        if ($selectedPmbPeriod === '') {
+            $selectedPmbPeriod = 'September 2026 - September 2027';
+        }
+
+        $availablePmbPeriods = $this->getAvailablePmbPeriods();
+
+        // Filter school reports by campus
+        $campusSchoolReports = $this->filterOneCampusReportsByCampus($schoolReports, $selectedCampusId);
+
+        // Calculate count for each PMB period
+        $pmbPeriodCounts = [];
+        foreach ($availablePmbPeriods as $pKey => $pLabel) {
+            $pmbPeriodCounts[$pKey] = count(array_filter($campusSchoolReports, fn (array $s): bool => ($s['pmb_period'] ?? 'September 2026 - September 2027') === $pKey));
+        }
+        $pmbPeriodCounts['all'] = count($campusSchoolReports);
+
+        // Filter schools by selected PMB period if not 'all'
+        if ($selectedPmbPeriod !== 'all') {
+            $filteredSchoolReports = array_values(array_filter(
+                $campusSchoolReports,
+                fn (array $s): bool => ($s['pmb_period'] ?? 'September 2026 - September 2027') === $selectedPmbPeriod
+            ));
+        } else {
+            $filteredSchoolReports = $campusSchoolReports;
+        }
+
+        // Fasilitas sortir: banyak ke sedikit (pmb_desc), sedikit ke banyak (pmb_asc), nama (name_asc / name_desc)
+        $selectedSort = trim((string) ($this->request->getGet('sort') ?? ''));
+        if ($selectedSort === 'pmb_desc') {
+            usort($filteredSchoolReports, fn($a, $b) => ((int) ($b['pmb_count'] ?? 0)) <=> ((int) ($a['pmb_count'] ?? 0)));
+        } elseif ($selectedSort === 'pmb_asc') {
+            usort($filteredSchoolReports, fn($a, $b) => ((int) ($a['pmb_count'] ?? 0)) <=> ((int) ($b['pmb_count'] ?? 0)));
+        } elseif ($selectedSort === 'name_asc') {
+            usort($filteredSchoolReports, fn($a, $b) => strcasecmp((string) ($a['school_name'] ?? ''), (string) ($b['school_name'] ?? '')));
+        } elseif ($selectedSort === 'name_desc') {
+            usort($filteredSchoolReports, fn($a, $b) => strcasecmp((string) ($b['school_name'] ?? ''), (string) ($a['school_name'] ?? '')));
+        }
+
+        $folderUrl = \App\Models\SystemSettingModel::getSetting('gdrive_mou_folder_url', 'https://drive.google.com/drive/folders/1MOU-BJS-SEKOLAH-BSI-GROUP');
+        $folderId = \App\Libraries\GoogleDriveUploadService::extractFolderId($folderUrl);
+        $gdriveSettings = [
+            'admin_email' => \App\Models\SystemSettingModel::getSetting('gdrive_admin_email', 'admin.markom@bsi.ac.id'),
+            'folder_url' => $folderUrl,
+            'folder_name' => \App\Models\SystemSettingModel::getSetting('gdrive_mou_folder_name', 'MOU BJS Sekolah - BSI Group'),
+            'webhook_url' => \App\Models\SystemSettingModel::getSetting('gdrive_webhook_url', ''),
+            'auto_upload_enabled' => \App\Models\SystemSettingModel::getSetting('gdrive_auto_upload_enabled', '1') === '1',
+            'is_configured' => \App\Libraries\GoogleDriveUploadService::isConfigured(),
+            'folder_id' => $folderId,
+            'apps_script_template' => \App\Libraries\GoogleDriveUploadService::getAppsScriptTemplate($folderId),
+        ];
+
         $activeMap = [
             'ojt' => 'one-campus-ojt',
             'school' => 'one-campus-school',
@@ -3007,7 +3221,13 @@ class EventSuite extends BaseController
             'active' => $activeMap[$requestedProgram] ?? 'one-campus',
             'selectedProgram' => $requestedProgram,
             'campuses' => $visibleCampuses,
-            'schoolReports' => $this->filterOneCampusReportsByCampus($schoolReports, $selectedCampusId),
+            'schoolReports' => $filteredSchoolReports,
+            'allCampusSchoolReports' => $campusSchoolReports,
+            'selectedPmbPeriod' => $selectedPmbPeriod,
+            'selectedSort' => $selectedSort,
+            'availablePmbPeriods' => $availablePmbPeriods,
+            'pmbPeriodCounts' => $pmbPeriodCounts,
+            'gdriveSettings' => $gdriveSettings,
             'bannerReports' => $this->filterOneCampusReportsByCampus($bannerReports, $selectedCampusId),
             'ojtReports' => $this->filterOneCampusReportsByCampus($ojtReports, $selectedCampusId),
             'selectedOneCampusId' => $selectedCampusId,
@@ -3091,31 +3311,71 @@ class EventSuite extends BaseController
             $selectedCampusId = $campusScope > 0 ? $campusScope : null;
         }
 
-        $schoolReports = $this->filterOneCampusReportsByCampus(
-            (new OneCampusSchoolReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll(),
-            $selectedCampusId
-        );
+        $allReports = (new OneCampusSchoolReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
+        $schoolReports = $this->filterOneCampusReportsByCampus($allReports, $selectedCampusId);
+
+        $selectedPmbPeriod = trim((string) ($this->request->getGet('pmb_period') ?? ''));
+        if ($selectedPmbPeriod !== '' && $selectedPmbPeriod !== 'all') {
+            $schoolReports = array_values(array_filter(
+                $schoolReports,
+                fn (array $s): bool => ($s['pmb_period'] ?? 'September 2026 - September 2027') === $selectedPmbPeriod
+            ));
+        }
+
+        $selectedSort = trim((string) ($this->request->getGet('sort') ?? ''));
+        if ($selectedSort === 'pmb_desc') {
+            usort($schoolReports, fn($a, $b) => ((int) ($b['pmb_count'] ?? 0)) <=> ((int) ($a['pmb_count'] ?? 0)));
+        } elseif ($selectedSort === 'pmb_asc') {
+            usort($schoolReports, fn($a, $b) => ((int) ($a['pmb_count'] ?? 0)) <=> ((int) ($b['pmb_count'] ?? 0)));
+        }
 
         $rows = [[
             'No',
             'Kampus',
+            'Tahun PMB',
+            'NPSN',
             'Nama Sekolah',
-            'Nama Guru / PIC',
-            'Jabatan',
-            'No. Telepon',
+            'Kota / Kab',
+            'Jenis Sekolah',
+            'Status Sekolah',
+            'Nama Kepala Sekolah',
+            'Telp Sekolah',
+            'Email Sekolah',
+            'Nama Kontak (PIC)',
+            'Telp Kontak',
+            'Email Kontak',
+            'Status MOU PDF',
+            'Link Dokumen MOU',
+            'Status Sekolah',
             'Perolehan PMB',
             'Keterangan',
             'Tanggal Input',
         ]];
 
         foreach (array_values($schoolReports) as $idx => $item) {
+            $mouStatus = ! empty($item['mou_file']) ? 'MOU PDF Tersedia' : (! empty($item['mou_drive_link']) ? 'Google Drive Tersedia' : 'Belum Ada MOU');
+            $mouUrl = ! empty($item['mou_file'])
+                ? site_url('one-campus/schools/' . $item['id'] . '/mou')
+                : (string) ($item['mou_drive_link'] ?? '-');
+
             $rows[] = [
                 (string) ($idx + 1),
                 (string) ($item['campus_name'] ?? 'Tanpa kampus'),
+                (string) ($item['pmb_period'] ?? 'September 2026 - September 2027'),
+                (string) ($item['npsn'] ?? '-'),
                 (string) ($item['school_name'] ?? '-'),
-                (string) ($item['teacher_name'] ?? '-'),
-                (string) ($item['position'] ?? '-'),
-                (string) ($item['phone'] ?? '-'),
+                (string) ($item['city'] ?? '-'),
+                (string) ($item['school_type'] ?? 'SMA'),
+                (string) ($item['school_status'] ?? 'Negeri'),
+                (string) ($item['headmaster_name'] ?? '-'),
+                (string) ($item['school_phone'] ?? '-'),
+                (string) ($item['school_email'] ?? '-'),
+                (string) ($item['contact_name'] ?? ($item['teacher_name'] ?? '-')),
+                (string) ($item['contact_phone'] ?? ($item['phone'] ?? '-')),
+                (string) ($item['contact_email'] ?? '-'),
+                $mouStatus,
+                $mouUrl,
+                (string) ($item['status'] ?? 'Aktif'),
                 (string) ((int) ($item['pmb_count'] ?? 0)),
                 (string) ($item['notes'] ?? '-'),
                 (string) ($item['created_at'] ?? '-'),
@@ -3176,12 +3436,28 @@ class EventSuite extends BaseController
 
     public function storeOneCampusSchool()
     {
+        $schoolName = trim((string) $this->request->getPost('school_name'));
+        $npsn = trim((string) $this->request->getPost('npsn'));
+        $contactName = trim((string) $this->request->getPost('contact_name'));
+        $contactPhone = trim((string) $this->request->getPost('contact_phone'));
+        $contactEmail = trim((string) $this->request->getPost('contact_email'));
+        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: 'September 2026 - September 2027';
+
         $rules = [
             'campus_id' => 'permit_empty|is_natural_no_zero',
             'school_name' => 'required|max_length[180]',
-            'teacher_name' => 'required|max_length[160]',
-            'phone' => 'required|max_length[40]',
-            'position' => 'required|max_length[120]',
+            'npsn' => 'permit_empty|max_length[30]',
+            'city' => 'permit_empty|max_length[120]',
+            'school_type' => 'permit_empty|max_length[40]',
+            'school_status' => 'permit_empty|max_length[40]',
+            'headmaster_name' => 'permit_empty|max_length[160]',
+            'school_phone' => 'permit_empty|max_length[40]',
+            'school_email' => 'permit_empty|valid_email|max_length[160]',
+            'contact_name' => 'permit_empty|max_length[160]',
+            'contact_phone' => 'permit_empty|max_length[40]',
+            'contact_email' => 'permit_empty|valid_email|max_length[160]',
+            'status' => 'permit_empty|max_length[40]',
+            'pmb_period' => 'permit_empty|max_length[80]',
             'pmb_count' => 'permit_empty|is_natural',
             'notes' => 'permit_empty|max_length[2000]',
         ];
@@ -3190,18 +3466,102 @@ class EventSuite extends BaseController
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
+        $mouFile = null;
+        try {
+            $mouFile = $this->uploadedSchoolMouFromRequest('mou_file', $npsn ?: $schoolName);
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
+
+        $mouDriveLink = trim((string) $this->request->getPost('mou_drive_link'));
+        $driveNotice = '';
+
+        // Otomatis Upload Langsung ke Google Drive Admin
+        if ($mouFile !== null && \App\Libraries\GoogleDriveUploadService::isConfigured() && \App\Libraries\GoogleDriveUploadService::isAutoUploadEnabled()) {
+            $fullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $mouFile);
+            $safeName = 'MOU-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', ($npsn ?: $schoolName)) . '-' . date('YmdHis') . '.pdf';
+            $driveRes = \App\Libraries\GoogleDriveUploadService::uploadFile($fullPath, $safeName);
+            if ($driveRes['success'] && ! empty($driveRes['drive_url'])) {
+                $mouDriveLink = $driveRes['drive_url'];
+                $driveNotice = ' Dokumen MOU otomatis terunggah langsung ke Google Drive Admin.';
+            } else {
+                $driveNotice = ' (Info Google Drive: ' . ($driveRes['message'] ?? 'gagal sinkron') . ', dokumen tetap aman di server lokal).';
+            }
+        }
+
+        $mouUploadedAt = ($mouFile !== null || $mouDriveLink !== '') ? date('Y-m-d H:i:s') : null;
+
         (new OneCampusSchoolReportModel())->insert([
             'campus_id' => $this->oneCampusInputCampusId(),
-            'school_name' => $this->request->getPost('school_name'),
-            'teacher_name' => $this->request->getPost('teacher_name'),
-            'phone' => $this->request->getPost('phone'),
-            'position' => $this->request->getPost('position'),
+            'npsn' => $npsn !== '' ? $npsn : null,
+            'school_name' => $schoolName,
+            'city' => trim((string) $this->request->getPost('city')) ?: null,
+            'school_type' => trim((string) $this->request->getPost('school_type')) ?: 'SMA',
+            'school_status' => trim((string) $this->request->getPost('school_status')) ?: 'Negeri',
+            'headmaster_name' => trim((string) $this->request->getPost('headmaster_name')) ?: null,
+            'school_phone' => trim((string) $this->request->getPost('school_phone')) ?: null,
+            'school_email' => trim((string) $this->request->getPost('school_email')) ?: null,
+            'contact_name' => $contactName ?: null,
+            'contact_phone' => $contactPhone ?: null,
+            'contact_email' => $contactEmail ?: null,
+            'teacher_name' => $contactName ?: ($schoolName . ' PIC'),
+            'phone' => $contactPhone ?: (trim((string) $this->request->getPost('school_phone')) ?: '-'),
+            'position' => trim((string) $this->request->getPost('position')) ?: 'Kontak Sekolah',
             'pmb_count' => (int) $this->request->getPost('pmb_count'),
-            'notes' => $this->request->getPost('notes'),
+            'status' => trim((string) $this->request->getPost('status')) ?: 'Aktif',
+            'pmb_period' => $pmbPeriod,
+            'mou_file' => $mouFile,
+            'mou_drive_link' => $mouDriveLink !== '' ? $mouDriveLink : null,
+            'mou_uploaded_at' => $mouUploadedAt,
+            'notes' => trim((string) $this->request->getPost('notes')) ?: null,
             'created_by' => (int) session('user.id'),
         ]);
 
-        return redirect()->to(site_url('one-campus/schools'))->with('success', 'Laporan One Campus Sixty School berhasil disimpan.');
+        return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod)))
+            ->with('success', 'Data sekolah penerima BJS berhasil disimpan ke tahun PMB ' . $pmbPeriod . '.' . $driveNotice);
+    }
+
+    public function editOneCampusSchool(int $id)
+    {
+        $model = new OneCampusSchoolReportModel();
+        $school = $model->find($id);
+        if (! $school || ! $this->canManageOneCampusReport($school)) {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Data sekolah tidak ditemukan atau tidak bisa diakses.');
+        }
+
+        $campuses = (new CampusModel())->orderBy('name', 'ASC')->findAll();
+        $visibleCampuses = $this->visibleOneCampusCampuses($campuses);
+
+        $availablePmbPeriods = $this->getAvailablePmbPeriods();
+
+        $students = (new \App\Models\OneCampusPmbStudentModel())
+            ->withDetails()
+            ->where('one_campus_pmb_students.school_report_id', $id)
+            ->orderBy('one_campus_pmb_students.student_name', 'ASC')
+            ->findAll();
+
+        $folderUrl = \App\Models\SystemSettingModel::getSetting('gdrive_mou_folder_url', 'https://drive.google.com/drive/folders/1MOU-BJS-SEKOLAH-BSI-GROUP');
+        $folderId = \App\Libraries\GoogleDriveUploadService::extractFolderId($folderUrl);
+        $gdriveSettings = [
+            'admin_email' => \App\Models\SystemSettingModel::getSetting('gdrive_admin_email', 'admin.markom@bsi.ac.id'),
+            'folder_url' => $folderUrl,
+            'folder_name' => \App\Models\SystemSettingModel::getSetting('gdrive_mou_folder_name', 'MOU BJS Sekolah - BSI Group'),
+            'webhook_url' => \App\Models\SystemSettingModel::getSetting('gdrive_webhook_url', ''),
+            'auto_upload_enabled' => \App\Models\SystemSettingModel::getSetting('gdrive_auto_upload_enabled', '1') === '1',
+            'is_configured' => \App\Libraries\GoogleDriveUploadService::isConfigured(),
+            'folder_id' => $folderId,
+            'apps_script_template' => \App\Libraries\GoogleDriveUploadService::getAppsScriptTemplate($folderId),
+        ];
+
+        return $this->render('pages/one_campus_school_edit', [
+            'title' => 'Edit Data Sekolah Penerima BJS',
+            'active' => 'one-campus-school',
+            'school' => $school,
+            'campuses' => $visibleCampuses,
+            'availablePmbPeriods' => $availablePmbPeriods,
+            'gdriveSettings' => $gdriveSettings,
+            'students' => $students,
+        ]);
     }
 
     public function updateOneCampusSchool(int $id)
@@ -3212,12 +3572,28 @@ class EventSuite extends BaseController
             return redirect()->to(site_url('one-campus/schools'))->with('error', 'Data school tidak ditemukan atau tidak bisa diakses.');
         }
 
+        $schoolName = trim((string) $this->request->getPost('school_name'));
+        $npsn = trim((string) $this->request->getPost('npsn'));
+        $contactName = trim((string) $this->request->getPost('contact_name'));
+        $contactPhone = trim((string) $this->request->getPost('contact_phone'));
+        $contactEmail = trim((string) $this->request->getPost('contact_email'));
+        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: ($report['pmb_period'] ?? 'September 2026 - September 2027');
+
         $rules = [
             'campus_id' => 'permit_empty|is_natural_no_zero',
             'school_name' => 'required|max_length[180]',
-            'teacher_name' => 'required|max_length[160]',
-            'phone' => 'required|max_length[40]',
-            'position' => 'required|max_length[120]',
+            'npsn' => 'permit_empty|max_length[30]',
+            'city' => 'permit_empty|max_length[120]',
+            'school_type' => 'permit_empty|max_length[40]',
+            'school_status' => 'permit_empty|max_length[40]',
+            'headmaster_name' => 'permit_empty|max_length[160]',
+            'school_phone' => 'permit_empty|max_length[40]',
+            'school_email' => 'permit_empty|valid_email|max_length[160]',
+            'contact_name' => 'permit_empty|max_length[160]',
+            'contact_phone' => 'permit_empty|max_length[40]',
+            'contact_email' => 'permit_empty|valid_email|max_length[160]',
+            'status' => 'permit_empty|max_length[40]',
+            'pmb_period' => 'permit_empty|max_length[80]',
             'pmb_count' => 'permit_empty|is_natural',
             'notes' => 'permit_empty|max_length[2000]',
         ];
@@ -3226,17 +3602,63 @@ class EventSuite extends BaseController
             return redirect()->back()->withInput()->with('error', implode(' ', $this->validator->getErrors()));
         }
 
+        $mouFile = $report['mou_file'] ?? null;
+        $driveNotice = '';
+        try {
+            $newMou = $this->uploadedSchoolMouFromRequest('mou_file', $npsn ?: $schoolName);
+            if ($newMou !== null) {
+                $mouFile = $newMou;
+
+                // Upload langsung ke Google Drive jika diunggah file baru
+                if (\App\Libraries\GoogleDriveUploadService::isConfigured() && \App\Libraries\GoogleDriveUploadService::isAutoUploadEnabled()) {
+                    $fullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $newMou);
+                    $safeName = 'MOU-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', ($npsn ?: $schoolName)) . '-' . date('YmdHis') . '.pdf';
+                    $driveRes = \App\Libraries\GoogleDriveUploadService::uploadFile($fullPath, $safeName);
+                    if ($driveRes['success'] && ! empty($driveRes['drive_url'])) {
+                        $mouDriveLink = $driveRes['drive_url'];
+                        $driveNotice = ' Dokumen MOU baru otomatis diunggah langsung ke Google Drive Admin.';
+                    } else {
+                        $driveNotice = ' (Info Google Drive: ' . ($driveRes['message'] ?? 'gagal sinkron') . ').';
+                    }
+                }
+            }
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
+
+        $mouDriveLink = trim((string) $this->request->getPost('mou_drive_link'));
+        if ($mouDriveLink === '') {
+            $mouDriveLink = $report['mou_drive_link'] ?? null;
+        }
+        $mouUploadedAt = ($mouFile !== null || $mouDriveLink !== null) ? ($report['mou_uploaded_at'] ?? date('Y-m-d H:i:s')) : null;
+
         $model->update($id, [
             'campus_id' => $this->oneCampusInputCampusId($report['campus_id'] ?? null),
-            'school_name' => $this->request->getPost('school_name'),
-            'teacher_name' => $this->request->getPost('teacher_name'),
-            'phone' => $this->request->getPost('phone'),
-            'position' => $this->request->getPost('position'),
+            'npsn' => $npsn !== '' ? $npsn : null,
+            'school_name' => $schoolName,
+            'city' => trim((string) $this->request->getPost('city')) ?: null,
+            'school_type' => trim((string) $this->request->getPost('school_type')) ?: 'SMA',
+            'school_status' => trim((string) $this->request->getPost('school_status')) ?: 'Negeri',
+            'headmaster_name' => trim((string) $this->request->getPost('headmaster_name')) ?: null,
+            'school_phone' => trim((string) $this->request->getPost('school_phone')) ?: null,
+            'school_email' => trim((string) $this->request->getPost('school_email')) ?: null,
+            'contact_name' => $contactName ?: null,
+            'contact_phone' => $contactPhone ?: null,
+            'contact_email' => $contactEmail ?: null,
+            'teacher_name' => $contactName ?: ($schoolName . ' PIC'),
+            'phone' => $contactPhone ?: (trim((string) $this->request->getPost('school_phone')) ?: '-'),
+            'position' => trim((string) $this->request->getPost('position')) ?: 'Kontak Sekolah',
             'pmb_count' => (int) $this->request->getPost('pmb_count'),
-            'notes' => $this->request->getPost('notes'),
+            'status' => trim((string) $this->request->getPost('status')) ?: 'Aktif',
+            'pmb_period' => $pmbPeriod,
+            'mou_file' => $mouFile,
+            'mou_drive_link' => $mouDriveLink,
+            'mou_uploaded_at' => $mouUploadedAt,
+            'notes' => trim((string) $this->request->getPost('notes')) ?: null,
         ]);
 
-        return redirect()->to(site_url('one-campus/schools'))->with('success', 'Laporan One Campus Sixty School berhasil diperbarui.');
+        return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod)))
+            ->with('success', 'Data sekolah penerima BJS berhasil diperbarui.' . $driveNotice);
     }
 
     public function deleteOneCampusSchool(int $id)
@@ -3250,6 +3672,597 @@ class EventSuite extends BaseController
         $model->delete($id);
 
         return redirect()->to(site_url('one-campus/schools'))->with('success', 'Laporan One Campus Sixty School berhasil dihapus.');
+    }
+
+    public function downloadOneCampusSchoolMou(int $id)
+    {
+        $school = (new OneCampusSchoolReportModel())->find($id);
+        if (! $school) {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Data sekolah tidak ditemukan.');
+        }
+
+        $mouFile = trim((string) ($school['mou_file'] ?? ''));
+        $driveLink = trim((string) ($school['mou_drive_link'] ?? ''));
+
+        if ($mouFile !== '') {
+            $fullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $mouFile);
+            if (is_file($fullPath)) {
+                $filename = 'MOU-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) ($school['school_name'] ?? 'sekolah')) . '.pdf';
+                return $this->response
+                    ->setHeader('Content-Type', 'application/pdf')
+                    ->setHeader('Content-Disposition', 'inline; filename="' . $filename . '"')
+                    ->setBody(file_get_contents($fullPath));
+            }
+        }
+
+        if ($driveLink !== '') {
+            return redirect()->to($driveLink);
+        }
+
+        return redirect()->to(site_url('one-campus/schools'))->with('error', 'Dokumen MOU belum diupload untuk sekolah ini.');
+    }
+
+    public function saveOneCampusGdriveSettings()
+    {
+        $adminEmail = trim((string) $this->request->getPost('gdrive_admin_email'));
+        $folderUrl = trim((string) $this->request->getPost('gdrive_mou_folder_url'));
+        $folderName = trim((string) $this->request->getPost('gdrive_mou_folder_name'));
+        $webhookUrl = trim((string) $this->request->getPost('gdrive_webhook_url'));
+        $autoUpload = $this->request->getPost('gdrive_auto_upload_enabled') ? '1' : '0';
+
+        if ($adminEmail !== '') {
+            \App\Models\SystemSettingModel::setSetting('gdrive_admin_email', $adminEmail, 'Email Akun Google Drive Admin MOU');
+        }
+        if ($folderUrl !== '') {
+            \App\Models\SystemSettingModel::setSetting('gdrive_mou_folder_url', $folderUrl, 'URL atau ID Folder Google Drive Penyimpanan MOU Sekolah');
+        }
+        if ($folderName !== '') {
+            \App\Models\SystemSettingModel::setSetting('gdrive_mou_folder_name', $folderName, 'Nama Folder Google Drive Admin');
+        }
+
+        \App\Models\SystemSettingModel::setSetting('gdrive_webhook_url', $webhookUrl, 'URL Webhook Google Apps Script untuk Upload Langsung ke Drive');
+        \App\Models\SystemSettingModel::setSetting('gdrive_auto_upload_enabled', $autoUpload, 'Status Aktif Otomatis Upload Langsung ke Google Drive');
+
+        return redirect()->to(site_url('one-campus/schools'))->with('success', 'Pengaturan Google Drive Akun Admin berhasil disimpan.');
+    }
+
+    public function testOneCampusGdriveConnection()
+    {
+        $result = \App\Libraries\GoogleDriveUploadService::testConnection();
+        if ($result['success']) {
+            return redirect()->to(site_url('one-campus/schools'))->with('success', $result['message']);
+        }
+
+        return redirect()->to(site_url('one-campus/schools'))->with('error', $result['message']);
+    }
+
+    public function syncOneCampusSchoolToDrive(int $id)
+    {
+        $model = new OneCampusSchoolReportModel();
+        $school = $model->find($id);
+        if (! $school) {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Data sekolah tidak ditemukan.');
+        }
+
+        $mouFile = trim((string) ($school['mou_file'] ?? ''));
+        if ($mouFile === '') {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'File MOU lokal belum diunggah untuk sekolah ini.');
+        }
+
+        $fullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $mouFile);
+        $safeName = 'MOU-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) ($school['npsn'] ?: $school['school_name'])) . '.pdf';
+        $uploadResult = \App\Libraries\GoogleDriveUploadService::uploadFile($fullPath, $safeName);
+
+        if ($uploadResult['success'] && ! empty($uploadResult['drive_url'])) {
+            $model->update($id, [
+                'mou_drive_link' => $uploadResult['drive_url'],
+                'mou_uploaded_at' => date('Y-m-d H:i:s'),
+            ]);
+
+            return redirect()->back()->with('success', 'Dokumen MOU berhasil disinkronkan dan diunggah langsung ke Google Drive Admin!');
+        }
+
+        return redirect()->back()->with('error', 'Gagal mengunggah ke Google Drive: ' . $uploadResult['message']);
+    }
+
+    public function getAvailablePmbPeriods(): array
+    {
+        // Default: hanya yang sedang berjalan dan sebelumnya
+        $periods = [
+            'September 2026 - September 2027' => 'September 2026 - September 2027 (Berjalan)',
+            'September 2025 - September 2026' => 'September 2025 - September 2026',
+            'September 2024 - September 2025' => 'September 2024 - September 2025',
+        ];
+
+        // Ambil klaster tambahan yang dibuat khusus oleh Superadmin
+        $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_pmb_periods', '');
+        if ($customJson !== '') {
+            $customs = json_decode($customJson, true);
+            if (is_array($customs)) {
+                foreach ($customs as $cKey => $cLabel) {
+                    if (is_string($cKey) && trim($cKey) !== '') {
+                        $periods[$cKey] = $cLabel;
+                    }
+                }
+            }
+        }
+
+        return $periods;
+    }
+
+    public function storeOneCampusPmbCluster()
+    {
+        $userRole = (string) session('user.role');
+        if ($userRole !== 'Admin Sistem' && $userRole !== 'Super Admin') {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Hanya Super Admin / Admin Sistem yang berhak membuat klasterisasi PMB baru.');
+        }
+
+        $periodName = trim((string) $this->request->getPost('pmb_period_name'));
+        $startMonth = trim((string) $this->request->getPost('start_month')) ?: 'September';
+        $startYear = (int) $this->request->getPost('start_year');
+        $endMonth = trim((string) $this->request->getPost('end_month')) ?: 'September';
+        $endYear = (int) $this->request->getPost('end_year');
+
+        if ($periodName === '' && $startYear > 2000 && $endYear > $startYear) {
+            $periodName = "{$startMonth} {$startYear} - {$endMonth} {$endYear}";
+        }
+
+        if ($periodName === '') {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Nama atau tahun periode klaster PMB baru wajib diisi.');
+        }
+
+        $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_pmb_periods', '');
+        $customs = [];
+        if ($customJson !== '') {
+            $decoded = json_decode($customJson, true);
+            if (is_array($decoded)) {
+                $customs = $decoded;
+            }
+        }
+
+        $customs[$periodName] = $periodName . ' (Terbaru)';
+        \App\Models\SystemSettingModel::setSetting('one_campus_custom_pmb_periods', json_encode($customs));
+
+        return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($periodName)))
+            ->with('success', 'Klasterisasi PMB baru "' . $periodName . '" berhasil dibuat oleh Superadmin!');
+    }
+
+    public function downloadOneCampusPmbTemplate()
+    {
+        $studentRows = [
+            [
+                'No',
+                'Nama Mahasiswa',
+                'Asal Sekolah',
+                'NPSN',
+                'Kode Kampus',
+                'Kode UBSI',
+                'Kampus',
+                'Program Studi',
+                'No Pendaftaran',
+                'No HP / WhatsApp',
+                'Email',
+                'Status',
+            ],
+            [
+                '1',
+                'Ahmad Fauzi Pratama',
+                'SMAN 1 Cibinong',
+                '20201234',
+                'D2',
+                '01',
+                'Margonda',
+                'Sistem Informasi (S1)',
+                'PMB-2026-0012',
+                '081234567890',
+                'ahmad.fauzi@gmail.com',
+                'Mahasiswa Baru',
+            ],
+            [
+                '2',
+                'Siti Nurhaliza',
+                'SMKN 1 Bogor',
+                '20205678',
+                'A1',
+                '02',
+                'Fatmawati',
+                'Teknologi Informasi (S1)',
+                'PMB-2026-0034',
+                '085678901234',
+                'siti.nurhaliza@gmail.com',
+                'Mahasiswa Baru',
+            ],
+            [
+                '3',
+                'Budi Santoso',
+                'SMA PGRI 1 Bekasi',
+                '20209988',
+                'E1',
+                '04',
+                'Bekasi',
+                'Manajemen Bisnis (S1)',
+                'PMB-2026-0078',
+                '087812345678',
+                'budi.santoso@yahoo.com',
+                'Terdaftar',
+            ],
+            [
+                '4',
+                'Rizky Ramadhan',
+                'SMAN 38 Jakarta',
+                '20101122',
+                'A1',
+                '02',
+                'Fatmawati',
+                'Ilmu Komputer (S1)',
+                'PMB-2026-0099',
+                '081399887766',
+                'rizky.ramadhan@gmail.com',
+                'Mahasiswa Baru',
+            ],
+            [
+                '5',
+                'Dewi Lestari',
+                'SMAN 1 Bogor',
+                '20203344',
+                'H2',
+                '39',
+                'Bogor A',
+                'Sistem Informasi (S1)',
+                'PMB-2026-0105',
+                '081277665544',
+                'dewi.lestari@gmail.com',
+                'Mahasiswa Baru',
+            ],
+        ];
+
+        $campusMap = $this->getOfficialCampusCodeMap();
+        $referenceRows = [
+            ['No', 'Kode UBSI', 'Kampus', 'Kode Kampus'],
+        ];
+        foreach ($campusMap as $cm) {
+            $referenceRows[] = [
+                (string) $cm['no'],
+                (string) $cm['kode_ubsi'],
+                (string) $cm['campus'],
+                (string) $cm['kode_kampus'],
+            ];
+        }
+
+        $sheets = [
+            'Data Mahasiswa PMB' => $studentRows,
+            'Referensi Kode Kampus' => $referenceRows,
+        ];
+
+        $filename = 'template-upload-data-pmb-sekolah.xlsx';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($this->xlsxFromMultiSheets($sheets));
+    }
+
+    public function uploadOneCampusPmbExcel()
+    {
+        $file = $this->request->getFile('pmb_file');
+        if (! $file || ! $file->isValid()) {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'File data Excel PMB belum dipilih atau file rusak.');
+        }
+
+        $extension = strtolower($file->getClientExtension() ?: pathinfo($file->getClientName(), PATHINFO_EXTENSION));
+        if (! in_array($extension, ['xlsx', 'csv', 'xls'], true)) {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Format file harus berupa Excel .xlsx atau .csv.');
+        }
+
+        $pmbPeriod = trim((string) $this->request->getPost('pmb_period'));
+        if ($pmbPeriod === '') {
+            $pmbPeriod = 'September 2026 - September 2027';
+        }
+
+        $defaultCampusId = (int) ($this->request->getPost('campus_id') ?: 0) ?: null;
+
+        try {
+            $rows = $extension === 'csv'
+                ? $this->readEventCsvRows($file->getTempName())
+                : $this->readEventXlsxRows($file->getTempName());
+        } catch (\Throwable $err) {
+            log_message('error', 'Error reading PMB Excel: ' . $err->getMessage());
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Gagal membaca file Excel. Pastikan file valid: ' . $err->getMessage());
+        }
+
+        if (count($rows) < 2) {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'File Excel kosong atau tidak memiliki baris data.');
+        }
+
+        // Header mapping
+        $headerRow = array_map(fn($v) => strtolower(trim((string) $v)), $rows[0]);
+        $colIndex = [];
+        foreach ($headerRow as $idx => $header) {
+            $cleanHeader = preg_replace('/[^a-z0-9_]/', '', str_replace([' ', '/', '-'], '_', $header));
+            if (str_contains($cleanHeader, 'nama_mahasiswa') || str_contains($cleanHeader, 'nama_siswa') || $cleanHeader === 'nama') {
+                $colIndex['student_name'] = $idx;
+            } elseif (str_contains($cleanHeader, 'asal_sekolah') || str_contains($cleanHeader, 'nama_sekolah') || $cleanHeader === 'sekolah') {
+                $colIndex['school_name'] = $idx;
+            } elseif (str_contains($cleanHeader, 'npsn')) {
+                $colIndex['npsn'] = $idx;
+            } elseif (str_contains($cleanHeader, 'kode_ubsi') || $cleanHeader === 'kodeubsi' || $cleanHeader === 'kd_ubsi') {
+                $colIndex['kode_ubsi'] = $idx;
+            } elseif (str_contains($cleanHeader, 'kode_kampus') || $cleanHeader === 'kodekampus' || $cleanHeader === 'kd_kampus' || $cleanHeader === 'kd_kps' || $cleanHeader === 'kode_kps') {
+                $colIndex['campus_code'] = $idx;
+            } elseif (str_contains($cleanHeader, 'hp') || str_contains($cleanHeader, 'wa') || str_contains($cleanHeader, 'telepon') || str_contains($cleanHeader, 'kontak')) {
+                $colIndex['student_phone'] = $idx;
+            } elseif (str_contains($cleanHeader, 'email')) {
+                $colIndex['student_email'] = $idx;
+            } elseif (str_contains($cleanHeader, 'prodi') || str_contains($cleanHeader, 'program_studi') || str_contains($cleanHeader, 'jurusan')) {
+                $colIndex['study_program'] = $idx;
+            } elseif (str_contains($cleanHeader, 'pendaftaran') || str_contains($cleanHeader, 'no_pmb') || str_contains($cleanHeader, 'reg')) {
+                $colIndex['registration_no'] = $idx;
+            } elseif (str_contains($cleanHeader, 'kampus') || str_contains($cleanHeader, 'campus')) {
+                $colIndex['campus'] = $idx;
+            } elseif (str_contains($cleanHeader, 'status')) {
+                $colIndex['status'] = $idx;
+            }
+        }
+
+        if (! isset($colIndex['student_name']) || ! isset($colIndex['school_name'])) {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Kolom Wajib "Nama Mahasiswa" dan "Asal Sekolah" tidak ditemukan pada header file Excel. Silakan download template resmi.');
+        }
+
+        $studentModel = new \App\Models\OneCampusPmbStudentModel();
+        $schoolModel = new \App\Models\OneCampusSchoolReportModel();
+        $campuses = (new \App\Models\CampusModel())->findAll();
+        $batchName = 'Import ' . date('Y-m-d H:i');
+        $userId = (int) (session('user.id') ?: 1);
+
+        $insertedCount = 0;
+        $affectedSchoolIds = [];
+
+        for ($i = 1; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            $studentName = trim((string) ($row[$colIndex['student_name']] ?? ''));
+            $schoolName = trim((string) ($row[$colIndex['school_name']] ?? ''));
+            if ($studentName === '' || $schoolName === '') {
+                continue;
+            }
+
+            $npsn = isset($colIndex['npsn']) ? trim((string) ($row[$colIndex['npsn']] ?? '')) : null;
+            $phone = isset($colIndex['student_phone']) ? trim((string) ($row[$colIndex['student_phone']] ?? '')) : null;
+            $email = isset($colIndex['student_email']) ? trim((string) ($row[$colIndex['student_email']] ?? '')) : null;
+            $prodi = isset($colIndex['study_program']) ? trim((string) ($row[$colIndex['study_program']] ?? '')) : null;
+            $regNo = isset($colIndex['registration_no']) ? trim((string) ($row[$colIndex['registration_no']] ?? '')) : null;
+            $status = isset($colIndex['status']) ? trim((string) ($row[$colIndex['status']] ?? '')) : 'Mahasiswa Baru';
+            if ($status === '') $status = 'Mahasiswa Baru';
+
+            // Match Campus by Kode UBSI, Kode Kampus, or Nama Kampus
+            $rowKodeUbsi = isset($colIndex['kode_ubsi']) ? trim((string) ($row[$colIndex['kode_ubsi']] ?? '')) : '';
+            $rowCampusCode = isset($colIndex['campus_code']) ? trim((string) ($row[$colIndex['campus_code']] ?? '')) : '';
+            $rawCampus = isset($colIndex['campus']) ? trim((string) ($row[$colIndex['campus']] ?? '')) : '';
+
+            $matchedCampus = null;
+
+            // 1. Match by Kode UBSI (e.g. '01', '02', '11', '39', etc.)
+            if ($rowKodeUbsi !== '') {
+                $cleanUbsi = ltrim($rowKodeUbsi, '0');
+                if ($cleanUbsi === '') $cleanUbsi = '0';
+                foreach ($campuses as $c) {
+                    $cUbsi = trim((string) ($c['kode_ubsi'] ?? ''));
+                    if ($cUbsi !== '') {
+                        $cClean = ltrim($cUbsi, '0');
+                        if ($cClean === '') $cClean = '0';
+                        if (strcasecmp($cUbsi, $rowKodeUbsi) === 0 || $cleanUbsi === $cClean) {
+                            $matchedCampus = $c;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 2. Match by Kode Kampus (e.g. 'D2', 'A1', 'E1', 'B2/B4', etc.)
+            if (! $matchedCampus && $rowCampusCode !== '') {
+                $cleanCode = strtoupper(str_replace([' ', '-', '_'], '', $rowCampusCode));
+                foreach ($campuses as $c) {
+                    $cCode = strtoupper(str_replace([' ', '-', '_'], '', (string) ($c['campus_code'] ?? '')));
+                    if ($cCode !== '') {
+                        if ($cCode === $cleanCode || str_contains($cCode, $cleanCode) || str_contains($cleanCode, $cCode)) {
+                            $matchedCampus = $c;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 3. Match by Nama Kampus / Raw Campus Text
+            if (! $matchedCampus && $rawCampus !== '') {
+                $cleanRaw = strtolower(trim(preg_replace('/^(ubsi|unm)?\s*(kampus)?\s*/i', '', $rawCampus)));
+                foreach ($campuses as $c) {
+                    $cName = strtolower((string) ($c['name'] ?? ''));
+                    $cClean = strtolower(trim(preg_replace('/^(ubsi|unm)?\s*(kampus)?\s*/i', '', $cName)));
+                    $cUbsi = trim((string) ($c['kode_ubsi'] ?? ''));
+                    $cCode = strtolower(trim((string) ($c['campus_code'] ?? '')));
+
+                    if (
+                        strcasecmp($cName, $rawCampus) === 0 ||
+                        ($cleanRaw !== '' && (str_contains($cClean, $cleanRaw) || str_contains($cleanRaw, $cClean))) ||
+                        ($cUbsi !== '' && strcasecmp($cUbsi, $rawCampus) === 0) ||
+                        ($cCode !== '' && strcasecmp($cCode, $rawCampus) === 0)
+                    ) {
+                        $matchedCampus = $c;
+                        break;
+                    }
+                }
+            }
+
+            // 4. Fallback to default campus selected on form
+            if (! $matchedCampus && $defaultCampusId !== null) {
+                foreach ($campuses as $c) {
+                    if ((int) $c['id'] === $defaultCampusId) {
+                        $matchedCampus = $c;
+                        break;
+                    }
+                }
+            }
+
+            $campusId = $matchedCampus ? (int) $matchedCampus['id'] : null;
+            $savedKodeUbsi = $matchedCampus ? ($matchedCampus['kode_ubsi'] ?? null) : ($rowKodeUbsi ?: null);
+            $savedCampusCode = $matchedCampus ? ($matchedCampus['campus_code'] ?? null) : ($rowCampusCode ?: null);
+
+            // Find or create school report
+            $school = null;
+            if (! empty($npsn)) {
+                $school = $schoolModel
+                    ->where('npsn', $npsn)
+                    ->where('pmb_period', $pmbPeriod)
+                    ->first();
+            }
+            if (! $school) {
+                $school = $schoolModel
+                    ->where('school_name', $schoolName)
+                    ->where('pmb_period', $pmbPeriod)
+                    ->first();
+            }
+
+            $schoolReportId = null;
+            if ($school) {
+                $schoolReportId = (int) $school['id'];
+                if ($campusId !== null && empty($school['campus_id'])) {
+                    $schoolModel->update($schoolReportId, ['campus_id' => $campusId]);
+                }
+            } else {
+                // Auto create school in Sixty School report
+                $schoolReportId = (int) $schoolModel->insert([
+                    'school_name' => $schoolName,
+                    'npsn' => $npsn ?: null,
+                    'pmb_period' => $pmbPeriod,
+                    'campus_id' => $campusId,
+                    'school_type' => 'SMA',
+                    'school_status' => 'Negeri',
+                    'teacher_name' => 'Kepala Sekolah',
+                    'phone' => $phone ?: '-',
+                    'position' => 'Kepala Sekolah',
+                    'status' => 'Aktif',
+                    'pmb_count' => 0,
+                    'created_by' => $userId,
+                ], true);
+            }
+
+            $affectedSchoolIds[$schoolReportId] = true;
+
+            // Insert student
+            $studentModel->insert([
+                'school_report_id' => $schoolReportId,
+                'school_name' => $schoolName,
+                'npsn' => $npsn ?: null,
+                'pmb_period' => $pmbPeriod,
+                'student_name' => $studentName,
+                'registration_no' => $regNo,
+                'student_phone' => $phone,
+                'student_email' => $email,
+                'study_program' => $prodi,
+                'campus_id' => $campusId,
+                'kode_ubsi' => $savedKodeUbsi,
+                'campus_code' => $savedCampusCode,
+                'status' => $status,
+                'batch_name' => $batchName,
+                'created_by' => $userId,
+            ]);
+
+            $insertedCount++;
+        }
+
+        // Recalculate PMB count for all affected schools
+        foreach (array_keys($affectedSchoolIds) as $schId) {
+            $totalCount = $studentModel
+                ->where('school_report_id', $schId)
+                ->where('pmb_period', $pmbPeriod)
+                ->countAllResults();
+            $schoolModel->update($schId, ['pmb_count' => $totalCount]);
+        }
+
+        $schoolCount = count($affectedSchoolIds);
+        return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod) . '&sort=pmb_desc'))
+            ->with('success', "Sukses! Berhasil mengunggah {$insertedCount} data mahasiswa baru untuk {$schoolCount} sekolah pada klaster {$pmbPeriod}. Jumlah PMB sekolah otomatis diperbarui!");
+    }
+
+    public function oneCampusSchoolStudents(int $id)
+    {
+        $school = (new \App\Models\OneCampusSchoolReportModel())->find($id);
+        if (! $school) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Data sekolah tidak ditemukan.']);
+        }
+
+        $students = (new \App\Models\OneCampusPmbStudentModel())
+            ->withDetails()
+            ->where('one_campus_pmb_students.school_report_id', $id)
+            ->orderBy('one_campus_pmb_students.student_name', 'ASC')
+            ->findAll();
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'school' => [
+                'id' => $school['id'],
+                'school_name' => $school['school_name'],
+                'npsn' => $school['npsn'] ?? '-',
+                'pmb_period' => $school['pmb_period'],
+                'pmb_count' => count($students),
+            ],
+            'students' => $students,
+        ]);
+    }
+
+    public function deleteOneCampusStudent(int $id)
+    {
+        $studentModel = new \App\Models\OneCampusPmbStudentModel();
+        $student = $studentModel->find($id);
+        if (! $student) {
+            return redirect()->back()->with('error', 'Data mahasiswa tidak ditemukan.');
+        }
+
+        $schoolId = (int) $student['school_report_id'];
+        $pmbPeriod = (string) $student['pmb_period'];
+
+        $studentModel->delete($id);
+
+        if ($schoolId > 0) {
+            $remaining = $studentModel
+                ->where('school_report_id', $schoolId)
+                ->where('pmb_period', $pmbPeriod)
+                ->countAllResults();
+            (new \App\Models\OneCampusSchoolReportModel())->update($schoolId, ['pmb_count' => $remaining]);
+        }
+
+        return redirect()->back()->with('success', 'Data mahasiswa ' . ($student['student_name'] ?? '') . ' berhasil dihapus.');
+    }
+
+    private function uploadedSchoolMouFromRequest(string $field, ?string $npsn = null): ?string
+    {
+        $file = $this->request->getFile($field);
+        if (! $file || $file->getError() === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+
+        if (! $file->isValid()) {
+            throw new \RuntimeException('File MOU gagal diupload. Silakan coba kembali.');
+        }
+
+        $extension = strtolower($file->getClientExtension() ?: $file->guessExtension() ?: '');
+        if ($extension !== 'pdf') {
+            throw new \RuntimeException('Dokumen MOU wajib dalam format PDF (.pdf).');
+        }
+
+        if ($file->getSize() > 15 * 1024 * 1024) {
+            throw new \RuntimeException('Ukuran file MOU maksimal 15 MB.');
+        }
+
+        $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'mou_documents';
+        if (! is_dir($targetDir)) {
+            mkdir($targetDir, 0775, true);
+        }
+
+        $safeNpsn = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) ($npsn ?: 'sekolah')) ?: 'sekolah';
+        $fileName = 'mou-' . trim($safeNpsn, '-') . '-' . date('YmdHis') . '.pdf';
+        $file->move($targetDir, $fileName, true);
+
+        return 'uploads/mou_documents/' . $fileName;
     }
 
     public function storeOneCampusBanner()
@@ -6208,6 +7221,113 @@ class EventSuite extends BaseController
         }
 
         return $bestDelimiter;
+    }
+
+    private function getOfficialCampusCodeMap(): array
+    {
+        return [
+            ['no' => 1, 'kode_ubsi' => '01', 'campus' => 'Margonda', 'kode_kampus' => 'D2'],
+            ['no' => 2, 'kode_ubsi' => '02', 'campus' => 'Fatmawati', 'kode_kampus' => 'A1'],
+            ['no' => 3, 'kode_ubsi' => '03', 'campus' => 'Tangerang', 'kode_kampus' => 'C1'],
+            ['no' => 4, 'kode_ubsi' => '04', 'campus' => 'Bekasi', 'kode_kampus' => 'E1'],
+            ['no' => 5, 'kode_ubsi' => '05', 'campus' => 'Kaliabang', 'kode_kampus' => 'E2'],
+            ['no' => 6, 'kode_ubsi' => '06', 'campus' => 'Kalimalang', 'kode_kampus' => 'F3'],
+            ['no' => 7, 'kode_ubsi' => '07', 'campus' => 'Kramat 98 / Salemba 22', 'kode_kampus' => 'B2/B4'],
+            ['no' => 8, 'kode_ubsi' => '09', 'campus' => 'Jogjakarta', 'kode_kampus' => 'K1'],
+            ['no' => 9, 'kode_ubsi' => '11', 'campus' => 'Jatiwaringin', 'kode_kampus' => 'F1'],
+            ['no' => 10, 'kode_ubsi' => '12', 'campus' => 'Ciledug', 'kode_kampus' => 'G1'],
+            ['no' => 11, 'kode_ubsi' => '13', 'campus' => 'Bogor B', 'kode_kampus' => 'H1'],
+            ['no' => 12, 'kode_ubsi' => '14', 'campus' => 'karawang', 'kode_kampus' => 'E5'],
+            ['no' => 13, 'kode_ubsi' => '15', 'campus' => 'Cikampek', 'kode_kampus' => 'E6'],
+            ['no' => 14, 'kode_ubsi' => '17', 'campus' => 'Tasikmalaya', 'kode_kampus' => 'J1'],
+            ['no' => 15, 'kode_ubsi' => '21', 'campus' => 'Purwokerto', 'kode_kampus' => 'K6'],
+            ['no' => 16, 'kode_ubsi' => '24', 'campus' => 'Cikarang', 'kode_kampus' => 'E4'],
+            ['no' => 17, 'kode_ubsi' => '25', 'campus' => 'Cengkareng', 'kode_kampus' => 'M1'],
+            ['no' => 18, 'kode_ubsi' => '26', 'campus' => 'Slipi', 'kode_kampus' => 'M2'],
+            ['no' => 19, 'kode_ubsi' => '27', 'campus' => 'BSD', 'kode_kampus' => 'N1'],
+            ['no' => 20, 'kode_ubsi' => '28', 'campus' => 'Sukabumi', 'kode_kampus' => 'O1'],
+            ['no' => 21, 'kode_ubsi' => '29', 'campus' => 'Ciputat', 'kode_kampus' => 'C3'],
+            ['no' => 22, 'kode_ubsi' => '30', 'campus' => 'Pontianak', 'kode_kampus' => 'P1'],
+            ['no' => 23, 'kode_ubsi' => '31', 'campus' => 'DWS B', 'kode_kampus' => 'F4'],
+            ['no' => 24, 'kode_ubsi' => '35', 'campus' => 'Tegal', 'kode_kampus' => 'K7'],
+            ['no' => 25, 'kode_ubsi' => '37', 'campus' => 'Pemuda', 'kode_kampus' => 'B7'],
+            ['no' => 26, 'kode_ubsi' => '38', 'campus' => 'Cibitung', 'kode_kampus' => 'E3'],
+            ['no' => 27, 'kode_ubsi' => '39', 'campus' => 'Bogor A', 'kode_kampus' => 'H2'],
+        ];
+    }
+
+    private function xlsxFromMultiSheets(array $sheets): string
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            $first = reset($sheets);
+            return $this->csvFromRows($first['rows'] ?? (is_array($first) ? $first : []));
+        }
+
+        $sheetEntries = [];
+        $typesOverrides = [];
+        $workbookSheets = [];
+        $workbookRels = [];
+
+        $sheetIdx = 1;
+        foreach ($sheets as $sName => $sData) {
+            $sheetName = is_string($sName) ? $sName : ($sData['name'] ?? ('Sheet' . $sheetIdx));
+            $rows = (is_array($sData) && isset($sData['rows'])) ? $sData['rows'] : (is_array($sData) ? $sData : []);
+
+            $sheetRows = [];
+            foreach ($rows as $rowIndex => $row) {
+                $cells = [];
+                foreach (array_values((array) $row) as $columnIndex => $value) {
+                    $cellReference = $this->xlsxColumnName($columnIndex + 1) . ($rowIndex + 1);
+                    $cells[] = '<c r="' . $cellReference . '" t="inlineStr"><is><t>' . $this->xmlValue((string) $value) . '</t></is></c>';
+                }
+                $sheetRows[] = '<row r="' . ($rowIndex + 1) . '">' . implode('', $cells) . '</row>';
+            }
+
+            $sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+                . '<sheetData>' . implode('', $sheetRows) . '</sheetData>'
+                . '</worksheet>';
+
+            $safeSheetName = $this->xmlValue(substr(preg_replace('/[\\\\\\/?*\\[\\]:]/', ' ', (string) $sheetName) ?: ('Sheet' . $sheetIdx), 0, 31));
+            $sheetFile = 'sheet' . $sheetIdx . '.xml';
+
+            $sheetEntries['xl/worksheets/' . $sheetFile] = $sheetXml;
+            $typesOverrides[] = '<Override PartName="/xl/worksheets/' . $sheetFile . '" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+            $workbookSheets[] = '<sheet name="' . $safeSheetName . '" sheetId="' . $sheetIdx . '" r:id="rId' . $sheetIdx . '"/>';
+            $workbookRels[] = '<Relationship Id="rId' . $sheetIdx . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/' . $sheetFile . '"/>';
+
+            $sheetIdx++;
+        }
+
+        $entries = array_merge([
+            '[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' . implode('', $typesOverrides) . '</Types>',
+            '_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+            'xl/workbook.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' . implode('', $workbookSheets) . '</sheets></workbook>',
+            'xl/_rels/workbook.xml.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' . implode('', $workbookRels) . '</Relationships>',
+        ], $sheetEntries);
+
+        $tempBase = defined('WRITEPATH') ? (WRITEPATH . 'cache') : sys_get_temp_dir();
+        $path = tempnam($tempBase, 'event-template-multi-');
+        if ($path === false) {
+            return '';
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($path, \ZipArchive::OVERWRITE) !== true) {
+            @unlink($path);
+
+            return '';
+        }
+
+        foreach ($entries as $name => $contents) {
+            $zip->addFromString($name, $contents);
+        }
+        $zip->close();
+
+        $contents = file_get_contents($path);
+        @unlink($path);
+
+        return is_string($contents) ? $contents : '';
     }
 
     private function xlsxFromRows(array $rows, string $sheetName = 'Event'): string

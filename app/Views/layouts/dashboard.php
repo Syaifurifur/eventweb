@@ -72,6 +72,18 @@ $userInitial = strtoupper(substr($userName, 0, 1));
 <html lang="id" data-theme="light">
 <head>
     <meta charset="UTF-8">
+    <script>
+        (function() {
+            var theme = localStorage.getItem('color-theme');
+            if (theme === 'dark' || (!theme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($title ?? 'EventHub') ?> | EventHub</title>
     <link rel="icon" href="<?= base_url('favicon.ico?v=' . @filemtime(FCPATH . 'favicon.ico')) ?>" sizes="any">

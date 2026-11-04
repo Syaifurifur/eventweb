@@ -256,6 +256,90 @@ $baseQuery = $documentPagination['query'] ?? [];
 
     @media (max-width:1200px) { .dx-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .dx-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .dx-doc-row { grid-template-columns:1fr 1fr; } }
     @media (max-width:640px) { .dx-stats, .dx-filter-grid { grid-template-columns:1fr; } .dx-head-right { align-items:flex-start; } }
+
+    /* Dark Mode Overrides for Documents */
+    html.dark .dx-page {
+        --dx-border: var(--line, #374151);
+        --dx-muted: var(--muted, #9ca3af);
+        --dx-ink: var(--ink, #f3f4f6);
+    }
+    html.dark .dx-stat,
+    html.dark .dx-card,
+    html.dark .dx-detail-inner,
+    html.dark .dx-input,
+    html.dark .dx-select,
+    html.dark .dx-btn,
+    html.dark .dx-page-btn,
+    html.dark .dx-alert-item {
+        background: var(--surface, #273142);
+        color: var(--ink, #f3f4f6);
+        border-color: var(--line, #374151);
+    }
+    html.dark .dx-btn:hover,
+    html.dark .dx-page-btn:hover {
+        background: var(--surface-soft, #1f2937);
+        border-color: #4b5563;
+    }
+    html.dark .dx-btn-primary,
+    html.dark .dx-page-btn.is-active {
+        background: var(--dx-primary);
+        border-color: var(--dx-primary);
+        color: #fff;
+    }
+    html.dark .dx-table thead th {
+        background: var(--surface-soft, #1f2937);
+        color: var(--ink, #f3f4f6);
+        border-bottom-color: var(--line, #374151);
+    }
+    html.dark .dx-table tbody tr.dx-row > td {
+        border-bottom-color: var(--line, #374151);
+    }
+    html.dark .dx-table tbody tr.dx-row:hover > td {
+        background: rgba(72, 127, 255, 0.08);
+    }
+    html.dark .dx-table tbody tr.dx-row.is-open > td,
+    html.dark .dx-detail > td,
+    html.dark .dx-doc-form {
+        background: var(--surface-soft, #1f2937);
+        border-bottom-color: var(--line, #374151);
+    }
+    html.dark .dx-doc-row + .dx-doc-row,
+    html.dark .dx-doc-form + .dx-doc-row {
+        border-top-color: var(--line, #374151);
+    }
+    html.dark .dx-doc-form input,
+    html.dark .dx-doc-form textarea {
+        background: #111827;
+        color: #f3f4f6;
+        border-color: #374151;
+    }
+    html.dark .dx-stat-label,
+    html.dark .dx-field label,
+    html.dark .dx-code,
+    html.dark .dx-meta strong,
+    html.dark .dx-progress small,
+    html.dark .dx-toggle,
+    html.dark .dx-doc-form label {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .dx-stat-value {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .dx-mode.is-view {
+        background: rgba(148, 163, 184, 0.16);
+        color: #cbd5e1;
+    }
+    html.dark .dx-icon-blue { background: rgba(37, 99, 235, 0.2); color: #93c5fd; }
+    html.dark .dx-icon-amber { background: rgba(234, 88, 12, 0.2); color: #fdba74; }
+    html.dark .dx-icon-green { background: rgba(22, 163, 74, 0.2); color: #86efac; }
+    html.dark .dx-icon-red { background: rgba(225, 29, 72, 0.2); color: #fda4af; }
+    html.dark .dx-cat-slate { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+    html.dark .dx-chip-slate { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+    html.dark .dx-progress-track { background: #374151; }
+    html.dark .dx-alerts {
+        background: var(--surface, #273142);
+        border-color: var(--line, #374151);
+    }
 </style>
 
 <div class="dx-page">

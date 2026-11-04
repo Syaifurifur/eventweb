@@ -11,6 +11,20 @@ if (! in_array($selectedProgram, ['ojt', 'school', 'banner', 'all'], true)) {
 }
 
 $campusQuery = $selectedOneCampusId ? ('?campus_id=' . urlencode((string) $selectedOneCampusId)) : '';
+$selectedPmbPeriod = $selectedPmbPeriod ?? 'September 2026 - September 2027';
+$availablePmbPeriods = $availablePmbPeriods ?? [
+    'September 2026 - September 2027' => 'September 2026 - September 2027 (Berjalan)',
+    'September 2025 - September 2026' => 'September 2025 - September 2026',
+    'September 2024 - September 2025' => 'September 2024 - September 2025',
+    'September 2027 - September 2028' => 'September 2027 - September 2028 (Mendatang)',
+];
+$pmbPeriodCounts = $pmbPeriodCounts ?? [];
+$gdriveSettings = $gdriveSettings ?? [
+    'admin_email' => 'admin.markom@bsi.ac.id',
+    'folder_url' => 'https://drive.google.com/drive/folders/1MOU-BJS-SEKOLAH-BSI-GROUP',
+    'folder_name' => 'MOU BJS Sekolah - BSI Group',
+];
+$schoolExportQuery = $campusQuery . ($selectedPmbPeriod !== '' ? (($campusQuery !== '' ? '&' : '?') . 'pmb_period=' . urlencode($selectedPmbPeriod)) : '');
 $currentProgramUrl = match ($selectedProgram) {
     'ojt' => site_url('one-campus/ojt'),
     'school' => site_url('one-campus/schools'),
@@ -77,7 +91,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                 </a>
             <?php endif; ?>
             <?php if ($showSchool): ?>
-                <a class="ghost-button compact-button" href="<?= site_url('one-campus/schools/export') . $campusQuery ?>">
+                <a class="ghost-button compact-button" href="<?= site_url('one-campus/schools/export') . $schoolExportQuery ?>">
                     Download XLSX Sixty School
                 </a>
             <?php endif; ?>
@@ -300,77 +314,380 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
         <div>
             <span class="eyebrow">Sub Menu 2 &bull; Target Minimal 60 Sekolah / Kampus</span>
             <h2>Laporan Rekap &amp; CRUD: One Campus Sixty School</h2>
+            <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: var(--text-muted, #64748b);">
+                Klasterisasi Sekolah Mitra PMB, Pendataan Beasiswa Jalur Undangan (BJS), dan Arsip Media MOU ke Google Drive Admin.
+            </p>
         </div>
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-            <a class="primary-button compact-button" href="<?= site_url('one-campus/schools/export') . $campusQuery ?>">
+            <a class="primary-button compact-button" href="<?= site_url('one-campus/schools/export') . $schoolExportQuery ?>">
                 Download Hasil XLSX (Sixty School)
             </a>
         </div>
     </div>
 
-    <details class="panel management-drawer one-campus-drawer" style="margin-bottom: 18px;" <?= $selectedProgram === 'school' ? 'open' : '' ?>>
-        <summary>
+    <!-- Panel Pengaturan Google Drive Admin Akun MOU & Upload Otomatis -->
+    <details class="panel management-drawer one-campus-drawer" style="margin-bottom: 16px; border-left: 4px solid #0d9488;">
+        <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <span class="eyebrow">Tambah Data Baru</span>
-                <strong>Input Laporan One Campus Sixty School</strong>
+                <span class="eyebrow" style="color: #0d9488;">Integrasi Langsung Google Drive</span>
+                <strong>Setting Akun, Folder &amp; Webhook Upload Langsung ke Drive Admin</strong>
             </div>
-            <span class="ghost-button compact-button">Form Input School</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <?php if (! empty($gdriveSettings['webhook_url'])): ?>
+                    <span class="status status-selesai" style="font-size: 0.74rem;">&#10004; Webhook Aktif</span>
+                <?php else: ?>
+                    <span class="status status-menunggu" style="font-size: 0.74rem;">Webhook Belum Diisi</span>
+                <?php endif; ?>
+                <span class="ghost-button compact-button">Konfigurasi Drive Admin</span>
+            </div>
         </summary>
-        <form class="drawer-form one-campus-form" action="<?= site_url('one-campus/schools') ?>" method="post">
-            <?= csrf_field() ?>
-            <label>
-                Kampus
-                <select class="control" name="campus_id">
-                    <option value="">Pilih kampus</option>
-                    <?php foreach ($campuses as $campus): ?>
-                        <option value="<?= esc($campus['id']) ?>" <?= (string) ($selectedOneCampusId ?? '') === (string) $campus['id'] ? 'selected' : '' ?>><?= esc($campus['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <label>
-                Nama Sekolah
-                <input class="control" type="text" name="school_name" required>
-            </label>
-            <label>
-                Nama Guru
-                <input class="control" type="text" name="teacher_name" required>
-            </label>
-            <label>
-                No Handphone
-                <input class="control" type="text" name="phone" required>
-            </label>
-            <label>
-                Jabatan
-                <input class="control" type="text" name="position" required>
-            </label>
-            <label>
-                Jumlah PMB dari Sekolah
-                <input class="control" type="number" name="pmb_count" min="0" value="<?= esc(old('pmb_count', '0')) ?>">
-            </label>
-            <label class="span-2">
-                Keterangan
-                <textarea class="control" name="notes" rows="3"></textarea>
-            </label>
-            <button class="primary-button" type="submit">Simpan Data Sixty School</button>
-        </form>
+        <div style="padding-top: 14px;">
+            <form action="<?= site_url('one-campus/gdrive-settings') ?>" method="post">
+                <?= csrf_field() ?>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <label>
+                        <span style="font-weight: 600; font-size: 0.84rem; display: block; margin-bottom: 4px;">Email Akun Google Drive Admin</span>
+                        <input class="control" type="email" name="gdrive_admin_email" value="<?= esc($gdriveSettings['admin_email']) ?>" placeholder="admin.markom@bsi.ac.id" required>
+                    </label>
+                    <label>
+                        <span style="font-weight: 600; font-size: 0.84rem; display: block; margin-bottom: 4px;">URL / ID Folder Google Drive MOU</span>
+                        <input class="control" type="text" name="gdrive_mou_folder_url" value="<?= esc($gdriveSettings['folder_url']) ?>" placeholder="https://drive.google.com/drive/folders/..." required>
+                    </label>
+                    <label>
+                        <span style="font-weight: 600; font-size: 0.84rem; display: block; margin-bottom: 4px;">Label Nama Folder Drive</span>
+                        <input class="control" type="text" name="gdrive_mou_folder_name" value="<?= esc($gdriveSettings['folder_name']) ?>" placeholder="MOU BJS Sekolah - BSI Group" required>
+                    </label>
+                </div>
+
+                <!-- Baris URL Webhook Google Apps Script untuk Upload Langsung -->
+                <div style="background: var(--bg-hover, #f8fafc); border: 1px solid var(--border-color, #cbd5e1); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                        <span style="font-weight: 700; font-size: 0.86rem; color: var(--text-main, #1e293b); display: inline-flex; align-items: center; gap: 6px;">
+                            <span>&#9729;</span> Webhook URL Google Apps Script (Upload Otomatis Langsung)
+                        </span>
+                        <a href="https://script.google.com/" target="_blank" rel="noopener noreferrer" style="font-size: 0.78rem; color: #0284c7; text-decoration: underline;">
+                            Buka Google Apps Script &nearr;
+                        </a>
+                    </div>
+                    <label style="display: block; margin-bottom: 8px;">
+                        <input class="control" type="url" name="gdrive_webhook_url" value="<?= esc($gdriveSettings['webhook_url']) ?>" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="gdrive_auto_upload" name="gdrive_auto_upload_enabled" value="1" <?= ! empty($gdriveSettings['auto_upload_enabled']) ? 'checked' : '' ?>>
+                        <label for="gdrive_auto_upload" style="font-size: 0.84rem; cursor: pointer; font-weight: 600; color: var(--text-main, #1e293b);">
+                            Aktifkan unggah otomatis langsung ke Google Drive Admin saat file MOU PDF disimpan
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <button class="primary-button compact-button" type="submit" style="background: #0d9488; border-color: #0d9488;">
+                        Simpan Setting Drive
+                    </button>
+                    <?php if (! empty($gdriveSettings['folder_url'])): ?>
+                        <a href="<?= esc($gdriveSettings['folder_url']) ?>" target="_blank" rel="noopener noreferrer" class="ghost-button compact-button" style="display: inline-flex; align-items: center; gap: 4px;">
+                            Buka Folder Drive Admin &nearr;
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </form>
+
+            <!-- Aksi Tes Koneksi & Kode Apps Script Siap Pakai -->
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color, #e2e8f0); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;">
+                <form action="<?= site_url('one-campus/gdrive-test') ?>" method="post" style="display: inline-flex; gap: 8px;">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="ghost-button compact-button" style="color: #0d9488; border-color: #0d9488; display: inline-flex; align-items: center; gap: 4px;">
+                        &#9889; Tes Koneksi Webhook Drive
+                    </button>
+                </form>
+
+                <details style="flex: 1; min-width: 280px;">
+                    <summary class="ghost-button compact-button" style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                        &#128203; Lihat Kode Script Google Drive (Siap Pakai)
+                    </summary>
+                    <div style="margin-top: 8px; background: #0f172a; color: #f8fafc; padding: 14px; border-radius: 6px; font-family: monospace; font-size: 0.78rem; overflow-x: auto; max-height: 250px;">
+                        <pre style="margin: 0; white-space: pre-wrap;"><?= esc($gdriveSettings['apps_script_template'] ?? '') ?></pre>
+                    </div>
+                </details>
+            </div>
+
+            <div style="margin-top: 10px; background: rgba(13, 148, 136, 0.08); border-left: 3px solid #0d9488; padding: 10px 14px; border-radius: 4px; font-size: 0.8rem; color: var(--text-main, #1e293b);">
+                <strong>💡 Cara Mengatasi Pesan "Akses ditolak: DriveApp":</strong>
+                <ol style="margin: 6px 0 0 18px; padding: 0;">
+                    <li>Di editor Apps Script, pilih fungsi <code>setupOtorisasi</code> lalu klik <strong>Run (Jalankan)</strong> 1x untuk memberikan izin Google Drive (<em>Review permissions &rarr; Advanced &rarr; Go to ... (unsafe) &rarr; Allow</em>).</li>
+                    <li>Saat Deploy: pastikan <strong>Execute as: Me (Saya)</strong> dan <strong>Who has access: Anyone (Siapa saja)</strong>.</li>
+                    <li>Jika memperbarui kode, buka <strong>Deploy &rarr; Manage deployments &rarr; Edit (ikon pensil) &rarr; Version: New version &rarr; Deploy</strong>.</li>
+                </ol>
+            </div>
+
+            <p style="margin: 10px 0 0 0; font-size: 0.8rem; color: var(--text-muted, #64748b);">
+                Ketika webhook Google Apps Script aktif, setiap kali Anda atau kampus mengunggah file MOU PDF, sistem akan otomatis mengirimkannya langsung ke folder Google Drive akun admin (<strong><?= esc($gdriveSettings['admin_email']) ?></strong>) dan tautan Drive langsung tersimpan di database.
+            </p>
+        </div>
     </details>
 
+    <!-- Klasterisasi Berdasarkan Tahun PMB (Sedang Berjalan & Sebelumnya) -->
+    <div class="pmb-cluster-container" style="background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                <span style="font-size: 0.86rem; font-weight: 700; color: var(--text-main, #1e293b); margin-right: 6px;">
+                    Klaster Tahun PMB:
+                </span>
+                <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
+                    <?php $isActive = ($selectedPmbPeriod === $pKey); ?>
+                    <a href="<?= site_url('one-campus/schools?pmb_period=' . urlencode($pKey) . (! empty($selectedSort) ? '&sort=' . urlencode($selectedSort) : '') . ($selectedOneCampusId ? '&campus_id=' . urlencode((string) $selectedOneCampusId) : '')) ?>"
+                       class="<?= $isActive ? 'primary-button compact-button' : 'ghost-button compact-button' ?>"
+                       style="<?= $isActive ? 'background: #0d9488; border-color: #0d9488; color: #ffffff; font-weight: 700;' : '' ?>">
+                        <?= esc($pLabel) ?>
+                        <span style="display: inline-block; padding: 1px 7px; margin-left: 6px; border-radius: 999px; font-size: 0.76rem; background: <?= $isActive ? 'rgba(255,255,255,0.28)' : 'var(--border-color, #cbd5e1)' ?>; color: <?= $isActive ? '#ffffff' : 'inherit' ?>;">
+                            <?= esc((string) ($pmbPeriodCounts[$pKey] ?? 0)) ?>
+                        </span>
+                    </a>
+                <?php endforeach; ?>
+                <?php $isAll = ($selectedPmbPeriod === 'all'); ?>
+                <a href="<?= site_url('one-campus/schools?pmb_period=all' . (! empty($selectedSort) ? '&sort=' . urlencode($selectedSort) : '') . ($selectedOneCampusId ? '&campus_id=' . urlencode((string) $selectedOneCampusId) : '')) ?>"
+                   class="<?= $isAll ? 'primary-button compact-button' : 'ghost-button compact-button' ?>"
+                   style="<?= $isAll ? 'background: #0d9488; border-color: #0d9488; color: #ffffff; font-weight: 700;' : '' ?>">
+                    Semua Periode PMB
+                    <span style="display: inline-block; padding: 1px 7px; margin-left: 6px; border-radius: 999px; font-size: 0.76rem; background: <?= $isAll ? 'rgba(255,255,255,0.28)' : 'var(--border-color, #cbd5e1)' ?>; color: <?= $isAll ? '#ffffff' : 'inherit' ?>;">
+                        <?= esc((string) ($pmbPeriodCounts['all'] ?? 0)) ?>
+                    </span>
+                </a>
+
+                <?php if (session('user.role') === 'Admin Sistem' || session('user.role') === 'Super Admin'): ?>
+                    <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-add-pmb-cluster').showModal()" style="border-color: #f59e0b; color: #b45309; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.1);" title="Khusus Superadmin: Tambah Klasterisasi PMB Baru">
+                        &#10010; Buat Klasterisasi Baru (Superadmin)
+                    </button>
+                <?php endif; ?>
+            </div>
+            <div>
+                <span class="status status-aktif" style="font-size: 0.8rem; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+                    Klaster Default Aktif: September 2026 - September 2027
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upgrade Proses Input: Tambah Data Sekolah Penerima BJS (Sesuai Screenshot User) -->
+    <details id="drawer-add-school" class="panel management-drawer one-campus-drawer" style="margin-bottom: 20px; border-top: 3px solid #0d9488;" <?= $selectedProgram === 'school' ? 'open' : '' ?>>
+        <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <span class="eyebrow" style="color: #0d9488;">Tambah Data Sekolah Penerima BJS</span>
+                <strong style="font-size: 1.05rem;">Data Sekolah Penerima Beasiswa</strong>
+            </div>
+            <span class="ghost-button compact-button" style="border-color: #0d9488; color: #0d9488;">+ Form Tambah Sekolah BJS</span>
+        </summary>
+
+        <div style="padding: 16px 4px 6px 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main, #1e293b);">Data Sekolah Penerima Beasiswa</h3>
+                <button type="button" class="compact-button" style="background: #10b981; color: #ffffff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.84rem; font-weight: 600; cursor: pointer;" onclick="document.getElementById('drawer-add-school').removeAttribute('open')">
+                    + Kembali
+                </button>
+            </div>
+
+            <form class="one-campus-school-form" action="<?= site_url('one-campus/schools') ?>" method="post" enctype="multipart/form-data">
+                <?= csrf_field() ?>
+
+                <!-- Baris 1 (5 Kolom seperti di screenshot): NPSN, Nama Sekolah, Kota, Jenis Skl, Status Skl -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">NPSN</span>
+                        <input class="control" type="text" name="npsn" placeholder="Nomor Pokok Sekolah">
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Nama Sekolah <span style="color: #ef4444;">*</span></span>
+                        <input class="control" type="text" name="school_name" placeholder="Nama Sekolah Lengkap" required>
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Kota</span>
+                        <input class="control" type="text" name="city" placeholder="Kota / Kabupaten">
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Jenis Skl</span>
+                        <select class="control" name="school_type">
+                            <option value="SMA">SMA</option>
+                            <option value="SMK">SMK</option>
+                            <option value="MA">MA</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Status Skl</span>
+                        <select class="control" name="school_status">
+                            <option value="Negeri">Negeri</option>
+                            <option value="Swasta">Swasta</option>
+                        </select>
+                    </label>
+                </div>
+
+                <!-- Baris 2 (3 Kolom seperti di screenshot): Nama Kepala Sekolah, Telp Sekolah, Email Sekolah -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Nama Kepala Sekolah</span>
+                        <input class="control" type="text" name="headmaster_name" placeholder="Nama Kepala Sekolah">
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Telp Sekolah</span>
+                        <input class="control" type="text" name="school_phone" placeholder="No. Telp Resmi Sekolah">
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Email Sekolah</span>
+                        <input class="control" type="email" name="school_email" placeholder="official@sekolah.sch.id">
+                    </label>
+                </div>
+
+                <!-- Baris 3 (3 Kolom seperti di screenshot): Nama Kontak, Telp Kontak, Email Kontak -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Nama Kontak (PIC) <span style="color: #ef4444;">*</span></span>
+                        <input class="control" type="text" name="contact_name" placeholder="Nama Guru / PIC BK" required>
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Telp Kontak <span style="color: #ef4444;">*</span></span>
+                        <input class="control" type="text" name="contact_phone" placeholder="No. HP / WA PIC" required>
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Email Kontak</span>
+                        <input class="control" type="email" name="contact_email" placeholder="pic@sekolah.com">
+                    </label>
+                </div>
+
+                <!-- Baris 4: Status Skl, Tahun PMB (Default September 2026 - September 2027), Kampus Pelaksana, Jumlah PMB -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Status</span>
+                        <select class="control" name="status">
+                            <option value="Aktif">Aktif</option>
+                            <option value="Nonaktif">Nonaktif</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Tahun PMB</span>
+                        <select class="control" name="pmb_period">
+                            <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
+                                <option value="<?= esc($pKey) ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === 'September 2026 - September 2027')) ? 'selected' : '' ?>>
+                                    <?= esc($pKey) ?><?= $pKey === 'September 2026 - September 2027' ? ' (Default Berjalan)' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Kampus Pelaksana</span>
+                        <select class="control" name="campus_id">
+                            <option value="">Pilih kampus</option>
+                            <?php foreach ($campuses as $campus): ?>
+                                <option value="<?= esc($campus['id']) ?>" <?= (string) ($selectedOneCampusId ?? '') === (string) $campus['id'] ? 'selected' : '' ?>>
+                                    <?= esc($campus['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label>
+                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Perolehan Siswa PMB</span>
+                        <input class="control" type="number" name="pmb_count" min="0" value="0">
+                    </label>
+                </div>
+
+                <!-- Baris 5: Media Upload MOU PDF & Integrasi Google Drive -->
+                <div style="background: var(--bg-hover, #f8fafc); border: 1px dashed var(--border-color, #cbd5e1); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px;">
+                    <div style="font-weight: 700; font-size: 0.88rem; margin-bottom: 10px; color: var(--text-main, #1e293b); display: flex; align-items: center; gap: 8px;">
+                        <span>&#128196;</span>
+                        <span>Media Upload Dokumen MOU (PDF) &amp; Google Drive</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+                        <label>
+                            <span style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Upload File MOU (.pdf, maks. 15MB)</span>
+                            <input class="control" type="file" name="mou_file" accept=".pdf,application/pdf">
+                            <span style="font-size: 0.76rem; color: var(--text-muted, #64748b); display: block; margin-top: 3px;">
+                                File PDF akan diarsip dan siap disinkronkan ke Google Drive Admin.
+                            </span>
+                        </label>
+                        <label>
+                            <span style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Link Google Drive Dokumen MOU (Opsional)</span>
+                            <input class="control" type="url" name="mou_drive_link" placeholder="https://drive.google.com/file/d/.../view?usp=sharing">
+                            <span style="font-size: 0.76rem; color: var(--text-muted, #64748b); display: block; margin-top: 3px;">
+                                Target Folder Admin: <strong><?= esc($gdriveSettings['folder_name']) ?></strong> (<?= esc($gdriveSettings['admin_email']) ?>)
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Baris 6: Keterangan -->
+                <label style="display: block; margin-bottom: 16px;">
+                    <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Keterangan / Catatan Tambahan</span>
+                    <textarea class="control" name="notes" rows="2" placeholder="Catatan mengenai kuota beasiswa, tanggal penandatanganan MOU, dll."></textarea>
+                </label>
+
+                <!-- Tombol Simpan (Sesuai Tombol Teal di Screenshot) -->
+                <div>
+                    <button class="primary-button" type="submit" style="background: #00b4d8; background: linear-gradient(135deg, #0d9488, #0ea5e9); border: none; color: #ffffff; padding: 10px 24px; font-weight: 700; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);">
+                        Simpan Data Sekolah
+                    </button>
+                </div>
+            </form>
+        </div>
+    </details>
+
+    <!-- Bar Aksi Tambahan: Upload Excel PMB & Fasilitas Sortir Data -->
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 10px 14px;">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+            <button type="button" class="primary-button compact-button" onclick="document.getElementById('dialog-upload-pmb').showModal()" style="background: #0284c7; border-color: #0284c7; color: #ffffff; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                <span>&#128228;</span> Upload Data PMB (Excel)
+            </button>
+            <a href="<?= site_url('one-campus/pmb-template') ?>" class="ghost-button compact-button" style="color: #0d9488; border-color: #0d9488; display: inline-flex; align-items: center; gap: 4px;" title="Unduh template Excel untuk input data mahasiswa baru">
+                <span>&#128229;</span> Template Excel PMB
+            </a>
+        </div>
+
+        <!-- Kontrol Sortir Ranking PMB: Banyak ke Sedikit -->
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.82rem;">
+            <span style="color: var(--text-muted, #64748b); font-weight: 600;">Urutkan:</span>
+            <?php
+            $baseSortUrl = site_url('one-campus/schools?pmb_period=' . urlencode($selectedPmbPeriod) . ($selectedOneCampusId ? '&campus_id=' . urlencode((string) $selectedOneCampusId) : ''));
+            ?>
+            <a href="<?= $baseSortUrl ?>&sort=pmb_desc" class="<?= ($selectedSort === 'pmb_desc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'pmb_desc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>" title="Urutkan dari perolehan PMB terbanyak ke tersedikit">
+                &#8645; PMB Terbanyak (Banyak ke Sedikit)
+            </a>
+            <a href="<?= $baseSortUrl ?>&sort=pmb_asc" class="<?= ($selectedSort === 'pmb_asc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'pmb_asc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>" title="Urutkan dari perolehan PMB terkecil">
+                &#8645; PMB Tersedikit
+            </a>
+            <a href="<?= $baseSortUrl ?>&sort=name_asc" class="<?= ($selectedSort === 'name_asc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'name_asc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>">
+                Nama Sekolah (A-Z)
+            </a>
+            <?php if (! empty($selectedSort)): ?>
+                <a href="<?= $baseSortUrl ?>" class="ghost-button compact-button" style="color: var(--text-muted, #64748b);" title="Reset Pengurutan">
+                    Reset
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Bar Pencarian & Ringkasan Tabel -->
     <div class="table-control-bar">
-        <input class="control table-search-control" type="search" placeholder="Cari school, guru, kampus, jabatan, atau PMB" data-table-filter>
+        <input class="control table-search-control" type="search" placeholder="Cari NPSN, sekolah, kota, jenis, kepala sekolah, kontak, atau MOU..." data-table-filter>
         <span class="table-page-summary" data-table-summary></span>
     </div>
+
+    <!-- Tabel Rekap Sixty School -->
     <div class="table-wrap">
         <table class="data-table" data-paginated-table data-page-size="10">
             <thead>
                 <tr>
                     <th>No</th>
                     <th>Kampus</th>
-                    <th>Nama Sekolah</th>
-                    <th>Nama Guru</th>
-                    <th>No Handphone</th>
-                    <th>Jabatan</th>
-                    <th>Jumlah PMB</th>
-                    <th>Keterangan</th>
+                    <th>NPSN</th>
+                    <th>Nama Sekolah &amp; Kota</th>
+                    <th>Kontak Sekolah &amp; PIC</th>
+                    <th>Tahun PMB</th>
+                    <th>Dokumen MOU</th>
+                    <th>Status</th>
+                    <th>
+                        <a href="<?= $baseSortUrl ?>&sort=<?= $selectedSort === 'pmb_desc' ? 'pmb_asc' : 'pmb_desc' ?>" style="color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Klik untuk mengurutkan perolehan PMB">
+                            Perolehan PMB
+                            <span style="color: #0d9488; font-weight: 800;"><?= $selectedSort === 'pmb_desc' ? '&#9660;' : ($selectedSort === 'pmb_asc' ? '&#9650;' : '&#8645;') ?></span>
+                        </a>
+                    </th>
                     <th>Aksi CRUD</th>
                 </tr>
             </thead>
@@ -380,80 +697,113 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                     $schoolFormId = 'one-campus-school-update-' . $row['id'];
                     $schoolSearchText = implode(' ', [
                         $row['campus_name'] ?? '',
+                        $row['npsn'] ?? '',
                         $row['school_name'] ?? '',
-                        $row['teacher_name'] ?? '',
-                        $row['phone'] ?? '',
-                        $row['position'] ?? '',
+                        $row['city'] ?? '',
+                        $row['school_type'] ?? '',
+                        $row['school_status'] ?? '',
+                        $row['headmaster_name'] ?? '',
+                        $row['school_phone'] ?? '',
+                        $row['school_email'] ?? '',
+                        $row['contact_name'] ?? ($row['teacher_name'] ?? ''),
+                        $row['contact_phone'] ?? ($row['phone'] ?? ''),
+                        $row['contact_email'] ?? '',
+                        $row['pmb_period'] ?? '',
+                        $row['status'] ?? '',
                         (string) ($row['pmb_count'] ?? ''),
                         $row['notes'] ?? '',
                     ]);
+                    $hasMouFile = ! empty($row['mou_file']);
+                    $hasDriveLink = ! empty($row['mou_drive_link']);
                     ?>
                     <tr data-page-row data-search-text="<?= esc($schoolSearchText, 'attr') ?>">
                         <td><?= esc((string) ($index + 1)) ?></td>
-                        <td><?= esc($row['campus_name'] ?? '-') ?></td>
-                        <td><?= esc($row['school_name']) ?></td>
-                        <td><?= esc($row['teacher_name']) ?></td>
-                        <td><?= esc($row['phone']) ?></td>
-                        <td><?= esc($row['position']) ?></td>
-                        <td><?= esc((string) ($row['pmb_count'] ?? 0)) ?></td>
-                        <td><?= esc($row['notes'] ?? '-') ?></td>
+                        <td><strong><?= esc($row['campus_name'] ?? '-') ?></strong></td>
+                        <td><code><?= esc($row['npsn'] ?: '-') ?></code></td>
                         <td>
-                            <details class="row-drawer">
-                                <summary class="ghost-button compact-button">Kelola</summary>
-                                <div class="row-edit-panel">
-                                    <form id="<?= esc($schoolFormId) ?>" action="<?= site_url('one-campus/schools/' . $row['id'] . '/update') ?>" method="post" class="form-grid compact-edit-grid">
-                                        <?= csrf_field() ?>
-                                        <label>
-                                            Kampus
-                                            <select class="control table-control" name="campus_id">
-                                                <option value="">Pilih kampus</option>
-                                                <?php foreach ($campuses as $campus): ?>
-                                                    <option value="<?= esc((string) $campus['id']) ?>" <?= (string) ($row['campus_id'] ?? '') === (string) $campus['id'] ? 'selected' : '' ?>>
-                                                        <?= esc($campus['name']) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </label>
-                                        <label>
-                                            Nama Sekolah
-                                            <input class="control table-control" type="text" name="school_name" value="<?= esc($row['school_name'], 'attr') ?>" required>
-                                        </label>
-                                        <label>
-                                            Nama Guru
-                                            <input class="control table-control" type="text" name="teacher_name" value="<?= esc($row['teacher_name'], 'attr') ?>" required>
-                                        </label>
-                                        <label>
-                                            No Handphone
-                                            <input class="control table-control" type="text" name="phone" value="<?= esc($row['phone'], 'attr') ?>" required>
-                                        </label>
-                                        <label>
-                                            Jabatan
-                                            <input class="control table-control" type="text" name="position" value="<?= esc($row['position'], 'attr') ?>" required>
-                                        </label>
-                                        <label>
-                                            Jumlah PMB
-                                            <input class="control table-control" type="number" name="pmb_count" min="0" value="<?= esc((string) ($row['pmb_count'] ?? 0), 'attr') ?>">
-                                        </label>
-                                        <label class="span-2">
-                                            Keterangan
-                                            <textarea class="control table-control" name="notes" rows="3"><?= esc($row['notes'] ?? '') ?></textarea>
-                                        </label>
-                                    </form>
-                                    <div class="button-row">
-                                        <button class="primary-button compact-button" form="<?= esc($schoolFormId) ?>" type="submit">Simpan School</button>
-                                        <form action="<?= site_url('one-campus/schools/' . $row['id'] . '/delete') ?>" method="post" class="inline-form">
-                                            <?= csrf_field() ?>
-                                            <button class="danger-button compact-button" type="submit">Hapus School</button>
-                                        </form>
-                                    </div>
+                            <div style="font-weight: 700; color: var(--text-main, #1e293b);"><?= esc($row['school_name']) ?></div>
+                            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; font-size: 0.74rem;">
+                                <span style="background: var(--badge-bg, #e2e8f0); color: var(--text-main, #334155); padding: 1px 6px; border-radius: 4px; font-weight: 600;">
+                                    <?= esc($row['school_type'] ?? 'SMA') ?>
+                                </span>
+                                <span style="background: <?= ($row['school_status'] ?? 'Negeri') === 'Negeri' ? '#e0f2fe' : '#fef3c7' ?>; color: <?= ($row['school_status'] ?? 'Negeri') === 'Negeri' ? '#0369a1' : '#b45309' ?>; padding: 1px 6px; border-radius: 4px; font-weight: 600;">
+                                    <?= esc($row['school_status'] ?? 'Negeri') ?>
+                                </span>
+                                <?php if (! empty($row['city'])): ?>
+                                    <span style="color: var(--text-muted, #64748b);"><?= esc($row['city']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.85rem;">
+                                <strong>PIC:</strong> <?= esc($row['contact_name'] ?? ($row['teacher_name'] ?? '-')) ?>
+                            </div>
+                            <div style="font-size: 0.78rem; color: var(--text-muted, #64748b);">
+                                &#128222; <?= esc($row['contact_phone'] ?? ($row['phone'] ?? '-')) ?>
+                            </div>
+                            <?php if (! empty($row['headmaster_name'])): ?>
+                                <div style="font-size: 0.74rem; color: var(--text-muted, #64748b); margin-top: 2px;">
+                                    Kepsek: <?= esc($row['headmaster_name']) ?>
                                 </div>
-                            </details>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <span class="status status-aktif" style="font-size: 0.78rem; white-space: nowrap;">
+                                <?= esc($row['pmb_period'] ?? 'September 2026 - September 2027') ?>
+                            </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <?php if ($hasMouFile): ?>
+                                    <a class="ghost-button compact-button" href="<?= site_url('one-campus/schools/' . $row['id'] . '/mou') ?>" target="_blank" style="color: #ef4444; border-color: #fca5a5; display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem;" title="Buka Dokumen PDF MOU">
+                                        &#128196; Lihat PDF MOU
+                                    </a>
+                                <?php endif; ?>
+                                <?php if ($hasDriveLink): ?>
+                                    <a class="ghost-button compact-button" href="<?= esc($row['mou_drive_link']) ?>" target="_blank" rel="noopener noreferrer" style="color: #0284c7; border-color: #7dd3fc; display: inline-flex; align-items: center; gap: 4px; font-size: 0.76rem;" title="Buka Google Drive Admin">
+                                        &#9729; Buka di Drive &nearr;
+                                    </a>
+                                <?php elseif ($hasMouFile && ! empty($gdriveSettings['is_configured'])): ?>
+                                    <form action="<?= site_url('one-campus/schools/' . $row['id'] . '/sync-drive') ?>" method="post" style="display: inline;">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="ghost-button compact-button" style="color: #0d9488; border-color: #5eead4; font-size: 0.72rem; padding: 2px 6px;" title="Unggah file MOU ini langsung ke Google Drive Admin">
+                                            &#9729; Kirim ke Drive
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
+                                <?php if (! $hasMouFile && ! $hasDriveLink): ?>
+                                    <span class="status status-menunggu" style="font-size: 0.74rem;">Belum ada MOU</span>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status <?= ($row['status'] ?? 'Aktif') === 'Aktif' ? 'status-selesai' : 'status-menunggu' ?>" style="font-size: 0.78rem;">
+                                <?= esc($row['status'] ?? 'Aktif') ?>
+                            </span>
+                        </td>
+                        <td>
+                            <?php $pmbVal = (int) ($row['pmb_count'] ?? 0); ?>
+                            <?php if ($pmbVal > 0): ?>
+                                <button type="button" class="ghost-button compact-button" onclick="showSchoolStudents(<?= (int) $row['id'] ?>, '<?= esc($row['school_name'], 'js') ?>')" style="color: #0284c7; border-color: #7dd3fc; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; cursor: pointer;" title="Klik untuk melihat rincian nama mahasiswa baru dari sekolah ini">
+                                    <?php if ($selectedSort === 'pmb_desc'): ?>
+                                        <?= $index === 0 ? '🥇 ' : ($index === 1 ? '🥈 ' : ($index === 2 ? '🥉 ' : '#' . ($index + 1) . ' ')) ?>
+                                    <?php endif; ?>
+                                    <strong><?= $pmbVal ?> Mhs</strong> &#128065;
+                                </button>
+                            <?php else: ?>
+                                <span style="color: var(--text-muted, #94a3b8); font-size: 0.82rem;">0 Mhs</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <a class="ghost-button compact-button" href="<?= site_url('one-campus/schools/' . $row['id'] . '/edit') ?>" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+                                &#9998; Kelola
+                            </a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
                 <?php if ($schoolReports === []): ?>
                     <tr data-empty-row>
-                        <td colspan="9"><span class="muted-note">Tidak ada rekap One Campus Sixty School untuk kampus ini.</span></td>
+                        <td colspan="10"><span class="muted-note">Tidak ada rekap One Campus Sixty School untuk kampus atau klaster PMB ini.</span></td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -609,3 +959,184 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
     <nav class="pagination-bar table-pagination-bar" aria-label="Navigasi rekap One Campus Five Spanduk" data-table-pagination></nav>
 </section>
 <?php endif; ?>
+
+<!-- ==================== MODAL 1: TAMBAH KLASTERISASI PMB BARU (SUPERADMIN) ==================== -->
+<dialog id="dialog-add-pmb-cluster" class="panel" style="max-width: 480px; width: 92%; border-radius: 12px; border: 1px solid var(--border-color, #cbd5e1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 6px;">
+            <span>⚡</span> Buat Klasterisasi PMB Baru
+        </h3>
+        <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-add-pmb-cluster').close()">✕</button>
+    </div>
+    <form action="<?= site_url('one-campus/pmb-clusters') ?>" method="post">
+        <?= csrf_field() ?>
+        <p style="font-size: 0.82rem; color: var(--text-muted, #64748b); margin-top: 0; margin-bottom: 14px;">
+            Khusus Superadmin: Tambahkan klaster periode PMB mendatang atau tahun akademik terbaru untuk One Campus Sixty School.
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <label>
+                <span style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Tahun Mulai</span>
+                <input class="control" type="number" name="start_year" min="2020" max="2040" value="<?= date('Y') + 1 ?>" required>
+            </label>
+            <label>
+                <span style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Tahun Selesai</span>
+                <input class="control" type="number" name="end_year" min="2021" max="2041" value="<?= date('Y') + 2 ?>" required>
+            </label>
+        </div>
+        <label style="display: block; margin-bottom: 16px;">
+            <span style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Nama Klaster (Otomatis / Custom)</span>
+            <input class="control" type="text" name="pmb_period_name" placeholder="Contoh: September 2027 - September 2028">
+            <span style="font-size: 0.74rem; color: var(--text-muted, #64748b); margin-top: 3px; display: block;">Kosongkan untuk otomatis menggunakan format bulan September.</span>
+        </label>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="ghost-button" onclick="document.getElementById('dialog-add-pmb-cluster').close()">Batal</button>
+            <button type="submit" class="primary-button" style="background: #f59e0b; border-color: #f59e0b; color: #ffffff; font-weight: 700;">Simpan Klaster Baru</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- ==================== MODAL 2: UPLOAD DATA PMB EXCEL ==================== -->
+<dialog id="dialog-upload-pmb" class="panel" style="max-width: 520px; width: 92%; border-radius: 12px; border: 1px solid var(--border-color, #cbd5e1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #0284c7; display: flex; align-items: center; gap: 6px;">
+            <span>📤</span> Upload Data PMB Sekolah (Excel)
+        </h3>
+        <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-upload-pmb').close()">✕</button>
+    </div>
+    <form action="<?= site_url('one-campus/upload-pmb') ?>" method="post" enctype="multipart/form-data">
+        <?= csrf_field() ?>
+        <p style="font-size: 0.82rem; color: var(--text-muted, #64748b); margin-top: 0; margin-bottom: 14px;">
+            Unggah file Excel daftar mahasiswa baru untuk secara otomatis menghitung dan memperbarui <strong>Jumlah PMB</strong> per sekolah serta rincian mahasiswanya.
+        </p>
+        <label style="display: block; margin-bottom: 12px;">
+            <span style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Pilih Klaster PMB Target <span style="color: #ef4444;">*</span></span>
+            <select class="control" name="pmb_period" required>
+                <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
+                    <option value="<?= esc($pKey) ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === 'September 2026 - September 2027')) ? 'selected' : '' ?>>
+                        <?= esc($pLabel) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <label style="display: block; margin-bottom: 12px;">
+            <span style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Pilih File Excel (.xlsx / .csv) <span style="color: #ef4444;">*</span></span>
+            <input class="control" type="file" name="pmb_file" accept=".xlsx,.csv,.xls" required>
+        </label>
+        <div style="background: var(--bg-hover, #f8fafc); border: 1px dashed var(--border-color, #cbd5e1); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px;">
+            <div style="font-size: 0.78rem; color: var(--text-muted, #64748b); line-height: 1.45;">
+                <div style="margin-bottom: 4px;">
+                    💡 <strong>Terintegrasi Kode Kampus &amp; Kode UBSI:</strong> Template baru telah dilengkapi kolom <code>Kode Kampus</code> (misal: <em>D2, A1, E1, K1</em>) &amp; <code>Kode UBSI</code> (<em>01, 02, 04, dst.</em>), serta Sheet 2 berisi referensi 27 kampus resmi UBSI.
+                </div>
+                <div>
+                    Belum punya template Excel?
+                    <a href="<?= site_url('one-campus/pmb-template') ?>" style="color: #0d9488; font-weight: 700; text-decoration: underline; margin-left: 4px;">
+                        Unduh Template Excel PMB di Sini
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="ghost-button" onclick="document.getElementById('dialog-upload-pmb').close()">Batal</button>
+            <button type="submit" class="primary-button" style="background: #0284c7; border-color: #0284c7; color: #ffffff; font-weight: 700;">
+                Unggah &amp; Rekap PMB
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<!-- ==================== MODAL 3: RINCIAN MAHASISWA BARU PER SEKOLAH ==================== -->
+<dialog id="dialog-school-students" class="panel" style="max-width: 780px; width: 95%; border-radius: 12px; border: 1px solid var(--border-color, #cbd5e1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 22px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
+        <div>
+            <h3 id="modalStudentSchoolName" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-main, #1e293b);">
+                Daftar Mahasiswa Baru
+            </h3>
+            <span id="modalStudentPeriodBadge" class="status status-aktif" style="font-size: 0.75rem; margin-top: 4px; display: inline-block;">
+                Klaster PMB
+            </span>
+        </div>
+        <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-school-students').close()" style="font-size: 1rem; padding: 4px 10px;">✕</button>
+    </div>
+
+    <div id="modalStudentLoading" style="text-align: center; padding: 24px 0; color: var(--text-muted, #64748b);">
+        Memuat data mahasiswa baru...
+    </div>
+
+    <div id="modalStudentContent" style="display: none; max-height: 400px; overflow-y: auto;">
+        <table class="data-table" style="width: 100%; font-size: 0.82rem;">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">No</th>
+                    <th>Nama Mahasiswa</th>
+                    <th>No Pendaftaran</th>
+                    <th>Kampus / Kode</th>
+                    <th>Program Studi</th>
+                    <th>No HP / WA</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="modalStudentTableBody">
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border-color, #e2e8f0); display: flex; justify-content: space-between; align-items: center;">
+        <span id="modalStudentTotal" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted, #64748b);">Total: 0 Mahasiswa</span>
+        <button type="button" class="ghost-button" onclick="document.getElementById('dialog-school-students').close()">Tutup</button>
+    </div>
+</dialog>
+
+<script>
+function showSchoolStudents(schoolId, schoolName) {
+    const dialog = document.getElementById('dialog-school-students');
+    const loading = document.getElementById('modalStudentLoading');
+    const content = document.getElementById('modalStudentContent');
+    const tableBody = document.getElementById('modalStudentTableBody');
+    const nameEl = document.getElementById('modalStudentSchoolName');
+    const periodEl = document.getElementById('modalStudentPeriodBadge');
+    const totalEl = document.getElementById('modalStudentTotal');
+
+    nameEl.textContent = 'Daftar Mahasiswa Baru — ' + schoolName;
+    loading.style.display = 'block';
+    loading.textContent = 'Memuat data mahasiswa baru...';
+    content.style.display = 'none';
+    tableBody.innerHTML = '';
+    dialog.showModal();
+
+    fetch('<?= site_url('one-campus/schools/') ?>' + schoolId + '/students')
+        .then(res => res.json())
+        .then(data => {
+            loading.style.display = 'none';
+            content.style.display = 'block';
+            if (data.status === 'success' && data.students && data.students.length > 0) {
+                periodEl.textContent = data.school.pmb_period || 'Periode PMB';
+                totalEl.textContent = 'Total: ' + data.students.length + ' Mahasiswa Baru Terdaftar';
+                let html = '';
+                data.students.forEach((s, idx) => {
+                    const cCode = s.campus_kode_kampus || s.campus_code || '';
+                    const ubsiCode = s.campus_kode_ubsi || s.kode_ubsi || '';
+                    const campusBadge = cCode ? `<span class="status status-aktif" style="font-size: 0.7rem; padding: 1px 6px; margin-right: 4px; font-weight: 700;">${cCode}</span>` : '';
+                    const ubsiBadge = ubsiCode ? `<span style="font-size: 0.7rem; color: var(--text-muted, #64748b); margin-left: 3px;">(${ubsiCode})</span>` : '';
+                    const campusLabel = s.campus_name ? `${campusBadge}${s.campus_name}${ubsiBadge}` : '-';
+
+                    html += `<tr>
+                        <td>${idx + 1}</td>
+                        <td><strong>${s.student_name || '-'}</strong></td>
+                        <td><code>${s.registration_no || '-'}</code></td>
+                        <td>${campusLabel}</td>
+                        <td>${s.study_program || '-'}</td>
+                        <td>${s.student_phone || '-'}</td>
+                        <td><span class="status status-aktif" style="font-size: 0.74rem;">${s.status || 'Mahasiswa Baru'}</span></td>
+                    </tr>`;
+                });
+                tableBody.innerHTML = html;
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 18px;">Belum ada rincian data mahasiswa baru terdaftar untuk sekolah ini. Gunakan fitur "Upload Data PMB (Excel)" untuk mengisi.</td></tr>';
+                totalEl.textContent = 'Total: 0 Mahasiswa';
+            }
+        })
+        .catch(err => {
+            loading.textContent = 'Gagal memuat data: ' + err;
+        });
+}
+</script>

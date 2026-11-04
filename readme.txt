@@ -1,5 +1,5 @@
 EVENTWEB - CATATAN PERUBAHAN
-Tanggal update: 26 Juni 2026
+Tanggal update: 4 November 2026 (Update: One Campus Sixty School PMB Clustering, Upload MOU PDF & Google Drive Admin)
 
 Ringkasan
 Project EventHub/EventWeb telah diperbarui pada beberapa area utama:
@@ -401,6 +401,111 @@ paging laporan keberhasilan, Task Manager penugasan user, serta dokumentasi loka
   jika database lokal belum menerima kolom ojt_start_month dan ojt_end_month.
 
 
+34. One Campus Sixty School - Klasterisasi Tahun PMB
+- Menambahkan sistem klasterisasi data sekolah mitra berdasarkan siklus tahun PMB (September ke September).
+- Default periode PMB saat ini terset ke "September 2026 - September 2027 (Berjalan)".
+- Klaster periode yang didukung:
+  * September 2026 - September 2027 (Default)
+  * September 2025 - September 2026
+  * September 2024 - September 2025
+  * September 2027 - September 2028 (Mendatang)
+  * Semua Periode PMB
+- Setiap tombol klaster menampilkan badge jumlah perolehan sekolah secara real-time.
+- Memilih klaster otomatis memfilter data tabel Sixty School dan ekspor hasil XLSX.
+
+
+35. One Campus Sixty School - Upgrade Form Input Data Sekolah Penerima BJS
+- Proses input data Sixty School ditingkatkan sesuai layout form Beasiswa Jalur Undangan (BJS):
+  * Baris 1: NPSN, Nama Sekolah, Kota, Jenis Skl (SMA/SMK/MA/Lainnya), Status Skl (Negeri/Swasta).
+  * Baris 2: Nama Kepala Sekolah, Telp Sekolah, Email Sekolah.
+  * Baris 3: Nama Kontak (PIC), Telp Kontak, Email Kontak.
+  * Baris 4: Status (Aktif/Nonaktif), Tahun PMB, Kampus Pelaksana, Perolehan Siswa PMB.
+- Tampilan form dilengkapi header "Data Sekolah Penerima Beasiswa", tombol hijau "+ Kembali",
+  dan tombol simpan berwarna teal "Simpan Data Sekolah".
+- Backwards compatibility: kolom lama teacher_name dan phone otomatis disinkronkan dengan contact_name dan contact_phone.
+- Tombol "Kelola" pada tabel rekap Sixty School sekarang berpindah page langsung ke halaman khusus edit (/one-campus/schools/{id}/edit).
+- Halaman khusus edit menampilkan form lengkap dengan nilai tersimpan, pratinjau dokumen MOU PDF, link Google Drive, tombol kembali, tombol simpan perubahan, serta opsi hapus data sekolah.
+
+
+36. One Campus Sixty School - Media Upload Dokumen MOU (PDF) & Upload Otomatis ke Google Drive Admin
+- Ditambahkan Media Upload Dokumen MOU resmi format PDF (.pdf) dengan batas ukuran file maksimal 15 MB.
+- File PDF disimpan aman di folder terpusat writable/uploads/mou_documents/.
+- Ditambahkan fitur Upload Otomatis Langsung ke Google Drive Admin via Google Apps Script Webhook:
+  * GoogleDriveUploadService.php menangani proses transfer file PDF secara aman menggunakan multipart Base64 cURL.
+  * Opsi toggle "Otomatis upload file MOU ke Google Drive saat form disimpan".
+  * Saat diunggah, file langsung terkirim ke folder Google Drive Admin dan URL file Drive otomatis disimpan ke database (mou_drive_link).
+- Ditambahkan tombol sinkronisasi instan "Kirim ke Drive" pada tabel rekap dan halaman edit sekolah untuk file MOU yang belum terunggah ke Drive.
+- Ditambahkan drawer konfigurasi Google Drive Akun Admin:
+  * Email Akun Google Drive Admin MOU (gdrive_admin_email)
+  * URL atau ID Folder Google Drive MOU (gdrive_mou_folder_url)
+  * Label Nama Folder Google Drive (gdrive_mou_folder_name)
+  * Webhook URL Google Apps Script (gdrive_webhook_url)
+  * Toggle Upload Otomatis (gdrive_auto_upload_enabled)
+  * Tombol "Uji Koneksi Webhook" untuk memverifikasi kesiapan Apps Script.
+  * Template kode Google Apps Script siap pakai dengan tombol salin cepat.
+- Ditambahkan route streaming/download: GET one-campus/schools/{id}/mou untuk membuka dokumen PDF MOU langsung di browser.
+- Kolom "Dokumen MOU" pada tabel rekap menampilkan badge interaktif:
+  * Tombol merah "Lihat PDF MOU" (membuka PDF file terupload)
+  * Tombol biru "Buka di Drive" (membuka link Google Drive)
+  * Tombol teal "Kirim ke Drive" (sinkronisasi manual ke Google Drive)
+  * Status "Belum ada MOU" jika dokumen belum tersedia.
+
+
+37. Super Admin - Fasilitas Impersonate Seluruh Akun User
+- Super Admin / Admin Sistem memiliki fasilitas login sementara (impersonate) ke seluruh akun user
+  untuk memantau kegiatan, mengecek fitur, dan memverifikasi tampilan tiap peran secara langsung.
+- Dilengkapi banner persistent "Mode Impersonate" di header atas dengan tombol "Kembali ke Akun Super Admin".
+
+
+38. AI - Rekomendasi Chat Siswa yang Lebih Natural & Auto-Kampus
+- Rekomendasi template chat follow-up siswa CRM disesuaikan agar lebih natural, ramah, dan manusiawi tanpa icon/emoji berlebihan serta tanpa formatting bold yang kaku.
+- Form brief AI event secara otomatis mengambil data kampus pelaksana dari event terkait tanpa menampilkan status "Belum ditentukan".
+
+
+39. Tampilan - Optimalisasi Kontras Dark & Light Mode
+- Semua teks, tabel data, modal popup, kartu statistik, dan elemen input form telah disesuaikan dengan CSS variable bertingkat
+  sehingga terbaca jelas dan memiliki kontras tajam pada template Dark Mode maupun Light Mode.
+
+
+40. Paritas Ganda Penuh: CodeIgniter 4 dan Laravel
+- Seluruh modul, migrasi tabel, controller, model, view, routing, dan validasi dijaga dalam keselarasan 100%
+  antara CodeIgniter 4 (port 8080) dan Laravel (port 8081).
+
+
+41. One Campus Sixty School - Klaster Baru Superadmin, Upload Excel PMB, Detail Mahasiswa & Fasilitas Sortir
+- Klasterisasi PMB disesuaikan: hanya menampilkan klaster yang sedang berjalan (September 2026 - September 2027) dan klaster sebelumnya.
+- Khusus Super Admin / Admin Sistem: ditambahkan tombol "+ Buat Klasterisasi Baru" untuk menambah klaster tahun mendatang atau custom secara dinamis.
+- Ditambahkan fitur "Upload Data PMB (Excel)" & Integrasi 27 Data Kode Kampus UBSI:
+  * Master data 27 kampus resmi UBSI terintegrasi dengan field kode_ubsi & campus_code (Margonda 01/D2, Fatmawati 02/A1, Tangerang 03/C1, Bekasi 04/E1, Kaliabang 05/E2, Kalimalang 06/F3, Kramat 98 07/B2/B4, Jogja 09/K1, Jatiwaringin 11/F1, Ciledug 12/G1, Bogor B 13/H1, Karawang 14/E5, Cikampek 15/E6, Tasikmalaya 17/J1, Purwokerto 21/K6, Cikarang 24/E4, Cengkareng 25/M1, Slipi 26/M2, BSD 27/N1, Sukabumi 28/O1, Ciputat 29/C3, Pontianak 30/P1, DWS B 31/F4, Tegal 35/K7, Pemuda 37/B7, Cibitung 38/E3, Bogor A 39/H2).
+  * Template Excel PMB multi-sheet: Sheet 1 (Data Mahasiswa PMB) mencakup kolom Kode Kampus, Kode UBSI, Kampus, dsb; Sheet 2 (Referensi Kode Kampus) menyajikan tabel 27 kampus lengkap.
+  * Mesin pencocokan cerdas: mencocokkan kampus mahasiswa via Kode UBSI, Kode Kampus, nama/alias kampus, atau default kampus modal.
+  * Sistem otomatis mencocokkan asal sekolah atau NPSN. Jika sekolah belum ada di Sixty School, otomatis dibuatkan data sekolah baru.
+  * Data mahasiswa baru disimpan ke tabel one_campus_pmb_students lengkap dengan kode_ubsi & campus_code.
+  * Perolehan PMB sekolah (pmb_count) otomatis terhitung dan terupdate secara real-time.
+- Ditambahkan route dan tombol "Template Excel PMB" (GET one-campus/pmb-template) untuk mengunduh template resmi multi-sheet.
+- Ditambahkan fasilitas melihat detail mahasiswa baru per sekolah:
+  * Kolom PMB di tabel Sixty School dapat diklik untuk membuka modal rincian nama mahasiswa baru, nomor pendaftaran, prodi, kampus & kode kampus, nomor kontak, dan status.
+  * Halaman edit sekolah (/one-campus/schools/{id}/edit) dilengkapi tabel rincian mahasiswa baru lengkap dengan kolom Kampus/Kode beserta opsi hapus data mahasiswa.
+- Ditambahkan fasilitas sortir tabel Sixty School:
+  * Tombol aksi cepat: "PMB Terbanyak (Banyak ke Sedikit)", "PMB Tersedikit", dan "Nama Sekolah (A-Z)".
+  * Kolom Perolehan PMB dapat diklik langsung untuk toggle urutan banyak ke sedikit (DESC/ASC) dengan indikator panah.
+  * Ketika diurutkan terbanyak, sistem menampilkan badge medali peringkat (1st, 2nd, 3rd, dst.).
+
+
+42. Dashboard Utama - Rekomendasi Cerdas AI Analisis Interaksi & Konversi Sekolah (Role-Based Scoping)
+- Ditambahkan widget cerdas AI di dashboard utama (/dashboard) yang mengintegrasikan 4 pilar data:
+  1. Perolehan Mahasiswa PMB
+  2. Riwayat Kunjungan Sekolah (Visit / Sosialisasi)
+  3. Event Kampus yang terafiliasi
+  4. Status Dokumen MoU Sekolah
+- Personalisasi Sesuai Hak Akses & Peran User (Role-Based Scoping):
+  * Kepala Kampus: Sistem secara dinamis membatasi evaluasi rekomendasi AI, metrik ringkasan, dan event/kunjungan hanya untuk sekolah-sekolah di bawah kampusnya sendiri (session user.campus_id). Dilengkapi badge "Khusus Kampus: [Nama Kampus]".
+  * Super Admin / Admin Sistem / DMER: Evaluasi mencakup seluruh sekolah dan kampus di sistem, dilengkapi badge "Semua Kampus (Super Admin)".
+- Menampilkan 4 kartu ringkasan metrik: Total Sekolah Mitra, Peluang MoU Kunci, Mitra Unggulan (Champion), dan Evaluasi Sosialisasi.
+- Menghitung skor interaksi (0-100) dan mengelompokkan sekolah ke kategori strategis (Peluang MoU Kunci, Champion, Evaluasi Sosialisasi, Aktivasi MoU, Prospek Baru).
+- Memberikan teks saran strategis AI yang kontekstual dan tombol aksi langsung (Kelola Sixty School).
+
+
 Catatan File Penting yang Diubah/Ditambahkan
 - app/Config/Routes.php
 - app/Controllers/EventSuite.php
@@ -410,6 +515,35 @@ Catatan File Penting yang Diubah/Ditambahkan
 - app/Models/CrmLeadModel.php
 - app/Models/GoogleCalendarEventModel.php
 - app/Models/OneCampusOjtReportModel.php
+- app/Models/OneCampusSchoolReportModel.php
+- app/Models/OneCampusPmbStudentModel.php
+- app/Models/SystemSettingModel.php
+- app/Libraries/GoogleDriveUploadService.php
+- app/Libraries/GoogleCalendarService.php
+- app/Libraries/CalendarExcelExporter.php
+- app/Libraries/GeminiDocumentService.php
+- app/Database/Migrations/2026-11-04-000001_CreateOneCampusPmbStudents.php
+- app/Views/layouts/dashboard.php
+- app/Views/pages/dashboard.php
+- app/Views/pages/one_campus.php
+- app/Views/pages/one_campus_school_edit.php
+- laravel/routes/web.php
+- laravel/app/Controllers/EventSuite.php
+- laravel/app/Models/OneCampusSchoolReportModel.php
+- laravel/app/Models/OneCampusPmbStudentModel.php
+- laravel/app/Models/SystemSettingModel.php
+- laravel/app/Libraries/GoogleDriveUploadService.php
+- laravel/resources/views/pages/dashboard.blade.php
+- laravel/resources/views/pages/one_campus.blade.php
+- laravel/resources/views/pages/one_campus_school_edit.blade.php
+- app/Controllers/GoogleCalendarController.php
+- app/Models/EventModel.php
+- app/Models/CrmLeadModel.php
+- app/Models/GoogleCalendarEventModel.php
+- app/Models/OneCampusOjtReportModel.php
+- app/Models/OneCampusSchoolReportModel.php
+- app/Models/SystemSettingModel.php
+- app/Libraries/GoogleDriveUploadService.php
 - app/Libraries/GoogleCalendarService.php
 - app/Libraries/CalendarExcelExporter.php
 - app/Libraries/GeminiDocumentService.php
@@ -426,6 +560,7 @@ Catatan File Penting yang Diubah/Ditambahkan
 - app/Views/pages/analytics.php
 - app/Views/pages/special_analytics.php
 - app/Views/pages/one_campus.php
+- app/Views/pages/one_campus_school_edit.php
 - app/Views/pages/users.php
 - app/Views/pages/documents.php
 - app/Views/pages/generate_documents.php
@@ -436,6 +571,13 @@ Catatan File Penting yang Diubah/Ditambahkan
 - app/Views/pages/crm_dashboard.php
 - app/Views/pages/crm_agent_monitoring.php
 - app/Views/pages/crm_login.php
+- laravel/routes/web.php
+- laravel/app/Controllers/EventSuite.php
+- laravel/app/Models/OneCampusSchoolReportModel.php
+- laravel/app/Models/SystemSettingModel.php
+- laravel/app/Libraries/GoogleDriveUploadService.php
+- laravel/resources/views/pages/one_campus.blade.php
+- laravel/resources/views/pages/one_campus_school_edit.blade.php
 - public/assets/css/app.css
 - public/assets/js/app.js
 - public/assets/img/eventhub-logo.png

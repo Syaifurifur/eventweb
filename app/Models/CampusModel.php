@@ -12,6 +12,8 @@ class CampusModel extends Model
     protected $useSoftDeletes = true;
     protected $allowedFields = [
         'name',
+        'kode_ubsi',
+        'campus_code',
         'created_by',
     ];
     protected $useTimestamps = true;

@@ -1,6 +1,6 @@
 <div class="detail-layout">
     <section class="panel hero-panel">
-        <span class="status status-<?= esc($event['status']) ?>"><?= esc($event['status']) ?></span>
+        <span class="status status-<?= esc(strtolower((string) ($event['status'] ?? ''))) ?> status-<?= esc($event['status'] ?? '') ?>"><?= esc($event['status']) ?></span>
         <h2><?= esc($event['title']) ?></h2>
         <p><?= esc($event['description']) ?></p>
         <div class="detail-meta">

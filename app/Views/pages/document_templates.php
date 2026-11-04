@@ -468,6 +468,82 @@ $dtIcon = static function (string $name, int $size = 18): string {
         .dt-explainer { grid-template-columns: 1fr; }
         .dt-explain-arrow { transform: rotate(90deg); margin: 6px 0; }
     }
+
+    /* Dark Mode Overrides for Document Templates */
+    html.dark .dt-page {
+        --dt-border: var(--line, #374151);
+        --dt-ink: var(--ink, #f3f4f6);
+        --dt-muted: var(--muted, #9ca3af);
+    }
+    html.dark .dt-card,
+    html.dark .dt-btn,
+    html.dark .dt-explainer-box,
+    html.dark .dt-preview-panel,
+    html.dark .dt-modal-dialog {
+        background: var(--surface, #273142);
+        color: var(--ink, #f3f4f6);
+        border-color: var(--line, #374151);
+    }
+    html.dark .dt-head-left h1,
+    html.dark .dt-explainer-title {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .dt-btn-primary {
+        background: var(--dt-primary);
+        border-color: var(--dt-primary);
+        color: #fff;
+    }
+    html.dark .dt-filter {
+        background: var(--surface, #273142);
+        border-color: var(--line, #374151);
+    }
+    html.dark .dt-filter label {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .dt-input,
+    html.dark .dt-select,
+    html.dark .dt-textarea {
+        background: #1f2937;
+        color: #f3f4f6;
+        border-color: #374151;
+    }
+    html.dark .dt-table-wrap {
+        border-color: var(--line, #374151);
+    }
+    html.dark .dt-table thead th {
+        background: var(--surface-soft, #1f2937);
+        color: var(--ink, #f3f4f6);
+        border-bottom-color: var(--line, #374151);
+    }
+    html.dark .dt-table tbody tr > td {
+        border-bottom-color: var(--line, #374151);
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .dt-table tbody tr:hover > td {
+        background: rgba(72, 127, 255, 0.08);
+    }
+    html.dark .dt-status-pill.is-active {
+        background: rgba(22, 163, 74, 0.2);
+        color: #86efac;
+    }
+    html.dark .dt-status-pill.is-inactive {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+    }
+    html.dark .dt-modal-content {
+        background: var(--surface, #273142);
+        color: var(--ink, #f3f4f6);
+        border-color: var(--line, #374151);
+    }
+    html.dark .dt-modal-head {
+        border-bottom-color: var(--line, #374151);
+    }
+    html.dark .dt-modal-head h2 {
+        color: var(--ink, #f3f4f6);
+    }
+    html.dark .dt-modal-foot {
+        border-top-color: var(--line, #374151);
+    }
 </style>
 
 <div class="dt-page">
