@@ -4822,6 +4822,81 @@ class EventSuite extends BaseController
         ]);
     }
 
+    public function lookupNationalSchool()
+    {
+        $query = trim((string) ($this->request->getGet('q') ?: $this->request->getGet('npsn')));
+        if ($query === '') {
+            return $this->response->setJSON([
+                'status' => 'empty',
+                'exact_match' => null,
+                'suggestions' => [],
+            ]);
+        }
+
+        $model = new \App\Models\NationalSchoolModel();
+        $exactMatch = null;
+
+        if (ctype_digit($query) && strlen($query) === 8) {
+            $exact = $model->findByNpsn($query);
+            if ($exact) {
+                $exactMatch = $this->formatNationalSchoolItem($exact);
+            }
+        }
+
+        $rawSuggestions = $model->searchSchools($query, 15);
+        $suggestions = [];
+        foreach ($rawSuggestions as $item) {
+            $formatted = $this->formatNationalSchoolItem($item);
+            $suggestions[] = $formatted;
+            if ($exactMatch === null && $formatted['npsn'] === $query) {
+                $exactMatch = $formatted;
+            }
+        }
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'query' => $query,
+            'exact_match' => $exactMatch,
+            'suggestions' => $suggestions,
+        ]);
+    }
+
+    private function formatNationalSchoolItem(array $item): array
+    {
+        $statusUpper = strtoupper(trim((string) ($item['school_status'] ?? '')));
+        $normalizedStatus = ($statusUpper === 'NEGERI') ? 'Negeri' : 'Swasta';
+
+        $typeUpper = strtoupper(trim((string) ($item['school_type'] ?? '')));
+        if (str_contains($typeUpper, 'SMK') || str_contains($typeUpper, 'MAK')) {
+            $normalizedType = 'SMK';
+        } elseif (str_contains($typeUpper, 'SMA')) {
+            $normalizedType = 'SMA';
+        } elseif (str_contains($typeUpper, 'MA')) {
+            $normalizedType = 'MA';
+        } else {
+            $normalizedType = 'Lainnya';
+        }
+
+        $city = trim((string) ($item['city'] ?? ''));
+
+        return [
+            'id' => (int) $item['id'],
+            'npsn' => (string) ($item['npsn'] ?? ''),
+            'name' => (string) ($item['name'] ?? ''),
+            'school_name' => (string) ($item['name'] ?? ''),
+            'city' => $city,
+            'school_type' => $normalizedType,
+            'raw_school_type' => $typeUpper,
+            'school_status' => $normalizedStatus,
+            'raw_school_status' => $statusUpper,
+            'district' => (string) ($item['district'] ?? ''),
+            'subdistrict' => (string) ($item['subdistrict'] ?? ''),
+            'address' => (string) ($item['address'] ?? ''),
+            'stage' => (string) ($item['stage'] ?? ''),
+            'supervising_ministry' => (string) ($item['supervising_ministry'] ?? ''),
+        ];
+    }
+
     public function deleteOneCampusStudent(int $id)
     {
         $studentModel = new \App\Models\OneCampusPmbStudentModel();

@@ -368,6 +368,10 @@ Kredensial Default Login:
 - `app/Models/CrmLeadModel.php`: Field allowed `pmb_period`.
 - `app/Models/CrmUploadBatchModel.php`: Field allowed `pmb_period`.
 - `app/Database/Migrations/2026-11-04-000004_AddPmbPeriodToCrmLeads.php`: Migrasi kolom `pmb_period` & index `idx_crm_leads_pmb` pada `crm_leads` dan `crm_upload_batches`.
+- `app/Database/Migrations/2026-11-04-000006_CreateNationalSchools.php`: Migrasi tabel database `national_schools`.
+- `app/Models/NationalSchoolModel.php`: Model pencarian referensi data satuan pendidikan nasional se-Indonesia.
+- `app/Views/pages/one_campus.php`: Form pendaftaran Sixty School dengan autocomplete real-time & auto-fill data sekolah dari NPSN.
+- `app/Views/pages/one_campus_school_edit.php`: Form edit Sixty School dengan autocomplete real-time & auto-fill data sekolah dari NPSN.
 - `app/Views/pages/crm_dashboard.php`: UI bilah klaster masa PMB CRM, modal Superadmin tambah klaster baru, filter klaster toolbar, badge baris siswa, dan select klaster pada form upload Excel.
 
 ### Laravel (Parity):
@@ -376,6 +380,9 @@ Kredensial Default Login:
 - `laravel/app/Controllers/CrmController.php`: Paritas controller CRM lengkap dengan CodeIgniter 4.
 - `laravel/app/Models/CrmLeadModel.php`: Field fillable `pmb_period`.
 - `laravel/app/Models/CrmUploadBatchModel.php`: Field fillable `pmb_period`.
+- `laravel/app/Models/NationalSchoolModel.php`: Model paritas Laravel untuk tabel `national_schools`.
+- `laravel/resources/views/pages/one_campus.blade.php`: Paritas view Blade One Campus Sixty School dengan auto-fill NPSN.
+- `laravel/resources/views/pages/one_campus_school_edit.blade.php`: Paritas view Blade edit data sekolah Sixty School dengan auto-fill NPSN.
 - `laravel/resources/views/pages/crm_dashboard.blade.php`: Paritas view CRM lengkap dengan bilah klaster masa PMB, filter toolbar, badge tabel, dialog Superadmin, dan form upload PMB.
 - `laravel/app/Libraries/GoogleDriveUploadService.php`: Service cURL Google Apps Script webhook uploader.
 - `laravel/app/Models/OneCampusSchoolReportModel.php`: Field allowed Sixty School (`bjs_status`, `bjs_verified_at`, `bjs_verified_by`, `bjs_notes`).
@@ -399,3 +406,18 @@ Kredensial Default Login:
   - Tautan berkas langsung terhubung ke dokumen unggahan asli atau Google Drive publik via `events/{code}/documents/{type}/file` (bukan sekadar template preview AI).
   - Otomatis menampilkan Surat Tugas / SK Tim Pelaksana jika tersedia.
   - Dukungan visual responsif dan integrasi Dark Mode yang optimal di kedua engine (CodeIgniter 4 dan Laravel).
+
+
+### 10. Database Satuan Pendidikan Nasional & Auto-Fill Rekomendasi NPSN (One Campus Sixty School)
+- **Integrasi Database 42.856 Satuan Pendidikan se-Indonesia**:
+  - Diimpor dari Data Induk Satuan Pendidikan Nasional Kemendikdasmen & Kemenag (Jenjang Dikmen formal: SMA, SMK, MA, SLB, dll).
+  - Tersimpan di tabel `national_schools` lengkap dengan indeks performa tinggi pada kolom `npsn`, `name`, dan `city`.
+- **Auto-Fill & Rekomendasi Real-Time pada Form Sixty School**:
+  - Ketika memasukkan atau mengetik 8 digit **NPSN** pada form Sixty School (baik tambah sekolah maupun edit sekolah), sistem secara cerdas dan otomatis mengisi:
+    1. **Nama Sekolah** (`school_name`)
+    2. **Kota / Kabupaten** (`city`)
+    3. **Jenis SKL** (`school_type`: otomatis memilih opsi `SMA`, `SMK`, `MA`, atau `Lainnya`)
+    4. **Status SKL** (`school_status`: otomatis memilih opsi `Negeri` atau `Swasta`)
+  - **Dropdown Rekomendasi Autocomplete**: Pengguna dapat melihat saran sekolah langsung saat mengetik NPSN atau mengetik nama sekolah, lengkap dengan lencana NPSN, jenis & status sekolah, serta lokasi kabupaten/kecamatan.
+  - Memberikan indikator kilat visual hijau dan notifikasi bahwa data sekolah telah terisi otomatis dari referensi resmi nasional.
+- **100% Strict Dual-Engine Parity**: Didukung penuh pada CodeIgniter 4 dan Laravel melalui endpoint API `/one-campus/schools/lookup-npsn`.

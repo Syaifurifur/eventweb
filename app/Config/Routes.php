@@ -130,6 +130,7 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
     $routes->get('one-campus/ojt/export', 'EventSuite::exportOneCampusOjt', ['filter' => 'access:one-campus']);
     $routes->get('one-campus/schools/export', 'EventSuite::exportOneCampusSchools', ['filter' => 'access:one-campus']);
     $routes->get('one-campus/banners/export', 'EventSuite::exportOneCampusBanners', ['filter' => 'access:one-campus']);
+    $routes->get('one-campus/schools/lookup-npsn', 'EventSuite::lookupNationalSchool', ['filter' => 'access:one-campus']);
     $routes->post('one-campus/schools', 'EventSuite::storeOneCampusSchool', ['filter' => 'access:one-campus']);
     $routes->get('one-campus/schools/(:num)/edit', 'EventSuite::editOneCampusSchool/$1', ['filter' => 'access:one-campus']);
     $routes->get('one-campus/schools/(:num)/mou', 'EventSuite::downloadOneCampusSchoolMou/$1', ['filter' => 'access:one-campus']);

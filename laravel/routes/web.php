@@ -140,6 +140,7 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::get('one-campus/ojt/export', [EventSuite::class, 'exportOneCampusOjt'])->middleware('access:one-campus');
     Route::get('one-campus/schools/export', [EventSuite::class, 'exportOneCampusSchools'])->middleware('access:one-campus');
     Route::get('one-campus/banners/export', [EventSuite::class, 'exportOneCampusBanners'])->middleware('access:one-campus');
+    Route::get('one-campus/schools/lookup-npsn', [EventSuite::class, 'lookupNationalSchool'])->middleware('access:one-campus');
     Route::post('one-campus/schools', [EventSuite::class, 'storeOneCampusSchool'])->middleware('access:one-campus');
     Route::get('one-campus/schools/{id}/edit', [EventSuite::class, 'editOneCampusSchool'])->middleware('access:one-campus')->whereNumber('id');
     Route::get('one-campus/schools/{id}/mou', [EventSuite::class, 'downloadOneCampusSchoolMou'])->middleware('access:one-campus')->whereNumber('id');

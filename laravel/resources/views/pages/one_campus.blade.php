@@ -499,12 +499,21 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             <form class="one-campus-school-form" action="<?= site_url('one-campus/schools') ?>" method="post" enctype="multipart/form-data">
                 <?= csrf_field() ?>
 
-                <!-- Baris 1 (5 Kolom seperti di screenshot): NPSN, Nama Sekolah, Kota, Jenis Skl, Status Skl -->
+                <!-- Baris 1: NPSN (dengan rekomendasi AI & auto-fill database nasional), Nama Sekolah, Kota, Jenis Skl, Status Skl -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 14px;">
-                    <label>
-                        <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">NPSN</span>
-                        <input class="control" type="text" name="npsn" placeholder="Nomor Pokok Sekolah">
-                    </label>
+                    <div style="position: relative;">
+                        <label>
+                            <span style="display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">
+                                <span>NPSN</span>
+                                <span class="npsn-lookup-indicator" style="font-size: 0.72rem; font-weight: 700; color: #2563eb; display: none;">⚡ Mencari...</span>
+                            </span>
+                            <input class="control school-npsn-input" type="text" name="npsn" placeholder="Ketik 8 digit NPSN..." autocomplete="off">
+                        </label>
+                        <div class="school-autocomplete-dropdown" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 340px; max-width: 440px; z-index: 1000; max-height: 280px; overflow-y: auto; background: var(--surface, #ffffff); border: 1px solid var(--border-color, #cbd5e1); border-radius: 12px; box-shadow: 0 12px 28px -6px rgba(15,23,42,0.25);"></div>
+                        <span class="npsn-autofill-hint" style="display: block; font-size: 0.72rem; color: #64748b; margin-top: 3px;">
+                            💡 Rekomendasi 42.856 sekolah se-Indonesia
+                        </span>
+                    </div>
                     <label>
                         <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Nama Sekolah <span style="color: #ef4444;">*</span></span>
                         <input class="control" type="text" name="school_name" placeholder="Nama Sekolah Lengkap" required>
@@ -1213,4 +1222,206 @@ function showSchoolStudents(schoolId, schoolName) {
             loading.textContent = 'Gagal memuat data: ' + err;
         });
 }
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function setupSchoolNpsnLookup(formEl, lookupUrl) {
+    if (!formEl) return;
+    const npsnInput = formEl.querySelector('input[name="npsn"]');
+    const nameInput = formEl.querySelector('input[name="school_name"]');
+    const cityInput = formEl.querySelector('input[name="city"]');
+    const typeSelect = formEl.querySelector('select[name="school_type"]');
+    const statusSelect = formEl.querySelector('select[name="school_status"]');
+    const dropdown = formEl.querySelector('.school-autocomplete-dropdown');
+    const indicator = formEl.querySelector('.npsn-lookup-indicator');
+    const hint = formEl.querySelector('.npsn-autofill-hint');
+
+    if (!npsnInput || !nameInput) return;
+
+    let debounceTimer = null;
+
+    function fillForm(data) {
+        if (!data) return;
+        npsnInput.value = data.npsn || npsnInput.value;
+        nameInput.value = data.school_name || data.name || nameInput.value;
+        if (cityInput && data.city) cityInput.value = data.city;
+        if (typeSelect && data.school_type) {
+            for (let opt of typeSelect.options) {
+                if (opt.value.toUpperCase() === data.school_type.toUpperCase()) {
+                    typeSelect.value = opt.value;
+                    break;
+                }
+            }
+        }
+        if (statusSelect && data.school_status) {
+            for (let opt of statusSelect.options) {
+                if (opt.value.toUpperCase() === data.school_status.toUpperCase()) {
+                    statusSelect.value = opt.value;
+                    break;
+                }
+            }
+        }
+
+        [npsnInput, nameInput, cityInput, typeSelect, statusSelect].forEach(el => {
+            if (el) {
+                el.style.transition = 'box-shadow 0.3s, border-color 0.3s';
+                el.style.borderColor = '#10b981';
+                el.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.25)';
+                setTimeout(() => {
+                    el.style.borderColor = '';
+                    el.style.boxShadow = '';
+                }, 1500);
+            }
+        });
+
+        if (hint) {
+            hint.innerHTML = `✅ <strong>${escapeHtml(data.school_name || data.name)}</strong> terisi otomatis dari Data Kemendikdasmen/Kemenag!`;
+            hint.style.color = '#10b981';
+        }
+
+        if (dropdown) dropdown.style.display = 'none';
+    }
+
+    function doLookup(query) {
+        query = (query || '').trim();
+        if (query.length < 3) {
+            if (dropdown) dropdown.style.display = 'none';
+            if (indicator) indicator.style.display = 'none';
+            return;
+        }
+
+        if (indicator) indicator.style.display = 'inline';
+
+        fetch(lookupUrl + '?q=' + encodeURIComponent(query))
+            .then(res => res.json())
+            .then(res => {
+                if (indicator) indicator.style.display = 'none';
+                if (res.status !== 'success' || !res.suggestions || res.suggestions.length === 0) {
+                    if (dropdown) {
+                        dropdown.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--text-muted, #64748b); font-size: 0.78rem;">Tidak ditemukan sekolah yang cocok</div>';
+                        dropdown.style.display = 'block';
+                    }
+                    return;
+                }
+
+                if (res.exact_match && query.length === 8 && /^\d+$/.test(query)) {
+                    fillForm(res.exact_match);
+                }
+
+                renderDropdown(res.suggestions);
+            })
+            .catch(() => {
+                if (indicator) indicator.style.display = 'none';
+            });
+    }
+
+    function renderDropdown(items) {
+        if (!dropdown) return;
+        dropdown.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.style.padding = '8px 12px';
+            div.style.cursor = 'pointer';
+            div.style.borderBottom = '1px solid var(--border-color, #e2e8f0)';
+            div.style.fontSize = '0.8rem';
+            div.style.transition = 'background 0.15s';
+            div.className = 'school-dropdown-item';
+
+            const statusColor = (item.school_status === 'Negeri') ? '#0284c7' : '#d97706';
+            const statusBg = (item.school_status === 'Negeri') ? '#e0f2fe' : '#fef3c7';
+
+            div.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-family: monospace; font-weight: 800; background: #e0e7ff; color: #4338ca; padding: 1px 6px; border-radius: 4px; font-size: 0.74rem;">${escapeHtml(item.npsn)}</span>
+                        <strong style="color: var(--text-main, #1e293b);">${escapeHtml(item.school_name || item.name)}</strong>
+                    </div>
+                    <span style="background: ${statusBg}; color: ${statusColor}; font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">${escapeHtml(item.school_type)} ${escapeHtml(item.school_status)}</span>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted, #64748b); margin-top: 3px;">
+                    🏛 ${escapeHtml(item.city || '-')}${item.district ? ' &bull; ' + escapeHtml(item.district) : ''}
+                </div>
+            `;
+
+            div.addEventListener('mouseenter', () => {
+                div.style.background = 'var(--surface-hover, #f1f5f9)';
+            });
+            div.addEventListener('mouseleave', () => {
+                div.style.background = '';
+            });
+
+            div.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fillForm(item);
+            });
+
+            dropdown.appendChild(div);
+        });
+        dropdown.style.display = 'block';
+    }
+
+    npsnInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        const val = e.target.value.trim();
+        debounceTimer = setTimeout(() => doLookup(val), 250);
+    });
+
+    npsnInput.addEventListener('blur', (e) => {
+        const val = e.target.value.trim();
+        if (val.length === 8 && /^\d+$/.test(val)) {
+            doLookup(val);
+        }
+        setTimeout(() => {
+            if (dropdown) dropdown.style.display = 'none';
+        }, 300);
+    });
+
+    nameInput.addEventListener('input', (e) => {
+        if (npsnInput.value.trim() !== '') return;
+        clearTimeout(debounceTimer);
+        const val = e.target.value.trim();
+        if (val.length >= 3) {
+            debounceTimer = setTimeout(() => doLookup(val), 350);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!formEl.contains(e.target)) {
+            if (dropdown) dropdown.style.display = 'none';
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const schoolForm = document.querySelector('.one-campus-school-form');
+    if (schoolForm) {
+        setupSchoolNpsnLookup(schoolForm, '<?= site_url('one-campus/schools/lookup-npsn') ?>');
+    }
+});
 </script>
+
+<style>
+html.dark .school-autocomplete-dropdown {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6) !important;
+}
+html.dark .school-dropdown-item {
+    border-bottom-color: #334155 !important;
+}
+html.dark .school-dropdown-item strong {
+    color: #f1f5f9 !important;
+}
+html.dark .school-dropdown-item:hover {
+    background: #334155 !important;
+}
+</style>

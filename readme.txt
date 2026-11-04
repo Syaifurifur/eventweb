@@ -610,6 +610,10 @@ Catatan File Penting yang Diubah/Ditambahkan
 - app/Database/Migrations/2026-06-04-000001_AddOjtMonthRangeToOneCampusOjtReports.php
 - app/Database/Migrations/2026-06-17-000001_DedupeCalendarIntegrations.php
 - app/Database/Migrations/2026-11-04-000005_CreateAccreditationDocuments.php
+- app/Database/Migrations/2026-11-04-000006_CreateNationalSchools.php
+- app/Models/NationalSchoolModel.php
+- laravel/app/Models/NationalSchoolModel.php
+
 - app/Models/AccreditationDocumentModel.php
 - laravel/app/Models/AccreditationDocumentModel.php
 - app/Views/pages/accreditation_documents.php
@@ -637,3 +641,47 @@ FASILITAS DOKUMEN AKREDITASI (BAN-PT / LAM-INFOKOM):
 - Menampilkan kode dokumen (PRP/REP), status chip badge, nama file berkas/Drive asli, waktu unggah, dan nama PIC.
 - Tautan berkas terhubung langsung ke file upload asli event atau Drive via events/{code}/documents/{type}/file.
 - Dual-engine parity terjaga 100% pada CodeIgniter 4 dan Laravel.
+
+
+[UPDATE] Database Satuan Pendidikan Nasional & Auto-Fill Rekomendasi NPSN (Sixty School):
+- Telah mengimpor 42.856 data sekolah se-Indonesia dari berkas Data Induk Satuan Pendidikan (Kemendikdasmen/Kemenag) ke tabel national_schools.
+- Mengetik atau memilih NPSN di form Sixty School (tambah & edit) akan otomatis mengisi Nama Sekolah, Kota, Jenis SKL (SMA/SMK/MA/Lainnya), dan Status SKL (Negeri/Swasta).
+- Dilengkapi autocomplete dropdown saran real-time & dukungan penuh Dark Mode.
+- Paritas penuh 100% pada CodeIgniter 4 dan Laravel via route /one-campus/schools/lookup-npsn.
+
+
+================================================================================
+10. DATABASE SATUAN PENDIDIKAN NASIONAL & AUTO-FILL REKOMENDASI NPSN (SIXTY SCHOOL)
+================================================================================
+A. Sumber Data & Struktur Database:
+   - Berkas: 'Data Induk Satuan Pendidikan - DAFTAR Nasional 360 - kemendikdasmen,kemenag - dikmen - formal - ASC - 30 Oktober 2026.xlsx'
+   - Total: 42.856 data satuan pendidikan jenjang Pendidikan Menengah (SMA, SMK, MA, SLB, dll.) di seluruh provinsi & kabupaten se-Indonesia.
+   - Tabel database: 'national_schools' dengan kolom lengkap:
+     id, npsn, name, school_type, education_type, school_status, stage, city, district, subdistrict, address, track, supervising_ministry, created_at, updated_at.
+   - Indeks berkecepatan tinggi: idx_ns_npsn (npsn), idx_ns_name (name), idx_ns_city (city) untuk pencarian instan (< 15 ms).
+
+B. Mekanisme Rekomendasi & Auto-Fill Cerdas:
+   - Saat pengguna mengetik atau menempelkan (paste) 8 digit NPSN pada form Sixty School, sistem langsung mencocokkan data referensi secara otomatis.
+   - Form secara otomatis mengisi:
+     1. Nama Sekolah   -> Terisi nama lengkap resmi satuan pendidikan (contoh: 'SMA NEGERI 1 TAMBANG').
+     2. Kota           -> Terisi nama kabupaten/kota lokasi sekolah (contoh: 'KAB. KAMPAR').
+     3. Jenis Skl      -> Otomatis memilih opsi select yang sesuai ('SMA', 'SMK', 'MA', atau 'Lainnya').
+     4. Status Skl     -> Otomatis memilih opsi select 'Negeri' atau 'Swasta'.
+   - Efek Visual: Kolom input yang terisi memancarkan kilau hijau (glow feedback) disertai pesan konfirmasi:
+     '✅ [Nama Sekolah] terisi otomatis dari Data Kemendikdasmen/Kemenag!'.
+
+C. Dropdown Autocomplete Real-Time:
+   - Pengguna cukup mengetik beberapa digit NPSN (mulai 3 digit) untuk melihat daftar rekomendasi sekolah.
+   - Setiap saran menampilkan badge NPSN monospace, nama sekolah, badge jenis & status sekolah, serta lokasi kota & kecamatan.
+   - Klik salah satu saran langsung mengisikan seluruh data form dalam 1 kali klik.
+   - Pengguna juga dapat mengetik nama sekolah pada kolom Nama Sekolah untuk menemukan NPSN dan data lengkapnya.
+
+D. Cakupan Halaman & Mode Tampilan:
+   - Halaman Tambah Sekolah Sixty School (/one-campus/schools)
+   - Halaman Khusus Edit Sekolah Sixty School (/one-campus/schools/{id}/edit)
+   - Dukungan penuh Dark Mode responsif (warna dropdown kontras, batas rapi, dan mudah dibaca).
+
+E. Dual-Engine Parity (CodeIgniter 4 & Laravel):
+   - Endpoint API: GET /one-campus/schools/lookup-npsn?q={npsn_atau_nama}
+   - Berjalan identik di CodeIgniter 4 (port 8080) dan Laravel (port 8081).
+================================================================================
