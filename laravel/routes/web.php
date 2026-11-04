@@ -101,6 +101,13 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('documents/generate/save', [EventSuite::class, 'aiSaveGeneratedDocument'])->middleware('access:documents');
     Route::get('documents/generate/export-word', [EventSuite::class, 'aiExportWordDocument'])->middleware('access:documents');
     Route::get('documents/generate/export-pdf', [EventSuite::class, 'aiExportPdfDocument'])->middleware('access:documents');
+    Route::get('documents/accreditation', [EventSuite::class, 'accreditationDocuments'])->middleware('access:documents');
+    Route::post('documents/accreditation/designate', [EventSuite::class, 'designateAccreditationDocument'])->middleware('access:documents');
+    Route::post('documents/accreditation/{id}/complete', [EventSuite::class, 'completeAccreditationDocument'])->middleware('access:documents');
+    Route::post('documents/accreditation/{id}/verify', [EventSuite::class, 'verifyAccreditationDocument'])->middleware('access:documents');
+    Route::post('documents/accreditation/{id}/delete', [EventSuite::class, 'deleteAccreditationDocument'])->middleware('access:documents');
+    Route::get('documents/accreditation/{id}/download-evidence', [EventSuite::class, 'downloadAccreditationEvidence'])->middleware('access:documents');
+    Route::get('accreditation-documents', [EventSuite::class, 'accreditationDocuments'])->middleware('access:documents');
     Route::get('documents/{type}', [EventSuite::class, 'documents'])->middleware('access:documents');
     Route::get('documents/{code}/{type}/preview', [EventSuite::class, 'previewDocument'])->middleware('access:documents');
     Route::get('documents/{code}/{type}/download', [EventSuite::class, 'downloadDocument'])->middleware('access:documents');

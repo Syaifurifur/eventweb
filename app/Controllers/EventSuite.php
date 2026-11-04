@@ -375,6 +375,7 @@ class EventSuite extends BaseController
                 $priority = 'Tinggi';
                 $badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
                 $category = 'Peluang MoU Kunci';
+                $categoryKey = 'mou';
                 $aiAdvice = "Sekolah ini menyumbang {$pmbCount} mahasiswa baru namun belum memiliki ikatan MoU resmi. Sangat disarankan segera mengajukan draf MoU Beasiswa BJS ke {$headmaster} untuk mengunci kemitraan eksklusif.";
                 $actionType = 'mou';
             } elseif ($pmbCount >= 5 && $hasMou) {
@@ -382,6 +383,7 @@ class EventSuite extends BaseController
                 $priority = 'Sinergi Kuat';
                 $badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
                 $category = 'Mitra Unggulan (Champion)';
+                $categoryKey = 'champion';
                 $aiAdvice = "Kemitraan sangat solid dengan perolehan {$pmbCount} mahasiswa baru dan MoU aktif. Pertahankan hubungan dengan mengundang Guru BK ke gathering kampus atau apresiasi penghargaan.";
                 $actionType = 'view';
             } elseif ($visitCount >= 2 && $pmbCount <= 1) {
@@ -389,18 +391,21 @@ class EventSuite extends BaseController
                 $priority = 'Evaluasi';
                 $badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
                 $category = 'Evaluasi Sosialisasi';
+                $categoryKey = 'eval';
                 $aiAdvice = "Telah terlaksana {$visitCount} kegiatan sosialisasi namun konversi PMB masih minim ({$pmbCount} siswa). Rekomendasi: Evaluasi materi presentasi, libatkan testimoni alumni, dan tawarkan beasiswa khusus.";
                 $actionType = 'visit';
             } elseif ($hasMou && $visitCount === 0) {
                 $priority = 'Aktivasi';
                 $badgeClass = 'bg-sky-100 text-sky-800 border-sky-300';
                 $category = 'Aktivasi MoU';
+                $categoryKey = 'aktivasi';
                 $aiAdvice = "MoU telah aktif namun belum ada agenda kunjungan/event tahun ini. Agendakan kunjungan silaturahmi atau workshop teknologi untuk siswa kelas XII.";
                 $actionType = 'visit';
             } else {
                 $priority = 'Peluang';
                 $badgeClass = 'bg-slate-100 text-slate-800 border-slate-300';
                 $category = 'Prospek Baru';
+                $categoryKey = 'prospek';
                 $aiAdvice = "Sekolah berstatus aktif namun belum tersentuh event atau kunjungan. Hubungi kontak PIC ({$contact}) untuk penjadwalan presentasi pengenalan kampus.";
                 $actionType = 'view';
             }
@@ -408,16 +413,23 @@ class EventSuite extends BaseController
             $recommendations[] = [
                 'id' => (int) $sch['id'],
                 'school_name' => $name,
+                'npsn' => (string) ($sch['npsn'] ?? '-'),
+                'school_type' => (string) ($sch['school_type'] ?? 'SMA/SMK'),
                 'city' => (string) ($sch['city'] ?? '-'),
                 'campus_name' => $campusName,
                 'pmb_count' => $pmbCount,
                 'visit_count' => $visitCount,
                 'has_mou' => $hasMou,
                 'mou_drive_link' => (string) ($sch['mou_drive_link'] ?? ''),
+                'mou_file' => (string) ($sch['mou_file'] ?? ''),
+                'headmaster_name' => $headmaster,
+                'contact_name' => (string) ($sch['contact_name'] ?? '-'),
+                'contact_phone' => (string) ($sch['contact_phone'] ?? '-'),
                 'score' => $score,
                 'priority' => $priority,
                 'badge_class' => $badgeClass,
                 'category' => $category,
+                'category_key' => $categoryKey,
                 'ai_advice' => $aiAdvice,
                 'action_type' => $actionType,
             ];
@@ -1969,11 +1981,29 @@ class EventSuite extends BaseController
     public function documents(string $type = 'all'): string
     {
         $data = $this->applicationData();
-        $isAdminSystem = session('user.role') === 'Admin Sistem';
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer'], true);
+        $isAdminSystem = $normRole === 'admin sistem' || $isAdmin;
         $queryType = trim((string) $this->request->getGet('type'));
         $type = $this->normalizeManagedDocumentType($queryType !== '' ? $queryType : $type) ?? 'all';
         $reports = array_map(fn (array $item) => $this->normalizeReport($item), (new ReportModel())->findAll());
         $documentState = $this->eventDocumentState($data['events'], $data['proposals'], $reports, $type);
+
+        // Ambil peta dokumen yang sudah terdaftar akreditasi
+        $accreditedDocs = (new \App\Models\AccreditationDocumentModel())->findAll();
+        $accreditedMap = [];
+        foreach ($accreditedDocs as $ad) {
+            $evId = (int) $ad['event_id'];
+            $accreditedMap[$evId] = [
+                'id' => (int) $ad['id'],
+                'standard' => $ad['accreditation_standard'],
+                'status' => $ad['status'],
+                'title' => $ad['title'],
+            ];
+        }
+
+        $accreditationStandards = $this->accreditationStandardsList();
 
         return $this->render('pages/documents', [
             'title' => 'Dokumen Event',
@@ -1988,6 +2018,9 @@ class EventSuite extends BaseController
             'selectedDocumentType' => $type,
             'documentStructureFields' => $this->documentStructureFields($type),
             'isAdminSystem' => $isAdminSystem,
+            'isAdmin' => $isAdmin,
+            'accreditedMap' => $accreditedMap,
+            'accreditationStandards' => $accreditationStandards,
         ]);
     }
 
@@ -2017,6 +2050,471 @@ class EventSuite extends BaseController
         }
 
         return redirect()->to(site_url('events/' . $code . '/documents/' . $type . '/file'));
+    }
+
+    public function accreditationDocuments(): string
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer'], true);
+        $userCampusId = (int) session('user.campus_id');
+
+        // Scoping per kampus
+        $scopedCampusId = null;
+        if (! $isAdmin) {
+            $scopedCampusId = $userCampusId > 0 ? $userCampusId : ($this->currentEventCampusScope() ?? 0);
+        } else {
+            $queryCampus = (int) $this->request->getGet('campus_id');
+            if ($queryCampus > 0) {
+                $scopedCampusId = $queryCampus;
+            }
+        }
+
+        // Filter parameters
+        $selectedYear = (int) $this->request->getGet('year');
+        $selectedStatus = trim((string) $this->request->getGet('status'));
+        $selectedStandard = trim((string) $this->request->getGet('standard'));
+        $search = trim((string) $this->request->getGet('q'));
+
+        $campuses = (new \App\Models\CampusModel())->orderBy('name', 'ASC')->findAll();
+
+        // Cari daftar tahun pelaksanaan
+        $allEvents = (new \App\Models\EventModel())->select('event_date')->findAll();
+        $years = [(int) date('Y'), (int) date('Y') - 1, (int) date('Y') - 2];
+        foreach ($allEvents as $ev) {
+            if (! empty($ev['event_date'])) {
+                $y = (int) date('Y', strtotime((string) $ev['event_date']));
+                if ($y > 2000) {
+                    $years[] = $y;
+                }
+            }
+        }
+        $availableYears = array_values(array_unique($years));
+        rsort($availableYears);
+
+        // Kriteria standar akreditasi resmi
+        $accreditationStandards = $this->accreditationStandardsList();
+
+        // Query data dokumen akreditasi
+        $model = (new \App\Models\AccreditationDocumentModel())->withDetails();
+        if ($scopedCampusId !== null && $scopedCampusId > 0) {
+            $model->where('accreditation_documents.campus_id', $scopedCampusId);
+        }
+        if ($selectedYear > 0) {
+            $model->where('accreditation_documents.event_year', $selectedYear);
+        }
+        if ($selectedStatus !== '') {
+            $model->where('accreditation_documents.status', $selectedStatus);
+        }
+        if ($selectedStandard !== '') {
+            $model->where('accreditation_documents.accreditation_standard', $selectedStandard);
+        }
+        if ($search !== '') {
+            $model->groupStart()
+                ->like('accreditation_documents.title', $search)
+                ->orLike('events.title', $search)
+                ->orLike('events.code', $search)
+                ->orLike('campuses.name', $search)
+                ->orLike('accreditation_documents.admin_notes', $search)
+                ->orLike('accreditation_documents.campus_notes', $search)
+            ->groupEnd();
+        }
+
+        $items = $model->orderBy('accreditation_documents.id', 'DESC')->findAll();
+
+        // Enrich items dengan info berkas dokumen event asli persis seperti di Dokumen Event
+        $proposalModel = new \App\Models\ProposalModel();
+        $reportModel = new \App\Models\ReportModel();
+        $eventModel = new \App\Models\EventModel();
+
+        $evIds = array_values(array_filter(array_map(static fn ($it) => (int) ($it['event_id'] ?? 0), $items)));
+        $rawEventsMap = [];
+        $rawPropsMap = [];
+        $rawRepsMap = [];
+        $uploadsByEventId = [];
+
+        if (! empty($evIds)) {
+            $eventsFound = $eventModel->whereIn('id', $evIds)->findAll();
+            foreach ($eventsFound as $ev) {
+                $rawEventsMap[(int) $ev['id']] = $ev;
+            }
+
+            $propsFound = $proposalModel->whereIn('event_id', $evIds)->findAll();
+            foreach ($propsFound as $pr) {
+                $rawPropsMap[(int) $pr['event_id']] = $pr;
+            }
+
+            $repsFound = $reportModel->whereIn('event_id', $evIds)->findAll();
+            foreach ($repsFound as $rp) {
+                $rawRepsMap[(int) $rp['event_id']] = $rp;
+            }
+
+            $eventsForUploads = array_map(static fn ($id) => ['db_id' => $id], $evIds);
+            $uploadsByEventId = $this->checklistDocumentUploadsForEvents($eventsForUploads);
+        }
+
+        $statusClassFn = static function (string $status, bool $hasLink): string {
+            $s = mb_strtolower($status);
+            if (! $hasLink) {
+                return 'dx-chip-slate';
+            }
+            return match (true) {
+                str_contains($s, 'tolak'), str_contains($s, 'revisi'), str_contains($s, 'reject') => 'dx-chip-red',
+                str_contains($s, 'setuju'), str_contains($s, 'approved'), str_contains($s, 'selesai'), str_contains($s, 'lengkap'), str_contains($s, 'valid'), str_contains($s, 'terima') => 'dx-chip-green',
+                default => 'dx-chip-amber',
+            };
+        };
+
+        foreach ($items as &$item) {
+            $evId = (int) $item['event_id'];
+            $ev = $rawEventsMap[$evId] ?? $eventModel->find($evId);
+            $prop = $rawPropsMap[$evId] ?? null;
+            $rep = $rawRepsMap[$evId] ?? null;
+            $uploads = $uploadsByEventId[$evId] ?? [];
+            $eventCode = (string) ($ev['code'] ?? $item['event_code'] ?? '');
+
+            $normProp = $prop ? $this->normalizeDocument($prop) : null;
+            $normRep = $rep ? $this->normalizeReport($rep) : null;
+
+            $propDoc = $this->managedDocumentItem('proposal', $normProp, $uploads['proposal'] ?? null);
+            $repDoc = $this->managedDocumentItem('report', $normRep, $uploads['report'] ?? null);
+
+            // Proposal Link & Display Resolution
+            $propLink = trim((string) ($propDoc['link'] ?? ''));
+            $propHasLink = $propLink !== '';
+            $propIsExternal = preg_match('/^https?:\/\//i', $propLink) === 1;
+            $propHref = $propHasLink
+                ? (! $propIsExternal ? site_url('events/' . $eventCode . '/documents/proposal/file') : $propLink)
+                : (! empty($prop['generated_path']) ? site_url('generate-documents/' . $eventCode . '/proposal/preview') : '');
+            $propDisplay = $propHasLink
+                ? (! $propIsExternal ? basename(str_replace('\\', '/', $propLink)) : $propLink)
+                : (! empty($prop['generated_path']) ? 'Draft AI Preview' : '');
+            $propStatusClass = $statusClassFn($propDoc['status'], $propHasLink || ! empty($prop['generated_path']));
+
+            // Report Link & Display Resolution
+            $repLink = trim((string) ($repDoc['link'] ?? ''));
+            $repHasLink = $repLink !== '';
+            $repIsExternal = preg_match('/^https?:\/\//i', $repLink) === 1;
+            $repHref = $repHasLink
+                ? (! $repIsExternal ? site_url('events/' . $eventCode . '/documents/report/file') : $repLink)
+                : (! empty($rep['generated_path']) ? site_url('generate-documents/' . $eventCode . '/report/preview') : '');
+            $repDisplay = $repHasLink
+                ? (! $repIsExternal ? basename(str_replace('\\', '/', $repLink)) : $repLink)
+                : (! empty($rep['generated_path']) ? 'Draft AI Preview' : '');
+            $repStatusClass = $statusClassFn($repDoc['status'], $repHasLink || ! empty($rep['generated_path']));
+
+            // Surat Tugas / Assignment Letter Resolution
+            $letterPath = trim((string) ($ev['assignment_letter_path'] ?? ''));
+            $letterName = trim((string) ($ev['assignment_letter_name'] ?? ''));
+            $hasLetter = $letterPath !== '';
+            $letterIsExternal = preg_match('/^https?:\/\//i', $letterPath) === 1;
+            $letterHref = $hasLetter
+                ? ($letterIsExternal ? $letterPath : base_url($letterPath))
+                : '';
+            $letterDisplay = $hasLetter
+                ? ($letterName !== '' ? $letterName : basename(str_replace('\\', '/', $letterPath)))
+                : '';
+
+            $item['proposal'] = $prop;
+            $item['report'] = $rep;
+            $item['event_raw'] = $ev;
+            $item['has_proposal'] = $propHasLink || ! empty($prop['generated_path']);
+            $item['has_report'] = $repHasLink || ! empty($rep['generated_path']);
+            $item['has_assignment_letter'] = $hasLetter;
+
+            $item['proposal_doc'] = array_merge($propDoc, [
+                'has_link' => ($propHref !== ''),
+                'href' => $propHref,
+                'display' => $propDisplay !== '' ? $propDisplay : 'Belum ada dokumen',
+                'status_class' => $propStatusClass,
+            ]);
+
+            $item['report_doc'] = array_merge($repDoc, [
+                'has_link' => ($repHref !== ''),
+                'href' => $repHref,
+                'display' => $repDisplay !== '' ? $repDisplay : 'Belum ada dokumen',
+                'status_class' => $repStatusClass,
+            ]);
+
+            $item['assignment_doc'] = [
+                'has_link' => $hasLetter,
+                'href' => $letterHref,
+                'display' => $letterDisplay !== '' ? $letterDisplay : 'Tidak tersedia',
+                'status' => $hasLetter ? 'Tersedia' : 'Belum ada',
+                'status_class' => $hasLetter ? 'dx-chip-green' : 'dx-chip-slate',
+            ];
+        }
+        unset($item);
+
+        // Statistik kelengkapan akreditasi
+        $totalItems = count($items);
+        $waitingComplete = 0;
+        $waitingVerify = 0;
+        $verifiedCount = 0;
+
+        foreach ($items as $doc) {
+            $st = (string) ($doc['status'] ?? '');
+            if ($st === 'menunggu_kelengkapan') {
+                $waitingComplete++;
+            } elseif ($st === 'menunggu_verifikasi') {
+                $waitingVerify++;
+            } elseif (in_array($st, ['terverifikasi', 'lengkap'], true)) {
+                $verifiedCount++;
+            }
+        }
+
+        $completenessPct = $totalItems > 0 ? (int) round(($verifiedCount / $totalItems) * 100) : 0;
+
+        // Ambil daftar event kandidat yang dapat dicari dan dijadikan dokumen akreditasi (Khusus Admin)
+        $candidateEvents = [];
+        if ($isAdmin) {
+            $candidateQuery = (new \App\Models\EventModel())
+                ->select('events.id, events.code, events.title, events.category, events.campus_id, events.event_date, events.status, campuses.name AS campus_name, campuses.campus_code')
+                ->join('campuses', 'campuses.id = events.campus_id', 'left')
+                ->where('events.status !=', 'rejected')
+                ->orderBy('events.event_date', 'DESC')
+                ->limit(350);
+            $rawCandidates = $candidateQuery->findAll();
+
+            $existingAccredIds = array_column(
+                (new \App\Models\AccreditationDocumentModel())->select('event_id')->findAll(),
+                'event_id'
+            );
+            $existingAccredSet = array_flip(array_map('intval', $existingAccredIds));
+
+            $propEvents = array_column((new \App\Models\ProposalModel())->select('event_id')->findAll(), 'event_id');
+            $propSet = array_flip(array_map('intval', $propEvents));
+
+            $repEvents = array_column((new \App\Models\ReportModel())->select('event_id')->findAll(), 'event_id');
+            $repSet = array_flip(array_map('intval', $repEvents));
+
+            foreach ($rawCandidates as $c) {
+                $cId = (int) $c['id'];
+                $c['has_proposal'] = isset($propSet[$cId]);
+                $c['has_report'] = isset($repSet[$cId]);
+                $c['is_accredited'] = isset($existingAccredSet[$cId]);
+                $c['event_year'] = ! empty($c['event_date']) ? (int) date('Y', strtotime($c['event_date'])) : (int) date('Y');
+                $candidateEvents[] = $c;
+            }
+        }
+
+        return $this->render('pages/accreditation_documents', [
+            'title' => 'Dokumen Akreditasi',
+            'active' => 'accreditation-documents',
+            'items' => $items,
+            'campuses' => $campuses,
+            'availableYears' => $availableYears,
+            'accreditationStandards' => $accreditationStandards,
+            'selectedCampusId' => $scopedCampusId,
+            'selectedYear' => $selectedYear,
+            'selectedStatus' => $selectedStatus,
+            'selectedStandard' => $selectedStandard,
+            'search' => $search,
+            'isAdmin' => $isAdmin,
+            'isKepalaKampus' => (! $isAdmin && $userCampusId > 0),
+            'candidateEvents' => $candidateEvents,
+            'stats' => [
+                'total' => $totalItems,
+                'waiting_complete' => $waitingComplete,
+                'waiting_verify' => $waitingVerify,
+                'verified' => $verifiedCount,
+                'percentage' => $completenessPct,
+            ],
+        ]);
+    }
+
+    public function designateAccreditationDocument()
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer'], true);
+
+        if (! $isAdmin) {
+            return redirect()->back()->with('error', 'Hanya Admin Sistem / Super Admin yang dapat menetapkan dokumen akreditasi.');
+        }
+
+        $eventId = (int) $this->request->getPost('event_id');
+        $event = (new \App\Models\EventModel())->find($eventId);
+        if (! $event) {
+            return redirect()->back()->with('error', 'Event tidak ditemukan.');
+        }
+
+        $standard = trim((string) $this->request->getPost('accreditation_standard'));
+        $title = trim((string) $this->request->getPost('title'));
+        if ($title === '') {
+            $title = (string) ($event['title'] ?? 'Dokumen Akreditasi');
+        }
+        $adminNotes = trim((string) $this->request->getPost('admin_notes'));
+        $docType = trim((string) $this->request->getPost('doc_type')) ?: 'all';
+        $eventYear = (int) date('Y', strtotime((string) ($event['event_date'] ?? 'now')));
+
+        $model = new \App\Models\AccreditationDocumentModel();
+        $model->insert([
+            'event_id' => $eventId,
+            'campus_id' => (int) ($event['campus_id'] ?? 0),
+            'title' => $title,
+            'event_year' => $eventYear,
+            'accreditation_standard' => $standard ?: 'Kriteria 9 - Luaran & Capaian Tridharma',
+            'doc_type' => $docType,
+            'status' => 'menunggu_kelengkapan',
+            'admin_notes' => $adminNotes,
+            'designated_by' => (int) session('user.id'),
+            'designated_at' => date('Y-m-d H:i:s'),
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return redirect()->to(site_url('documents/accreditation'))->with('success', 'Dokumen event berhasil ditetapkan sebagai Dokumen Akreditasi. Kepala Kampus terkait kini dapat melihat dan melengkapi datanya.');
+    }
+
+    public function completeAccreditationDocument($id)
+    {
+        $item = (new \App\Models\AccreditationDocumentModel())->find((int) $id);
+        if (! $item) {
+            return redirect()->back()->with('error', 'Dokumen akreditasi tidak ditemukan.');
+        }
+
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer'], true);
+        $userCampusId = (int) session('user.campus_id');
+
+        // Jika bukan admin, pastikan milik kampusnya
+        if (! $isAdmin && (int) ($item['campus_id'] ?? 0) !== $userCampusId) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk melengkapi dokumen kampus lain.');
+        }
+
+        $campusNotes = trim((string) $this->request->getPost('campus_notes'));
+        $externalEvidenceLink = trim((string) $this->request->getPost('external_evidence_link'));
+        $submitStatus = trim((string) $this->request->getPost('status'));
+        if (! in_array($submitStatus, ['menunggu_kelengkapan', 'menunggu_verifikasi', 'lengkap', 'terverifikasi'], true)) {
+            $submitStatus = 'menunggu_verifikasi';
+        }
+
+        $updateData = [
+            'campus_notes' => $campusNotes,
+            'external_evidence_link' => $externalEvidenceLink,
+            'status' => $submitStatus,
+            'completed_by' => (int) session('user.id'),
+            'completed_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        // Handle File Upload Bukti Tambahan Akreditasi
+        $file = $this->request->getFile('additional_evidence');
+        if ($file && $file->isValid() && ! $file->hasMoved()) {
+            $ext = strtolower($file->getClientExtension() ?: pathinfo($file->getClientName(), PATHINFO_EXTENSION));
+            if (! in_array($ext, ['pdf', 'doc', 'docx', 'zip', 'png', 'jpg', 'jpeg'], true)) {
+                return redirect()->back()->with('error', 'Format file bukti harus berupa PDF, Word (doc/docx), ZIP, atau Gambar (png/jpg).');
+            }
+
+            if ($file->getSize() > 25 * 1024 * 1024) {
+                return redirect()->back()->with('error', 'Ukuran file bukti maksimal 25 MB.');
+            }
+
+            $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'accreditation_documents';
+            if (! is_dir($targetDir)) {
+                mkdir($targetDir, 0775, true);
+            }
+
+            $safeFileName = 'akreditasi-' . (int) $item['id'] . '-' . date('YmdHis') . '.' . $ext;
+            $file->move($targetDir, $safeFileName, true);
+
+            $updateData['additional_evidence_path'] = 'uploads/accreditation_documents/' . $safeFileName;
+            $updateData['additional_evidence_name'] = $file->getClientName();
+        }
+
+        (new \App\Models\AccreditationDocumentModel())->update((int) $id, $updateData);
+
+        return redirect()->to(site_url('documents/accreditation'))->with('success', 'Data kelengkapan dokumen akreditasi berhasil diperbarui.');
+    }
+
+    public function verifyAccreditationDocument($id)
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer'], true);
+
+        if (! $isAdmin) {
+            return redirect()->back()->with('error', 'Hanya Admin yang dapat memverifikasi dokumen akreditasi.');
+        }
+
+        $item = (new \App\Models\AccreditationDocumentModel())->find((int) $id);
+        if (! $item) {
+            return redirect()->back()->with('error', 'Dokumen akreditasi tidak ditemukan.');
+        }
+
+        $action = trim((string) $this->request->getPost('action'));
+        $verifyNotes = trim((string) $this->request->getPost('admin_notes'));
+
+        $updateData = [
+            'updated_at' => date('Y-m-d H:i:s'),
+            'verified_by' => (int) session('user.id'),
+            'verified_at' => date('Y-m-d H:i:s'),
+        ];
+
+        if ($verifyNotes !== '') {
+            $updateData['admin_notes'] = $verifyNotes;
+        }
+
+        if ($action === 'reject') {
+            $updateData['status'] = 'menunggu_kelengkapan';
+            $msg = 'Status dokumen dikembalikan ke Kepala Kampus untuk dilengkapi/revisi.';
+        } else {
+            $updateData['status'] = 'terverifikasi';
+            $msg = 'Dokumen akreditasi berhasil diverifikasi dan ditandai Lengkap.';
+        }
+
+        (new \App\Models\AccreditationDocumentModel())->update((int) $id, $updateData);
+
+        return redirect()->to(site_url('documents/accreditation'))->with('success', $msg);
+    }
+
+    public function deleteAccreditationDocument($id)
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer'], true);
+
+        if (! $isAdmin) {
+            return redirect()->back()->with('error', 'Hanya Admin yang dapat menghapus dokumen akreditasi.');
+        }
+
+        (new \App\Models\AccreditationDocumentModel())->delete((int) $id);
+
+        return redirect()->to(site_url('documents/accreditation'))->with('success', 'Dokumen berhasil dihapus dari daftar akreditasi.');
+    }
+
+    public function downloadAccreditationEvidence($id)
+    {
+        $item = (new \App\Models\AccreditationDocumentModel())->find((int) $id);
+        if (! $item || empty($item['additional_evidence_path'])) {
+            return redirect()->back()->with('error', 'File bukti tambahan tidak ditemukan.');
+        }
+
+        $fullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, (string) $item['additional_evidence_path']);
+        if (! is_file($fullPath)) {
+            return redirect()->back()->with('error', 'File berkas fisik tidak ditemukan di server.');
+        }
+
+        $downloadName = ! empty($item['additional_evidence_name']) ? $item['additional_evidence_name'] : basename($fullPath);
+
+        return $this->response->download($fullPath, null)->setFileName($downloadName);
+    }
+
+    private function accreditationStandardsList(): array
+    {
+        return [
+            'Kriteria 1 - Visi, Misi, Tujuan, dan Strategi',
+            'Kriteria 2 - Tata Pamong, Tata Kelola, dan Kerjasama',
+            'Kriteria 3 - Mahasiswa',
+            'Kriteria 4 - Sumber Daya Manusia (SDM)',
+            'Kriteria 5 - Keuangan, Sarana, dan Prasarana',
+            'Kriteria 6 - Pendidikan',
+            'Kriteria 7 - Penelitian',
+            'Kriteria 8 - Pengabdian kepada Masyarakat (PkM)',
+            'Kriteria 9 - Luaran dan Capaian Tridharma',
+        ];
     }
 
     public function documentTemplates(): string

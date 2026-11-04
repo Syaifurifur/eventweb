@@ -4,6 +4,24 @@ Aplikasi Enterprise Penjadwalan, Manajemen Event, Task Manager, CRM Marketing Ak
 - **CodeIgniter 4**: `http://127.0.0.1:8080`
 - **Laravel**: `http://127.0.0.1:8081`
 
+4. **Tabel `accreditation_documents`**:
+   - `id` (INT UNSIGNED, AUTO_INCREMENT PRIMARY KEY)
+   - `event_id` (INT UNSIGNED, FK to `events.id`)
+   - `campus_id` (INT UNSIGNED, FK to `campuses.id`)
+   - `title` (VARCHAR 255)
+   - `event_year` (INT)
+   - `accreditation_standard` (VARCHAR 120)
+   - `doc_type` (VARCHAR 50) - all, report, proposal, assignment_letter
+   - `status` (VARCHAR 40) - menunggu_kelengkapan, menunggu_verifikasi, terverifikasi
+   - `admin_notes` (TEXT)
+   - `campus_notes` (TEXT)
+   - `additional_evidence_path` (VARCHAR 255)
+   - `additional_evidence_name` (VARCHAR 255)
+   - `external_evidence_link` (VARCHAR 255)
+   - `designated_by`, `completed_by`, `verified_by` (INT UNSIGNED)
+   - `designated_at`, `completed_at`, `verified_at` (DATETIME)
+   - `created_at`, `updated_at` (DATETIME)
+
 ---
 
 ## Menjalankan Aplikasi
@@ -23,6 +41,24 @@ Set-Location -LiteralPath 'c:\xampp\htdocs\eventweb\laravel'
 
 Kredensial Default Login:
 - **Admin Sistem / Super Admin**: `admin` / `password` (atau `admin@eventhub.test`)
+
+4. **Tabel `accreditation_documents`**:
+   - `id` (INT UNSIGNED, AUTO_INCREMENT PRIMARY KEY)
+   - `event_id` (INT UNSIGNED, FK to `events.id`)
+   - `campus_id` (INT UNSIGNED, FK to `campuses.id`)
+   - `title` (VARCHAR 255)
+   - `event_year` (INT)
+   - `accreditation_standard` (VARCHAR 120)
+   - `doc_type` (VARCHAR 50) - all, report, proposal, assignment_letter
+   - `status` (VARCHAR 40) - menunggu_kelengkapan, menunggu_verifikasi, terverifikasi
+   - `admin_notes` (TEXT)
+   - `campus_notes` (TEXT)
+   - `additional_evidence_path` (VARCHAR 255)
+   - `additional_evidence_name` (VARCHAR 255)
+   - `external_evidence_link` (VARCHAR 255)
+   - `designated_by`, `completed_by`, `verified_by` (INT UNSIGNED)
+   - `designated_at`, `completed_at`, `verified_at` (DATETIME)
+   - `created_at`, `updated_at` (DATETIME)
 
 ---
 
@@ -167,6 +203,88 @@ Kredensial Default Login:
   - Filter pencarian toolbar CRM Workspace dilengkapi filter dropdown `Klaster Masa PMB`.
   - Paritas 100% konsisten pada CodeIgniter 4 dan Laravel.
 
+### 8. Fasilitas Dokumen Akreditasi Kampus (BAN-PT / LAM-INFOKOM)
+- **Fitur Mencari dari Dokumen Event & Tombol Jadikan Data Akreditasi**:
+  - **Pencarian Cerdas Dokumen Event (Live Search & Filter)**: Di halaman Dokumen Akreditasi (`/documents/accreditation`), tombol **`🔍 Cari Dokumen Event & Jadikan Akreditasi`** membuka modal pencarian interaktif yang dilengkapi:
+    - Input live search realtime untuk menyaring dokumen event berdasarkan judul, kode event (`EVT-...`), nama kampus, atau kategori event.
+    - Filter dropdown kampus dan filter ketersediaan berkas (*Semua Event*, *Hanya yang Memiliki Proposal/LPJ*, *Hanya yang Belum Akreditasi*).
+    - Menampilkan status ketersediaan berkas asli dokumen event: Proposal (`📄 Proposal ✓`), LPJ/Laporan (`📑 LPJ ✓`), dan Surat Tugas.
+    - Pada setiap baris hasil pencarian dokumen event, tersedia tombol mencolok: **`⭐ Jadikan Data Akreditasi`** yang sekali klik langsung memilih event tersebut dan membuka form penetapan akreditasi (Kriteria 1-9, jenis berkas, instruksi ke Kepala Kampus).
+  - **Tombol Satu Klik di Halaman Dokumen Event (`/documents`)**:
+    - Pada tabel rekap seluruh dokumen event di halaman `/documents`, setiap baris event kini dilengkapi tombol aksi **`🎓 Jadikan Akreditasi`** khusus Admin.
+    - Ketika diklik, dialog pop-up konfirmasi langsung muncul untuk menetapkan dokumen event tersebut menjadi data akreditasi tanpa perlu berpindah halaman.
+    - Jika event sudah pernah didaftarkan ke akreditasi, sistem secara otomatis menampilkan badge informatif **`🎓 Terdaftar Akreditasi`** yang dapat diklik langsung menuju berkas akreditasi terkait.
+- **Penetapan Dokumen Event untuk Akreditasi oleh Admin**:
+  - Admin (Admin Sistem, Super Admin, DMER) dapat memilih dan menetapkan dokumen event kegiatan kampus sebagai Dokumen Bukti Akreditasi via tombol **"+ Pilih Dokumen Event untuk Akreditasi"**.
+  - Admin menentukan Kriteria Akreditasi (BAN-PT / LAM-INFOKOM Kriteria 1-9), judul berkas, jenis dokumen wajib (*all*, *report*, *proposal*, *assignment_letter*), serta instruksi khusus untuk Kepala Kampus.
+- **Workflow Kelengkapan Data oleh Kepala Kampus**:
+  - Kepala Kampus dibatasi secara ketat (*campus-scoped*) hanya dapat melihat dokumen akreditasi milik kampusnya masing-masing (`campus_id`).
+  - Kepala Kampus melengkapi data pemenuhan: mengunggah berkas bukti fisik tambahan (PDF/Word/ZIP/Gambar hingga 25 MB), melampirkan tautan Google Drive / Cloud bukti kegiatan, serta mengisi catatan keterangan pemenuhan bukti.
+  - Setelah lengkap, Kepala Kampus dapat mengubah status menjadi **"Menunggu Verifikasi"** untuk ditinjau oleh Admin.
+- **Tinjauan & Verifikasi Admin**:
+  - Admin dapat mereview bukti yang dikirimkan Kepala Kampus dan memutuskan: **"Setujui & Tandai Terverifikasi Lengkap"** atau **"Kembalikan ke Kepala Kampus (Perlu Revisi)"** beserta catatan evaluasi feedback.
+- **Filter Bar Interaktif & Pencarian**:
+  - Filter berdasarkan **Kampus Pelaksana** (seluruh kampus untuk Admin, terkunci pada kampus sendiri untuk Kepala Kampus).
+  - Filter berdasarkan **Tahun Pelaksanaan** (dinamis dari seluruh tahun kegiatan event).
+  - Filter berdasarkan **Status Kelengkapan** (*Menunggu Kelengkapan*, *Menunggu Verifikasi*, *Terverifikasi Lengkap*).
+  - Filter berdasarkan **Kriteria / Standar Akreditasi** (Kriteria 1 - Kriteria 9).
+  - Pencarian kata kunci live (`q`) pada judul event, kode event, nama kampus, dan catatan.
+- **Dukungan Cetak Lembar Kendali**:
+  - Tersedia tombol **"Cetak Lembar Kendali"** dengan CSS print-friendly untuk pelaporan audit instrumen akreditasi.
+- **Dual-Engine Parity 100%**:
+  - Berjalan identik pada CodeIgniter 4 (`/documents/accreditation`) dan Laravel (`/documents/accreditation`).
+
+4. **Tabel `accreditation_documents`**:
+   - `id` (INT UNSIGNED, AUTO_INCREMENT PRIMARY KEY)
+   - `event_id` (INT UNSIGNED, FK to `events.id`)
+   - `campus_id` (INT UNSIGNED, FK to `campuses.id`)
+   - `title` (VARCHAR 255)
+   - `event_year` (INT)
+   - `accreditation_standard` (VARCHAR 120)
+   - `doc_type` (VARCHAR 50) - all, report, proposal, assignment_letter
+   - `status` (VARCHAR 40) - menunggu_kelengkapan, menunggu_verifikasi, terverifikasi
+   - `admin_notes` (TEXT)
+   - `campus_notes` (TEXT)
+   - `additional_evidence_path` (VARCHAR 255)
+   - `additional_evidence_name` (VARCHAR 255)
+   - `external_evidence_link` (VARCHAR 255)
+   - `designated_by`, `completed_by`, `verified_by` (INT UNSIGNED)
+   - `designated_at`, `completed_at`, `verified_at` (DATETIME)
+   - `created_at`, `updated_at` (DATETIME)
+
+---
+
+### 8. Fasilitas Dokumen Akreditasi Kampus (BAN-PT / LAM-INFOKOM)
+- **Fitur Mencari dari Dokumen Event & Tombol Jadikan Data Akreditasi**:
+  - **Pencarian Cerdas Dokumen Event (Live Search & Filter)**: Di halaman Dokumen Akreditasi (`/documents/accreditation`), tombol **`🔍 Cari Dokumen Event & Jadikan Akreditasi`** membuka modal pencarian interaktif yang dilengkapi:
+    - Input live search realtime untuk menyaring dokumen event berdasarkan judul, kode event (`EVT-...`), nama kampus, atau kategori event.
+    - Filter dropdown kampus dan filter ketersediaan berkas (*Semua Event*, *Hanya yang Memiliki Proposal/LPJ*, *Hanya yang Belum Akreditasi*).
+    - Menampilkan status ketersediaan berkas asli dokumen event: Proposal (`📄 Proposal ✓`), LPJ/Laporan (`📑 LPJ ✓`), dan Surat Tugas.
+    - Pada setiap baris hasil pencarian dokumen event, tersedia tombol mencolok: **`⭐ Jadikan Data Akreditasi`** yang sekali klik langsung memilih event tersebut dan membuka form penetapan akreditasi (Kriteria 1-9, jenis berkas, instruksi ke Kepala Kampus).
+  - **Tombol Satu Klik di Halaman Dokumen Event (`/documents`)**:
+    - Pada tabel rekap seluruh dokumen event di halaman `/documents`, setiap baris event kini dilengkapi tombol aksi **`🎓 Jadikan Akreditasi`** khusus Admin.
+    - Ketika diklik, dialog pop-up konfirmasi langsung muncul untuk menetapkan dokumen event tersebut menjadi data akreditasi tanpa perlu berpindah halaman.
+    - Jika event sudah pernah didaftarkan ke akreditasi, sistem secara otomatis menampilkan badge informatif **`🎓 Terdaftar Akreditasi`** yang dapat diklik langsung menuju berkas akreditasi terkait.
+- **Penetapan Dokumen Event untuk Akreditasi oleh Admin**:
+  - Admin (Admin Sistem, Super Admin, DMER) dapat memilih dan menetapkan dokumen event kegiatan kampus sebagai Dokumen Bukti Akreditasi via tombol **"+ Pilih Dokumen Event untuk Akreditasi"**.
+  - Admin menentukan Kriteria Akreditasi (BAN-PT / LAM-INFOKOM Kriteria 1-9), judul berkas, jenis dokumen wajib (*all*, *report*, *proposal*, *assignment_letter*), serta instruksi khusus untuk Kepala Kampus.
+- **Workflow Kelengkapan Data oleh Kepala Kampus**:
+  - Kepala Kampus dibatasi secara ketat (*campus-scoped*) hanya dapat melihat dokumen akreditasi milik kampusnya masing-masing (`campus_id`).
+  - Kepala Kampus melengkapi data pemenuhan: mengunggah berkas bukti fisik tambahan (PDF/Word/ZIP/Gambar hingga 25 MB), melampirkan tautan Google Drive / Cloud bukti kegiatan, serta mengisi catatan keterangan pemenuhan bukti.
+  - Setelah lengkap, Kepala Kampus dapat mengubah status menjadi **"Menunggu Verifikasi"** untuk ditinjau oleh Admin.
+- **Tinjauan & Verifikasi Admin**:
+  - Admin dapat mereview bukti yang dikirimkan Kepala Kampus dan memutuskan: **"Setujui & Tandai Terverifikasi Lengkap"** atau **"Kembalikan ke Kepala Kampus (Perlu Revisi)"** beserta catatan evaluasi feedback.
+- **Filter Bar Interaktif & Pencarian**:
+  - Filter berdasarkan **Kampus Pelaksana** (seluruh kampus untuk Admin, terkunci pada kampus sendiri untuk Kepala Kampus).
+  - Filter berdasarkan **Tahun Pelaksanaan** (dinamis dari seluruh tahun kegiatan event).
+  - Filter berdasarkan **Status Kelengkapan** (*Menunggu Kelengkapan*, *Menunggu Verifikasi*, *Terverifikasi Lengkap*).
+  - Filter berdasarkan **Kriteria / Standar Akreditasi** (Kriteria 1 - Kriteria 9).
+  - Pencarian kata kunci live (`q`) pada judul event, kode event, nama kampus, dan catatan.
+- **Dukungan Cetak Lembar Kendali**:
+  - Tersedia tombol **"Cetak Lembar Kendali"** dengan CSS print-friendly untuk pelaporan audit instrumen akreditasi.
+- **Dual-Engine Parity 100%**:
+  - Berjalan identik pada CodeIgniter 4 (`/documents/accreditation`) dan Laravel (`/documents/accreditation`).
+
 ---
 
 ## Pembaruan Skema Database (MySQL)
@@ -211,6 +329,24 @@ Kredensial Default Login:
    - `created_by` (INT UNSIGNED)
    - `created_at`, `updated_at` (DATETIME)
 
+4. **Tabel `accreditation_documents`**:
+   - `id` (INT UNSIGNED, AUTO_INCREMENT PRIMARY KEY)
+   - `event_id` (INT UNSIGNED, FK to `events.id`)
+   - `campus_id` (INT UNSIGNED, FK to `campuses.id`)
+   - `title` (VARCHAR 255)
+   - `event_year` (INT)
+   - `accreditation_standard` (VARCHAR 120)
+   - `doc_type` (VARCHAR 50) - all, report, proposal, assignment_letter
+   - `status` (VARCHAR 40) - menunggu_kelengkapan, menunggu_verifikasi, terverifikasi
+   - `admin_notes` (TEXT)
+   - `campus_notes` (TEXT)
+   - `additional_evidence_path` (VARCHAR 255)
+   - `additional_evidence_name` (VARCHAR 255)
+   - `external_evidence_link` (VARCHAR 255)
+   - `designated_by`, `completed_by`, `verified_by` (INT UNSIGNED)
+   - `designated_at`, `completed_at`, `verified_at` (DATETIME)
+   - `created_at`, `updated_at` (DATETIME)
+
 ---
 
 ## File Penting yang Ditambahkan / Diperbarui
@@ -248,3 +384,18 @@ Kredensial Default Login:
 - `laravel/resources/views/pages/one_campus.blade.php`: Paritas view Blade lengkap dengan CodeIgniter 4.
 - `laravel/resources/views/pages/one_campus_school_edit.blade.php`: Halaman khusus kelola / edit data sekolah, MOU, verifikasi BJS, dan tabel mahasiswa baru Blade.
 - `laravel/resources/views/pages/dashboard.blade.php`: Widget Rekomendasi Cerdas AI Analisis Interaksi & Konversi Sekolah Blade (posisi paling bawah dashboard & dukungan penuh Dark Mode).
+
+
+### 9. Dokumen Akreditasi & Penyelarasan Dokumen Utama Event
+- **Fasilitas Dokumen Akreditasi (`/documents/accreditation`)**:
+  - Penetapan dokumen event kampus menjadi Dokumen Akreditasi sesuai standar BAN-PT / LAM-INFOKOM (Kriteria 1 hingga Kriteria 9).
+  - Filter lengkap berdasarkan Kampus, Tahun Pelaksanaan, Standar Akreditasi, dan Status Dokumen.
+  - Modal Pencarian Dokumen Event bagi Admin untuk memilih dan menetapkan event sebagai data akreditasi.
+  - Alur kelengkapan data oleh Kepala Kampus masing-masing (catatan pemenuhan, unggah berkas fisik tambahan, tautan folder Google Drive).
+  - Alur verifikasi dan feedback oleh Admin Sistem.
+- **Penyelarasan Dokumen Utama Event (100% Identik dengan `/documents`)**:
+  - Kolom **Dokumen Utama Event** pada tabel Akreditasi menampilkan format, data, dan tautan yang identik dengan halaman Dokumen Event.
+  - Menampilkan Proposal dan LPJ/Laporan dengan kode berkas resmi (`PRP-...` / `REP-...`), status chip badge (`dx-chip-green`, `dx-chip-amber`, dll), nama berkas fisik/Google Drive asli, waktu unggah, dan nama PIC pengunggah.
+  - Tautan berkas langsung terhubung ke dokumen unggahan asli atau Google Drive publik via `events/{code}/documents/{type}/file` (bukan sekadar template preview AI).
+  - Otomatis menampilkan Surat Tugas / SK Tim Pelaksana jika tersedia.
+  - Dukungan visual responsif dan integrasi Dark Mode yang optimal di kedua engine (CodeIgniter 4 dan Laravel).

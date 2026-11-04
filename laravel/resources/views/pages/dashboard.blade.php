@@ -433,6 +433,22 @@ $totalCampusesCount = count($dmerCampusesData);
         background-color: #1e293b !important;
         border-color: #334155 !important;
     }
+    html.dark .dmer-ai-widget h2,
+    [data-theme="dark"] .dmer-ai-widget h2 {
+        color: #f8fafc !important;
+    }
+    html.dark .dmer-ai-widget h4,
+    [data-theme="dark"] .dmer-ai-widget h4 {
+        color: #f1f5f9 !important;
+    }
+    html.dark .dmer-ai-widget .text-slate-500,
+    [data-theme="dark"] .dmer-ai-widget .text-slate-500 {
+        color: #94a3b8 !important;
+    }
+    html.dark .dmer-ai-widget .text-slate-400,
+    [data-theme="dark"] .dmer-ai-widget .text-slate-400 {
+        color: #64748b !important;
+    }
     html.dark .dmer-ai-widget .border-b,
     [data-theme="dark"] .dmer-ai-widget .border-b {
         border-bottom-color: #334155 !important;
@@ -442,20 +458,34 @@ $totalCampusesCount = count($dmerCampusesData);
         background-color: #0f172a !important;
         border-color: #334155 !important;
     }
+    html.dark .dmer-ai-widget .ai-metric-total .text-slate-900,
+    [data-theme="dark"] .dmer-ai-widget .ai-metric-total .text-slate-900 {
+        color: #f8fafc !important;
+    }
     html.dark .dmer-ai-widget .ai-metric-mou,
     [data-theme="dark"] .dmer-ai-widget .ai-metric-mou {
-        background-color: rgba(225, 29, 72, 0.15) !important;
-        border-color: rgba(225, 29, 72, 0.4) !important;
+        background-color: rgba(225, 29, 72, 0.18) !important;
+        border-color: rgba(225, 29, 72, 0.45) !important;
     }
     html.dark .dmer-ai-widget .ai-metric-champion,
     [data-theme="dark"] .dmer-ai-widget .ai-metric-champion {
-        background-color: rgba(16, 185, 129, 0.15) !important;
-        border-color: rgba(16, 185, 129, 0.4) !important;
+        background-color: rgba(16, 185, 129, 0.18) !important;
+        border-color: rgba(16, 185, 129, 0.45) !important;
     }
     html.dark .dmer-ai-widget .ai-metric-eval,
     [data-theme="dark"] .dmer-ai-widget .ai-metric-eval {
-        background-color: rgba(245, 158, 11, 0.15) !important;
-        border-color: rgba(245, 158, 11, 0.4) !important;
+        background-color: rgba(245, 158, 11, 0.18) !important;
+        border-color: rgba(245, 158, 11, 0.45) !important;
+    }
+    /* Active Metric Card State */
+    .ai-metric-box.active-filter {
+        outline: 2px solid #0d9488 !important;
+        box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.25) !important;
+    }
+    html.dark .ai-metric-box.active-filter,
+    [data-theme="dark"] .ai-metric-box.active-filter {
+        outline: 2px solid #2dd4bf !important;
+        box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.3) !important;
     }
     html.dark .dmer-ai-widget .ai-school-card,
     [data-theme="dark"] .dmer-ai-widget .ai-school-card {
@@ -465,7 +495,8 @@ $totalCampusesCount = count($dmerCampusesData);
     html.dark .dmer-ai-widget .ai-school-card:hover,
     [data-theme="dark"] .dmer-ai-widget .ai-school-card:hover {
         background-color: #141f32 !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+        border-color: #2dd4bf !important;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.5) !important;
     }
     html.dark .dmer-ai-widget .ai-advice-box,
     [data-theme="dark"] .dmer-ai-widget .ai-advice-box {
@@ -488,6 +519,24 @@ $totalCampusesCount = count($dmerCampusesData);
     html.dark .dmer-ai-widget .ai-card-footer a:hover,
     [data-theme="dark"] .dmer-ai-widget .ai-card-footer a:hover {
         color: #5eead4 !important;
+    }
+
+    /* AI Dialog Modal Styling */
+    dialog.ai-modal-dialog::backdrop {
+        background-color: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(4px);
+    }
+    html.dark dialog.ai-modal-dialog,
+    [data-theme="dark"] dialog.ai-modal-dialog {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
+    }
+    html.dark dialog.ai-modal-dialog input,
+    [data-theme="dark"] dialog.ai-modal-dialog input {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border-color: #475569 !important;
     }
 
     /* Badges in dark mode */
@@ -1195,28 +1244,67 @@ $totalCampusesCount = count($dmerCampusesData);
             </a>
         </div>
 
-        <!-- 4 Metric Cards Ringkasan Interaksi -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
-            <div class="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200/80 ai-metric-total">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Sekolah Mitra</div>
+        <!-- 4 Metric Cards Ringkasan Interaksi (Interaktif: Klik untuk Rincian Rekomendasi & Filter) -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            <div data-ai-filter="total" class="ai-metric-box p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-200/80 ai-metric-total cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] select-none" title="Klik untuk melihat rincian seluruh sekolah mitra">
+                <div class="flex items-center justify-between">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Sekolah Mitra</div>
+                    <span class="text-[10px] text-slate-400 font-semibold flex items-center gap-0.5">Rincian &rsaquo;</span>
+                </div>
                 <div class="text-xl sm:text-2xl font-black text-slate-900 mt-1"><?= esc((string) ($schoolAiInsight['total_schools'] ?? 0)) ?></div>
                 <div class="text-[11px] text-slate-500 mt-0.5">Sekolah terdaftar di Sixty School</div>
+                <div class="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-teal-700 font-bold">
+                    <span>Lihat Semua Rekomendasi</span>
+                    <span>&rarr;</span>
+                </div>
             </div>
-            <div class="p-3.5 sm:p-4 rounded-xl bg-rose-50/60 border border-rose-200/80 ai-metric-mou">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-rose-700">Peluang MoU Kunci</div>
+            <div data-ai-filter="mou" class="ai-metric-box p-3.5 sm:p-4 rounded-xl bg-rose-50/60 border border-rose-200/80 ai-metric-mou cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] select-none" title="Klik untuk rincian Peluang MoU Kunci">
+                <div class="flex items-center justify-between">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-rose-700">Peluang MoU Kunci</div>
+                    <span class="text-[10px] text-rose-500 font-semibold flex items-center gap-0.5">Rincian &rsaquo;</span>
+                </div>
                 <div class="text-xl sm:text-2xl font-black text-rose-700 mt-1"><?= esc((string) ($schoolAiInsight['needs_mou_urgently'] ?? 0)) ?></div>
                 <div class="text-[11px] text-rose-600 mt-0.5">PMB tinggi tapi belum MoU</div>
+                <div class="mt-2.5 pt-2 border-t border-rose-200/60 flex items-center justify-between text-[10px] text-rose-700 font-bold">
+                    <span>Prioritas Ajukan MoU BJS</span>
+                    <span>&rarr;</span>
+                </div>
             </div>
-            <div class="p-3.5 sm:p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80 ai-metric-champion">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Mitra Unggulan (Champion)</div>
+            <div data-ai-filter="champion" class="ai-metric-box p-3.5 sm:p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80 ai-metric-champion cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] select-none" title="Klik untuk rincian Mitra Unggulan (Champion)">
+                <div class="flex items-center justify-between">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Mitra Unggulan (Champion)</div>
+                    <span class="text-[10px] text-emerald-500 font-semibold flex items-center gap-0.5">Rincian &rsaquo;</span>
+                </div>
                 <div class="text-xl sm:text-2xl font-black text-emerald-700 mt-1"><?= esc((string) ($schoolAiInsight['champions'] ?? 0)) ?></div>
                 <div class="text-[11px] text-emerald-600 mt-0.5">PMB tinggi &amp; MoU aktif</div>
+                <div class="mt-2.5 pt-2 border-t border-emerald-200/60 flex items-center justify-between text-[10px] text-emerald-700 font-bold">
+                    <span>Pertahankan Kemitraan</span>
+                    <span>&rarr;</span>
+                </div>
             </div>
-            <div class="p-3.5 sm:p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 ai-metric-eval">
-                <div class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Evaluasi Sosialisasi</div>
+            <div data-ai-filter="eval" class="ai-metric-box p-3.5 sm:p-4 rounded-xl bg-amber-50/60 border border-amber-200/80 ai-metric-eval cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] select-none" title="Klik untuk rincian Evaluasi Sosialisasi">
+                <div class="flex items-center justify-between">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Evaluasi Sosialisasi</div>
+                    <span class="text-[10px] text-amber-500 font-semibold flex items-center gap-0.5">Rincian &rsaquo;</span>
+                </div>
                 <div class="text-xl sm:text-2xl font-black text-amber-700 mt-1"><?= esc((string) ($schoolAiInsight['needs_evaluation'] ?? 0)) ?></div>
                 <div class="text-[11px] text-amber-600 mt-0.5">Kunjungan banyak, konversi rendah</div>
+                <div class="mt-2.5 pt-2 border-t border-amber-200/60 flex items-center justify-between text-[10px] text-amber-700 font-bold">
+                    <span>Evaluasi Materi &amp; Beasiswa</span>
+                    <span>&rarr;</span>
+                </div>
             </div>
+        </div>
+
+        <!-- Banner Indikator Filter Aktif di Dashboard -->
+        <div id="aiActiveFilterBanner" class="hidden items-center justify-between px-4 py-2.5 rounded-xl bg-teal-50/90 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-xs text-teal-800 dark:text-teal-200 mb-4 transition-all">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse"></span>
+                <span>Menampilkan Kategori: <strong id="aiActiveFilterLabel" class="font-extrabold text-teal-900 dark:text-teal-100">-</strong> (<span id="aiActiveFilterCount" class="font-bold">0</span> sekolah)</span>
+            </div>
+            <button type="button" id="btnResetAiFilter" class="px-2.5 py-1 rounded-lg text-xs font-bold text-teal-800 dark:text-teal-200 bg-teal-100/80 dark:bg-teal-900/60 hover:bg-teal-200 dark:hover:bg-teal-800/80 transition-colors flex items-center gap-1">
+                <span>✕ Reset Filter</span>
+            </button>
         </div>
 
         <!-- Rekomendasi Prioritas AI Card List -->
@@ -1225,16 +1313,16 @@ $totalCampusesCount = count($dmerCampusesData);
                 <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Prioritas Rekomendasi Aksi Markom:
                 </span>
-                <span class="text-xs text-slate-400">Diperbarui berdasarkan riwayat real-time</span>
+                <span class="text-xs text-slate-400">Klik kotak sekolah untuk melihat analisis lengkap</span>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <?php foreach (($schoolAiInsight['top_recommendations'] ?? []) as $rec): ?>
-                    <div class="rounded-xl border border-slate-200 p-3.5 bg-slate-50/50 hover:bg-white hover:shadow-sm transition-all flex flex-col justify-between ai-school-card">
+            <div id="aiSchoolCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <?php foreach (($schoolAiInsight['all_recommendations'] ?? []) as $rec): ?>
+                    <div data-school-id="<?= esc((string) $rec['id']) ?>" data-category-key="<?= esc($rec['category_key']) ?>" class="rounded-xl border border-slate-200 p-3.5 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex flex-col justify-between ai-school-card cursor-pointer group select-none" title="Klik untuk membuka rincian analisis sekolah ini">
                         <div>
                             <div class="flex items-start justify-between gap-2 mb-2">
                                 <div class="min-w-0">
-                                    <h4 class="text-xs sm:text-sm font-bold text-slate-900 truncate" title="<?= esc($rec['school_name']) ?>">
+                                    <h4 class="text-xs sm:text-sm font-bold text-slate-900 truncate group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors" title="<?= esc($rec['school_name']) ?>">
                                         <?= esc($rec['school_name']) ?>
                                     </h4>
                                     <div class="text-[11px] text-slate-500 truncate">
@@ -1266,21 +1354,24 @@ $totalCampusesCount = count($dmerCampusesData);
                             </div>
 
                             <!-- Teks AI Advice -->
-                            <p class="text-[11px] leading-relaxed text-slate-600 mt-2 p-2 rounded-lg bg-white border border-slate-200/60 ai-advice-box">
+                            <p class="text-[11px] leading-relaxed text-slate-600 mt-2 p-2.5 rounded-lg bg-white border border-slate-200/60 ai-advice-box">
                                 <?= esc($rec['ai_advice']) ?>
                             </p>
                         </div>
 
                         <!-- Footer Link Aksi -->
                         <div class="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs ai-card-footer">
-                            <span class="text-[10px] font-bold text-slate-400">Skor Interaksi: <strong class="text-teal-700"><?= esc((string) $rec['score']) ?>/100</strong></span>
-                            <a href="<?= site_url('one-campus/schools/' . $rec['id'] . '/edit') ?>" class="text-[11px] font-bold text-teal-700 hover:text-teal-900 inline-flex items-center gap-1">
-                                Kelola Sekolah &rarr;
-                            </a>
+                            <span class="text-[10px] font-bold text-slate-400">Skor AI: <strong class="text-teal-700"><?= esc((string) $rec['score']) ?>/100</strong></span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[10px] font-bold text-teal-600 group-hover:underline">Detail &rsaquo;</span>
+                                <a href="<?= site_url('one-campus/schools/' . $rec['id'] . '/edit') ?>" onclick="event.stopPropagation()" class="text-[11px] font-bold text-teal-700 hover:text-teal-900 inline-flex items-center gap-0.5">
+                                    Kelola &rarr;
+                                </a>
+                            </div>
                         </div>
                     </div>
                 <?php endforeach; ?>
-                <?php if (empty($schoolAiInsight['top_recommendations'])): ?>
+                <?php if (empty($schoolAiInsight['all_recommendations'])): ?>
                     <div class="col-span-full text-center py-6 text-xs text-slate-500">
                         <?php if (! empty($schoolAiInsight['is_scoped']) && ! empty($schoolAiInsight['scoped_campus_name'])): ?>
                             Belum ada data sekolah untuk <?= esc($schoolAiInsight['scoped_campus_name']) ?> yang cukup untuk dianalisis oleh AI. Tambahkan data di One Campus Sixty School.
@@ -1290,7 +1381,180 @@ $totalCampusesCount = count($dmerCampusesData);
                     </div>
                 <?php endif; ?>
             </div>
+            <div id="aiEmptyFilterMessage" class="hidden text-center py-8 text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                Tidak ada sekolah pada kategori ini. Silakan pilih kategori lain atau reset filter.
+            </div>
         </div>
+    </div>
+
+    <!-- ==================== MODAL 1: RINCIAN KATEGORI REKOMENDASI AI ==================== -->
+    <dialog id="dialog-school-ai-category" class="panel ai-modal-dialog" style="max-width: 860px; width: 95%; max-height: 90vh; border-radius: 16px; border: 1px solid var(--border-color, #cbd5e1); box-shadow: 0 20px 40px rgba(0,0,0,0.35); padding: 0; overflow: hidden; background: var(--surface, #ffffff); color: var(--ink, #1e293b);">
+        <!-- Header Modal -->
+        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-start justify-between gap-3 bg-slate-50/80 dark:bg-slate-800/80">
+            <div class="flex items-center gap-3">
+                <div id="modalCategoryIcon" class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shrink-0 shadow-md">
+                    <!-- Icon SVG -->
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 id="modalCategoryTitle" class="text-base font-extrabold text-slate-900 dark:text-slate-100">
+                            Rekomendasi Cerdas AI
+                        </h3>
+                        <span id="modalCategoryCountBadge" class="px-2.5 py-0.5 rounded-full text-xs font-black">
+                            0 Sekolah
+                        </span>
+                    </div>
+                    <p id="modalCategoryDesc" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                        Deskripsi kategori rekomendasi
+                    </p>
+                </div>
+            </div>
+            <button type="button" onclick="closeAiCategoryModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 dark:hover:text-slate-200 dark:hover:bg-slate-700 transition-colors" title="Tutup modal">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Quick Stats & Search Bar -->
+        <div class="px-5 py-2.5 bg-slate-100/70 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-xs flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                <span>Total: <strong id="modalStatTotal" class="text-teal-700 dark:text-teal-400 font-bold">0</strong> Sekolah</span>
+                <span class="text-slate-300 dark:text-slate-600">&bull;</span>
+                <span>Total PMB: <strong id="modalStatPmb" class="text-blue-700 dark:text-blue-400 font-bold">0</strong> Mhs</span>
+                <span class="text-slate-300 dark:text-slate-600">&bull;</span>
+                <span>Kunjungan: <strong id="modalStatVisits" class="text-indigo-700 dark:text-indigo-400 font-bold">0</strong>x</span>
+                <span class="text-slate-300 dark:text-slate-600">&bull;</span>
+                <span>MoU Aktif: <strong id="modalStatMou" class="text-emerald-700 dark:text-emerald-400 font-bold">0</strong></span>
+            </div>
+            <div class="relative w-full sm:w-64">
+                <input type="text" id="modalCategorySearch" placeholder="Cari sekolah, kota, kampus..." class="w-full text-xs px-3 py-1.5 pl-8 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+        </div>
+
+        <!-- Scrollable List of Schools -->
+        <div id="modalCategoryList" class="p-5 overflow-y-auto space-y-3" style="max-height: calc(90vh - 200px);">
+            <!-- Populated dynamically by JS -->
+        </div>
+
+        <!-- Footer Modal -->
+        <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 flex items-center justify-between gap-3">
+            <button type="button" id="btnFilterDashboardFromModal" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-teal-800 dark:text-teal-200 bg-teal-100 dark:bg-teal-900/50 hover:bg-teal-200 dark:hover:bg-teal-800 border border-teal-300 dark:border-teal-700 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                <span>Filter Tampilan di Dashboard</span>
+            </button>
+            <button type="button" onclick="closeAiCategoryModal()" class="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
+                Tutup
+            </button>
+        </div>
+    </dialog>
+
+    <!-- ==================== MODAL 2: RINCIAN KHUSUS SATU SEKOLAH (DEEP DIVE AI) ==================== -->
+    <dialog id="dialog-school-ai-single" class="panel ai-modal-dialog" style="max-width: 680px; width: 95%; max-height: 90vh; border-radius: 16px; border: 1px solid var(--border-color, #cbd5e1); box-shadow: 0 20px 40px rgba(0,0,0,0.35); padding: 0; overflow: hidden; background: var(--surface, #ffffff); color: var(--ink, #1e293b);">
+        <!-- Header -->
+        <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-start justify-between gap-3 bg-slate-50/80 dark:bg-slate-800/80">
+            <div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span id="singleSchoolCategoryBadge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border">
+                        Prioritas
+                    </span>
+                    <span id="singleSchoolCampusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        Kampus
+                    </span>
+                </div>
+                <h3 id="singleSchoolName" class="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 mt-1">
+                    Nama Sekolah
+                </h3>
+                <p id="singleSchoolMeta" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    NPSN &bull; Kota
+                </p>
+            </div>
+            <button type="button" onclick="closeAiSingleModal()" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 dark:hover:text-slate-200 dark:hover:bg-slate-700 transition-colors" title="Tutup modal">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-5 overflow-y-auto space-y-4" style="max-height: calc(90vh - 150px);">
+            <!-- 4 Stat Boxes -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60">
+                    <div class="text-[10px] font-bold uppercase text-blue-700 dark:text-blue-300">PMB Mahasiswa</div>
+                    <div id="singleSchoolPmb" class="text-lg font-black text-blue-900 dark:text-blue-100 mt-0.5">0</div>
+                    <div class="text-[10px] text-blue-600 dark:text-blue-400">Pendaftar baru</div>
+                </div>
+                <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/60">
+                    <div class="text-[10px] font-bold uppercase text-indigo-700 dark:text-indigo-300">Kunjungan/Event</div>
+                    <div id="singleSchoolVisits" class="text-lg font-black text-indigo-900 dark:text-indigo-100 mt-0.5">0x</div>
+                    <div class="text-[10px] text-indigo-600 dark:text-indigo-400">Aktivitas kampus</div>
+                </div>
+                <div id="singleSchoolMouCard" class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60">
+                    <div class="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-300">Status MoU</div>
+                    <div id="singleSchoolMouStatus" class="text-xs sm:text-sm font-black text-emerald-900 dark:text-emerald-100 mt-0.5">Aktif</div>
+                    <div id="singleSchoolMouSub" class="text-[10px] text-emerald-600 dark:text-emerald-400">Kerjasama resmi</div>
+                </div>
+                <div class="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-900/60">
+                    <div class="text-[10px] font-bold uppercase text-teal-700 dark:text-teal-300">Skor AI Markom</div>
+                    <div id="singleSchoolScore" class="text-lg font-black text-teal-900 dark:text-teal-100 mt-0.5">0/100</div>
+                    <div class="text-[10px] text-teal-600 dark:text-teal-400">Tingkat interaksi</div>
+                </div>
+            </div>
+
+            <!-- AI Markom Tactical Advice -->
+            <div class="p-4 rounded-xl bg-gradient-to-br from-teal-50/80 to-emerald-50/60 dark:from-teal-950/30 dark:to-emerald-950/20 border border-teal-200/80 dark:border-teal-800/60">
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+                    <span class="text-xs font-extrabold uppercase tracking-wider text-teal-800 dark:text-teal-300">
+                        Rekomendasi Aksi Markom (AI Engine)
+                    </span>
+                </div>
+                <p id="singleSchoolAdvice" class="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-slate-200 font-medium">
+                    Saran AI...
+                </p>
+            </div>
+
+            <!-- School Contact & Headmaster Details -->
+            <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                <div class="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                    Narahubung &amp; Pimpinan Sekolah
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                    <div>
+                        <span class="text-slate-400 dark:text-slate-500 text-[11px]">Kepala Sekolah:</span>
+                        <div id="singleSchoolHeadmaster" class="font-bold text-slate-800 dark:text-slate-200">-</div>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 dark:text-slate-500 text-[11px]">PIC Kemitraan:</span>
+                        <div id="singleSchoolContact" class="font-bold text-slate-800 dark:text-slate-200">-</div>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 dark:text-slate-500 text-[11px]">No. Telepon / WhatsApp:</span>
+                        <div id="singleSchoolPhone" class="font-bold text-slate-800 dark:text-slate-200">-</div>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 dark:text-slate-500 text-[11px]">Tipe Lembaga:</span>
+                        <div id="singleSchoolType" class="font-bold text-slate-800 dark:text-slate-200">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <a id="singleSchoolManageBtn" href="#" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-sm">
+                    <span>Kelola / Edit Sekolah &rarr;</span>
+                </a>
+                <a id="singleSchoolMouBtn" href="#" target="_blank" rel="noopener" class="hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/40 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    <span>Buka Berkas MoU</span>
+                </a>
+            </div>
+            <button type="button" onclick="closeAiSingleModal()" class="px-4 py-1.5 rounded-xl text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
+                Tutup
+            </button>
+        </div>
+    </dialog>
+
     </div>
 
 </div>
@@ -2338,5 +2602,423 @@ window.addEventListener('DOMContentLoaded', () => {
     const select = document.getElementById('campusSelect');
     if (select) select.value = selectedCampusNo;
     updateCampusProfile();
+});
+
+// ==================== 12. AI SCHOOL RECOMMENDATION INTERACTIVITY & MODALS ====================
+const AI_SCHOOL_DATA = <?= json_encode($schoolAiInsight['all_recommendations'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const BASE_SCHOOL_EDIT_URL = "<?= site_url('one-campus/schools') ?>";
+
+const AI_CAT_DEFINITIONS = {
+    total: {
+        key: 'total',
+        title: 'Semua Sekolah Mitra (Sixty School)',
+        desc: 'Evaluasi lengkap seluruh kemitraan sekolah dengan integrasi perolehan PMB, frekuensi kunjungan/event, dan status legalitas MoU.',
+        iconBg: 'bg-gradient-to-br from-teal-500 to-emerald-600',
+        badgeClass: 'bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300',
+        iconSvg: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>'
+    },
+    mou: {
+        key: 'mou',
+        title: 'Peluang MoU Kunci (Prioritas Tinggi)',
+        desc: 'Sekolah dengan kontribusi PMB tinggi (≥5 mhs) namun belum memiliki ikatan MoU resmi. Sangat disarankan segera mengajukan draf MoU Beasiswa BJS ke Kepala Sekolah untuk mengunci kemitraan eksklusif.',
+        iconBg: 'bg-gradient-to-br from-rose-500 to-pink-600',
+        badgeClass: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300',
+        iconSvg: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>'
+    },
+    champion: {
+        key: 'champion',
+        title: 'Mitra Unggulan (Champion)',
+        desc: 'Sekolah dengan perolehan PMB tinggi dan dokumen MoU kemitraan aktif. Pertahankan relasi strategis melalui program apresiasi penghargaan dan gathering Guru BK.',
+        iconBg: 'bg-gradient-to-br from-emerald-500 to-teal-600',
+        badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
+        iconSvg: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>'
+    },
+    eval: {
+        key: 'eval',
+        title: 'Evaluasi Sosialisasi & Konversi',
+        desc: 'Sekolah dengan frekuensi kunjungan/sosialisasi tinggi (≥2 kali kegiatan) namun konversi PMB masih minim. Diperlukan evaluasi materi sosialisasi, testimoni alumni, atau penawaran beasiswa khusus.',
+        iconBg: 'bg-gradient-to-br from-amber-500 to-orange-600',
+        badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300',
+        iconSvg: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+    }
+};
+
+let currentAiFilterKey = null;
+
+function escapeAiHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function getSchoolsForCategory(catKey) {
+    if (!catKey || catKey === 'total') return AI_SCHOOL_DATA;
+    return AI_SCHOOL_DATA.filter(s => s.category_key === catKey);
+}
+
+function openAiCategoryModal(catKey) {
+    const def = AI_CAT_DEFINITIONS[catKey] || AI_CAT_DEFINITIONS.total;
+    const schools = getSchoolsForCategory(catKey);
+    const dialog = document.getElementById('dialog-school-ai-category');
+    if (!dialog) return;
+
+    // Header & Icons
+    const iconEl = document.getElementById('modalCategoryIcon');
+    if (iconEl) {
+        iconEl.className = `w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shrink-0 shadow-md ${def.iconBg}`;
+        iconEl.innerHTML = def.iconSvg;
+    }
+    document.getElementById('modalCategoryTitle').textContent = def.title;
+    document.getElementById('modalCategoryDesc').textContent = def.desc;
+
+    const countBadge = document.getElementById('modalCategoryCountBadge');
+    if (countBadge) {
+        countBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-black ${def.badgeClass}`;
+        countBadge.textContent = `${schools.length} Sekolah`;
+    }
+
+    // Stats bar inside modal
+    let sumPmb = 0;
+    let sumVisits = 0;
+    let sumMou = 0;
+    schools.forEach(s => {
+        sumPmb += Number(s.pmb_count || 0);
+        sumVisits += Number(s.visit_count || 0);
+        if (s.has_mou) sumMou++;
+    });
+
+    document.getElementById('modalStatTotal').textContent = schools.length;
+    document.getElementById('modalStatPmb').textContent = sumPmb;
+    document.getElementById('modalStatVisits').textContent = sumVisits;
+    document.getElementById('modalStatMou').textContent = sumMou;
+
+    // Filter button inside modal footer
+    const btnFilter = document.getElementById('btnFilterDashboardFromModal');
+    if (btnFilter) {
+        btnFilter.onclick = () => {
+            filterAiDashboardGrid(catKey);
+            closeAiCategoryModal();
+        };
+    }
+
+    // Render list
+    renderAiCategorySchoolList(schools);
+
+    // Setup live search in modal
+    const searchInput = document.getElementById('modalCategorySearch');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.oninput = (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            if (!q) {
+                renderAiCategorySchoolList(schools);
+                return;
+            }
+            const filtered = schools.filter(s => {
+                return (s.school_name && s.school_name.toLowerCase().includes(q))
+                    || (s.city && s.city.toLowerCase().includes(q))
+                    || (s.campus_name && s.campus_name.toLowerCase().includes(q))
+                    || (s.npsn && s.npsn.toLowerCase().includes(q));
+            });
+            renderAiCategorySchoolList(filtered);
+        };
+    }
+
+    dialog.showModal();
+}
+
+function renderAiCategorySchoolList(schools) {
+    const listEl = document.getElementById('modalCategoryList');
+    if (!listEl) return;
+
+    if (schools.length === 0) {
+        listEl.innerHTML = `
+            <div class="text-center py-10 text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                <svg class="w-8 h-8 text-slate-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <p class="font-bold">Tidak ada sekolah yang berada dalam kategori ini.</p>
+                <p class="mt-0.5 text-slate-400">Seluruh data Sixty School berjalan optimal.</p>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = schools.map(s => {
+        const mouBadge = s.has_mou
+            ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">&#128196; MoU Aktif</span>`
+            : `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100/80 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">&#9888; Belum MoU</span>`;
+
+        let mouLinkHtml = '';
+        if (s.mou_drive_link && s.mou_drive_link.trim() !== '') {
+            mouLinkHtml = `
+                <a href="${escapeAiHtml(s.mou_drive_link)}" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition-colors inline-flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    <span>MoU Drive</span>
+                </a>
+            `;
+        }
+
+        return `
+            <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800/80 transition-all">
+                <div class="flex flex-wrap items-start justify-between gap-2 mb-1.5">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                                ${escapeAiHtml(s.school_name)}
+                            </h4>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${escapeAiHtml(s.badge_class)}">
+                                ${escapeAiHtml(s.priority)}
+                            </span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            NPSN: ${escapeAiHtml(s.npsn || '-')} &bull; ${escapeAiHtml(s.city || '-')} &bull; <strong class="text-slate-700 dark:text-slate-300">${escapeAiHtml(s.campus_name || '-')}</strong>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] text-slate-400">Skor AI:</span>
+                        <div class="text-sm font-black text-teal-600 dark:text-teal-400">${Number(s.score || 0)}/100</div>
+                    </div>
+                </div>
+
+                <!-- Metrics badges -->
+                <div class="flex flex-wrap gap-1.5 my-2">
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100/70 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        &#127891; PMB: ${Number(s.pmb_count || 0)} Mhs
+                    </span>
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100/70 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        &#128663; Kunjungan: ${Number(s.visit_count || 0)}x
+                    </span>
+                    ${mouBadge}
+                </div>
+
+                <!-- AI Advice -->
+                <p class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 p-2.5 rounded-lg bg-white dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/60 mt-2">
+                    ${escapeAiHtml(s.ai_advice)}
+                </p>
+
+                <!-- Actions -->
+                <div class="mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <button type="button" onclick="openAiSingleModal(${s.id})" class="text-[11px] font-bold text-teal-700 dark:text-teal-300 hover:underline inline-flex items-center gap-1">
+                        <span>Lihat Analisis Detail</span> &rsaquo;
+                    </button>
+                    <div class="flex items-center gap-2">
+                        ${mouLinkHtml}
+                        <a href="${BASE_SCHOOL_EDIT_URL}/${s.id}/edit" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-600 text-white hover:bg-teal-700 transition-colors inline-flex items-center gap-1">
+                            <span>Kelola Sekolah</span> &rarr;
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function closeAiCategoryModal() {
+    const dialog = document.getElementById('dialog-school-ai-category');
+    if (dialog) dialog.close();
+}
+
+function openAiSingleModal(schoolId) {
+    const school = AI_SCHOOL_DATA.find(s => Number(s.id) === Number(schoolId));
+    if (!school) return;
+
+    const dialog = document.getElementById('dialog-school-ai-single');
+    if (!dialog) return;
+
+    // Category & Priority Badge
+    const catBadge = document.getElementById('singleSchoolCategoryBadge');
+    if (catBadge) {
+        catBadge.className = `px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${escapeAiHtml(school.badge_class)}`;
+        catBadge.textContent = `${school.priority} • ${school.category}`;
+    }
+    const campusBadge = document.getElementById('singleSchoolCampusBadge');
+    if (campusBadge) {
+        campusBadge.textContent = school.campus_name || 'Semua Kampus';
+    }
+
+    document.getElementById('singleSchoolName').textContent = school.school_name || 'Sekolah';
+    document.getElementById('singleSchoolMeta').textContent = `NPSN: ${school.npsn || '-'} • Kota: ${school.city || '-'} • Tipe: ${school.school_type || 'SMA/SMK'}`;
+
+    // 4 Stats
+    document.getElementById('singleSchoolPmb').textContent = `${Number(school.pmb_count || 0)} Mhs`;
+    document.getElementById('singleSchoolVisits').textContent = `${Number(school.visit_count || 0)}x`;
+    document.getElementById('singleSchoolScore').textContent = `${Number(school.score || 0)}/100`;
+
+    const mouCard = document.getElementById('singleSchoolMouCard');
+    const mouStatus = document.getElementById('singleSchoolMouStatus');
+    const mouSub = document.getElementById('singleSchoolMouSub');
+    if (school.has_mou) {
+        if (mouCard) {
+            mouCard.className = 'p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60';
+        }
+        if (mouStatus) {
+            mouStatus.className = 'text-xs sm:text-sm font-black text-emerald-900 dark:text-emerald-100 mt-0.5';
+            mouStatus.textContent = 'MoU Aktif';
+        }
+        if (mouSub) {
+            mouSub.className = 'text-[10px] text-emerald-600 dark:text-emerald-400';
+            mouSub.textContent = 'Kemitraan resmi';
+        }
+    } else {
+        if (mouCard) {
+            mouCard.className = 'p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/60';
+        }
+        if (mouStatus) {
+            mouStatus.className = 'text-xs sm:text-sm font-black text-rose-900 dark:text-rose-100 mt-0.5';
+            mouStatus.textContent = 'Belum Ada MoU';
+        }
+        if (mouSub) {
+            mouSub.className = 'text-[10px] text-rose-600 dark:text-rose-400';
+            mouSub.textContent = 'Prioritas draf MoU BJS';
+        }
+    }
+
+    // AI Advice
+    document.getElementById('singleSchoolAdvice').textContent = school.ai_advice || 'Belum ada rekomendasi khusus.';
+
+    // Contacts
+    document.getElementById('singleSchoolHeadmaster').textContent = school.headmaster_name || '-';
+    document.getElementById('singleSchoolContact').textContent = school.contact_name || '-';
+    document.getElementById('singleSchoolPhone').textContent = school.contact_phone || '-';
+    document.getElementById('singleSchoolType').textContent = school.school_type || 'SMA/SMK';
+
+    // Buttons
+    const manageBtn = document.getElementById('singleSchoolManageBtn');
+    if (manageBtn) {
+        manageBtn.href = `${BASE_SCHOOL_EDIT_URL}/${school.id}/edit`;
+    }
+    const mouBtn = document.getElementById('singleSchoolMouBtn');
+    if (mouBtn) {
+        if (school.mou_drive_link && school.mou_drive_link.trim() !== '') {
+            mouBtn.href = school.mou_drive_link;
+            mouBtn.classList.remove('hidden');
+        } else {
+            mouBtn.classList.add('hidden');
+        }
+    }
+
+    dialog.showModal();
+}
+
+function closeAiSingleModal() {
+    const dialog = document.getElementById('dialog-school-ai-single');
+    if (dialog) dialog.close();
+}
+
+function filterAiDashboardGrid(catKey) {
+    currentAiFilterKey = catKey;
+    const def = AI_CAT_DEFINITIONS[catKey] || AI_CAT_DEFINITIONS.total;
+
+    // Highlight metric box
+    document.querySelectorAll('.ai-metric-box').forEach(el => {
+        if (el.dataset.aiFilter === catKey) {
+            el.classList.add('active-filter');
+        } else {
+            el.classList.remove('active-filter');
+        }
+    });
+
+    const banner = document.getElementById('aiActiveFilterBanner');
+    const label = document.getElementById('aiActiveFilterLabel');
+    const countEl = document.getElementById('aiActiveFilterCount');
+
+    let visibleCount = 0;
+    const cards = document.querySelectorAll('#aiSchoolCardsGrid .ai-school-card');
+    cards.forEach(card => {
+        const itemKey = card.dataset.categoryKey;
+        if (catKey === 'total' || itemKey === catKey) {
+            card.classList.remove('hidden');
+            visibleCount++;
+        } else {
+            card.classList.add('hidden');
+        }
+    });
+
+    if (banner && label && countEl) {
+        if (catKey === 'total') {
+            banner.classList.add('hidden');
+            banner.classList.remove('flex');
+        } else {
+            label.textContent = def.title;
+            countEl.textContent = visibleCount;
+            banner.classList.remove('hidden');
+            banner.classList.add('flex');
+        }
+    }
+
+    const emptyMsg = document.getElementById('aiEmptyFilterMessage');
+    if (emptyMsg) {
+        if (visibleCount === 0 && cards.length > 0) {
+            emptyMsg.classList.remove('hidden');
+        } else {
+            emptyMsg.classList.add('hidden');
+        }
+    }
+}
+
+function resetAiDashboardFilter() {
+    currentAiFilterKey = null;
+    document.querySelectorAll('.ai-metric-box').forEach(el => el.classList.remove('active-filter'));
+
+    const banner = document.getElementById('aiActiveFilterBanner');
+    if (banner) {
+        banner.classList.add('hidden');
+        banner.classList.remove('flex');
+    }
+
+    document.querySelectorAll('#aiSchoolCardsGrid .ai-school-card').forEach(card => {
+        card.classList.remove('hidden');
+    });
+
+    const emptyMsg = document.getElementById('aiEmptyFilterMessage');
+    if (emptyMsg) emptyMsg.classList.add('hidden');
+}
+
+// Bind clicks on Metric Boxes & Cards & Dialog Backdrop
+document.addEventListener('DOMContentLoaded', () => {
+    // Metric Boxes Click -> Open Category Modal
+    document.querySelectorAll('.ai-metric-box').forEach(box => {
+        box.addEventListener('click', () => {
+            const filterKey = box.dataset.aiFilter;
+            if (filterKey) {
+                openAiCategoryModal(filterKey);
+            }
+        });
+    });
+
+    // School Cards Click in Grid -> Open Single School Modal
+    document.querySelectorAll('#aiSchoolCardsGrid .ai-school-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('a')) return; // if clicking "Kelola" link directly
+            const sId = card.dataset.schoolId;
+            if (sId) {
+                openAiSingleModal(sId);
+            }
+        });
+    });
+
+    // Reset filter button
+    const btnReset = document.getElementById('btnResetAiFilter');
+    if (btnReset) {
+        btnReset.addEventListener('click', resetAiDashboardFilter);
+    }
+
+    // Backdrop click on dialogs to close
+    ['dialog-school-ai-category', 'dialog-school-ai-single'].forEach(dId => {
+        const dialog = document.getElementById(dId);
+        if (dialog) {
+            dialog.addEventListener('click', (e) => {
+                const rect = dialog.getBoundingClientRect();
+                const inDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height
+                    && rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+                if (!inDialog) {
+                    dialog.close();
+                }
+            });
+        }
+    });
 });
 </script>

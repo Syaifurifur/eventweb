@@ -22,6 +22,7 @@ $navGroups = [
         'title' => 'Dokumen & Laporan',
         'items' => [
             ['key' => 'documents', 'label' => 'Dokumen Event', 'url' => site_url('documents'), 'icon' => 'solar:document-text-outline'],
+            ['key' => 'accreditation-documents', 'label' => 'Dokumen Akreditasi', 'url' => site_url('documents/accreditation'), 'icon' => 'solar:diploma-verified-outline'],
             ['key' => 'document-templates', 'label' => 'Template Dokumen', 'url' => site_url('document-templates'), 'icon' => 'solar:documents-minimalistic-outline'],
             ['key' => 'crm-report', 'label' => 'Laporan CRM', 'url' => site_url('laporan-crm'), 'icon' => 'solar:pie-chart-3-outline'],
         ],

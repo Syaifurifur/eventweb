@@ -1,5 +1,5 @@
 EVENTWEB - CATATAN PERUBAHAN
-Tanggal update: 4 November 2026 (Update: One Campus Sixty School PMB Clustering, Upload MOU PDF & Google Drive Admin)
+Tanggal update: 4 November 2026 (Update: Interactive AI School Recommendation Modals, PMB Clustering & Dual-Engine Parity)
 
 Ringkasan
 Project EventHub/EventWeb telah diperbarui pada beberapa area utama:
@@ -609,3 +609,31 @@ Catatan File Penting yang Diubah/Ditambahkan
 - app/Database/Migrations/2026-06-03-000001_AddDmerRoleForSpecialAnalytics.php
 - app/Database/Migrations/2026-06-04-000001_AddOjtMonthRangeToOneCampusOjtReports.php
 - app/Database/Migrations/2026-06-17-000001_DedupeCalendarIntegrations.php
+- app/Database/Migrations/2026-11-04-000005_CreateAccreditationDocuments.php
+- app/Models/AccreditationDocumentModel.php
+- laravel/app/Models/AccreditationDocumentModel.php
+- app/Views/pages/accreditation_documents.php
+- laravel/resources/views/pages/accreditation_documents.blade.php
+
+FASILITAS DOKUMEN AKREDITASI (BAN-PT / LAM-INFOKOM):
+1. Admin (Admin Sistem, Super Admin, DMER):
+   - Fitur Pencarian Cerdas dari Dokumen Event: Live search realtime pada modal penetapan akreditasi untuk mencari dokumen event berdasarkan judul, kode EVT, kampus, kategori, atau ketersediaan berkas (Proposal / LPJ).
+   - Tombol Satu Klik "⭐ Jadikan Data Akreditasi": Tersedia tombol interaktif pada setiap baris hasil pencarian dokumen event untuk langsung memilih dan menetapkannya menjadi Dokumen Akreditasi.
+   - Integrasi Halaman Dokumen Event (/documents): Menambahkan tombol "🎓 Jadikan Akreditasi" di setiap baris event dan status badge "🎓 Terdaftar Akreditasi" jika sudah didaftarkan, memudahkan Admin mempromosikan dokumen event ke akreditasi secara langsung dari halaman Dokumen Event.
+   - Menentukan Kriteria/Standar Akreditasi (Kriteria 1-9), jenis dokumen wajib (all, report, proposal, assignment_letter), dan instruksi catatan untuk Kepala Kampus.
+   - Filter komprehensif berdasarkan Kampus Pelaksana, Tahun Pelaksanaan, Status Kelengkapan, Kriteria Akreditasi, dan pencarian kata kunci.
+   - Mereview data yang dilengkapi Kepala Kampus, memberikan persetujuan (Terverifikasi Lengkap) atau mengembalikan untuk revisi.
+2. Kepala Kampus:
+   - Terkunci otomatis sesuai cakupan kampus masing-masing (campus_id).
+   - Melihat daftar dokumen event yang ditetapkan oleh Admin untuk akreditasi kampusnya beserta instruksi tim akreditasi.
+   - Melengkapi bukti pendukung: unggah berkas fisik tambahan (PDF/DOC/ZIP hingga 25MB), tautan Google Drive / Cloud bukti kegiatan, dan catatan keterangan pemenuhan.
+   - Mengirimkan berkas untuk verifikasi Admin.
+3. Sinkronisasi & Dual Engine:
+   - 100% Paritas antara CodeIgniter 4 (/documents/accreditation) dan Laravel (/documents/accreditation).
+
+
+[UPDATE] Penyelarasan Dokumen Utama Event pada Dokumen Akreditasi:
+- Kolom Dokumen Utama Event pada tabel Akreditasi kini 100% identik dengan Dokumen Event (/documents).
+- Menampilkan kode dokumen (PRP/REP), status chip badge, nama file berkas/Drive asli, waktu unggah, dan nama PIC.
+- Tautan berkas terhubung langsung ke file upload asli event atau Drive via events/{code}/documents/{type}/file.
+- Dual-engine parity terjaga 100% pada CodeIgniter 4 dan Laravel.

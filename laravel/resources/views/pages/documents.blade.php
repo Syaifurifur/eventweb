@@ -202,6 +202,12 @@ $baseQuery = $documentPagination['query'] ?? [];
     .dx-chip { font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px; white-space:nowrap; display:inline-block; }
     .dx-chip-green { background:#dcfce7; color:#15803d; } .dx-chip-amber { background:#ffedd5; color:#c2410c; }
     .dx-chip-red { background:#ffe4e6; color:#be123c; } .dx-chip-slate { background:#e2e8f0; color:#334155; }
+    .dx-badge-accred { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2.5px 8px; border-radius:999px; background:#e0e7ff; color:#4338ca; border:1px solid #c7d2fe; text-decoration:none; white-space:nowrap; }
+    .dx-badge-accred:hover { background:#c7d2fe; }
+    .dx-btn-accred { background:#4f46e5 !important; color:#ffffff !important; border:1px solid #4338ca !important; font-weight:700; cursor:pointer; }
+    .dx-btn-accred:hover { background:#4338ca !important; }
+    .dx-btn-success { background:#10b981 !important; color:#ffffff !important; border:1px solid #059669 !important; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; }
+    .dx-btn-success:hover { background:#059669 !important; }
     .dx-toggle { width:32px; height:32px; border-radius:8px; border:none; background:transparent; color:#334155; cursor:pointer; display:grid; place-items:center; transition:.2s; }
     .dx-toggle:hover { background:#eef2ff; }
     .dx-row.is-open .dx-toggle svg { transform:rotate(180deg); }
@@ -322,9 +328,19 @@ $baseQuery = $documentPagination['query'] ?? [];
     html.dark .dx-doc-form label {
         color: var(--ink, #f3f4f6);
     }
+    html.dark .dx-badge-accred { background:rgba(79,70,229,0.25); color:#a5b4fc; border-color:#4338ca; }
+    html.dark .dx-btn-accred { background:#6366f1 !important; border-color:#4f46e5 !important; color:#ffffff !important; }
+    html.dark .dx-btn-accred:hover { background:#4f46e5 !important; }
+    html.dark .dx-btn-success { background:#059669 !important; border-color:#047857 !important; color:#ffffff !important; }
+    html.dark .dx-btn-success:hover { background:#047857 !important; }
     html.dark .dx-stat-value {
         color: var(--ink, #f3f4f6);
     }
+    html.dark .dx-badge-accred { background:rgba(79,70,229,0.25); color:#a5b4fc; border-color:#4338ca; }
+    html.dark .dx-btn-accred { background:#6366f1 !important; border-color:#4f46e5 !important; color:#ffffff !important; }
+    html.dark .dx-btn-accred:hover { background:#4f46e5 !important; }
+    html.dark .dx-btn-success { background:#059669 !important; border-color:#047857 !important; color:#ffffff !important; }
+    html.dark .dx-btn-success:hover { background:#047857 !important; }
     html.dark .dx-mode.is-view {
         background: rgba(148, 163, 184, 0.16);
         color: #cbd5e1;
@@ -551,6 +567,7 @@ $baseQuery = $documentPagination['query'] ?? [];
                         <th>Kampus</th>
                         <th>Tanggal Event</th>
                         <th>Status Dokumen</th>
+                        <th style="text-align:center;">Akreditasi</th>
                         <th></th>
                         <th style="width:56px; text-align:center;">Aksi</th>
                     </tr>
@@ -614,6 +631,33 @@ $baseQuery = $documentPagination['query'] ?? [];
                                 </div>
                             </td>
                             <td><span class="dx-chip <?= esc($stateMeta['class'], 'attr') ?>"><?= esc($stateMeta['label']) ?></span></td>
+                            <td style="text-align:center; white-space:nowrap;">
+                                <?php
+                                    $evDbId = (int) ($event['db_id'] ?? 0);
+                                    $accredInfo = $accreditedMap[$evDbId] ?? null;
+                                ?>
+                                <?php if ($accredInfo): ?>
+                                    <a href="<?= site_url('documents/accreditation?q=' . urlencode($eventCode)) ?>" class="dx-badge-accred" title="Event ini telah ditetapkan sebagai Dokumen Akreditasi. Klik untuk membuka.">
+                                        🎓 Terdaftar Akreditasi
+                                    </a>
+                                <?php elseif ($isAdmin ?? $isAdminSystem ?? false): ?>
+                                    <button type="button" 
+                                            class="dx-btn dx-btn-sm dx-btn-accred" 
+                                            onclick='openQuickAccredModal(<?= json_encode([
+                                                "id" => $evDbId,
+                                                "code" => $eventCode,
+                                                "title" => (string)($event["title"] ?? ""),
+                                                "campus" => (string)($event["campus"] ?? ""),
+                                                "date" => (string)($event["date"] ?? ""),
+                                            ], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)' 
+                                            title="Jadikan dokumen event ini sebagai Data Akreditasi">
+                                        🎓 Jadikan Akreditasi
+                                    </button>
+                                <?php else: ?>
+                                    <span style="color:#94a3b8; font-size:11px;">-</span>
+                                <?php endif; ?>
+                            </td>
+                            <td></td>
                             <td style="text-align:center;">
                                 <button type="button" class="dx-toggle" data-dx-toggle="<?= esc($detailId, 'attr') ?>" aria-expanded="<?= $isOpen ? 'true' : 'false' ?>" aria-controls="<?= esc($detailId, 'attr') ?>" title="Lihat dokumen">
                                     <?= $dxIcon('chevron-down', 18) ?>
@@ -841,4 +885,107 @@ $baseQuery = $documentPagination['query'] ?? [];
         });
     });
 })();
+
+function openQuickAccredModal(ev) {
+    var dialog = document.getElementById('dialog-quick-accredit');
+    if (!dialog) return;
+
+    document.getElementById('quickAccredEventId').value = ev.id;
+    document.getElementById('quickAccredEventTitle').textContent = (ev.code ? '[' + ev.code + '] ' : '') + ev.title;
+    document.getElementById('quickAccredEventMeta').textContent = '🏛 ' + (ev.campus || 'Semua Kampus') + (ev.date ? ' • ' + ev.date : '');
+    
+    dialog.showModal();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var dialog = document.getElementById('dialog-quick-accredit');
+    if (dialog) {
+        dialog.addEventListener('click', function(e) {
+            var rect = dialog.getBoundingClientRect();
+            var inDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height
+                && rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+            if (!inDialog) {
+                dialog.close();
+            }
+        });
+    }
+});
 </script>
+
+<!-- ==================== MODAL QUICK DESIGNATE AKREDITASI ==================== -->
+<dialog id="dialog-quick-accredit" class="panel" style="max-width: 620px; width: 95%; max-height: 90vh; border-radius: 16px; border: 1px solid var(--border-color, #cbd5e1); box-shadow: 0 20px 40px rgba(0,0,0,0.35); padding: 0; overflow: hidden; background: var(--surface, #ffffff); color: var(--ink, #1e293b);">
+    <form method="post" action="<?= site_url('documents/accreditation/designate') ?>">
+        <?= csrf_field() ?>
+        <input type="hidden" name="event_id" id="quickAccredEventId" value="" required>
+
+        <!-- Header -->
+        <div style="padding:16px 20px; border-bottom:1px solid #e2e8f0; background:#f8fafc; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                    <span>🎓</span> Jadikan Dokumen Event sebagai Data Akreditasi
+                </h3>
+                <p style="margin:2px 0 0; font-size:12px; color:#64748b;">
+                    Tetapkan event ini sebagai berkas pemenuhan instrumen akreditasi (BAN-PT &amp; LAM-INFOKOM)
+                </p>
+            </div>
+            <button type="button" onclick="document.getElementById('dialog-quick-accredit').close()" style="background:transparent; border:none; font-size:22px; cursor:pointer; color:#94a3b8; line-height:1;">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:20px; max-height:calc(90vh - 140px); overflow-y:auto; display:flex; flex-direction:column; gap:14px; font-size:12.5px;">
+            <div style="padding:14px; border-radius:12px; background:#eff6ff; border:1px solid #bfdbfe;">
+                <span style="font-size:10px; font-weight:800; text-transform:uppercase; color:#2563eb; letter-spacing:0.5px; display:block;">Event yang Dipilih:</span>
+                <h4 id="quickAccredEventTitle" style="margin:4px 0 2px; font-size:14px; font-weight:800; color:#1e293b;">-</h4>
+                <div id="quickAccredEventMeta" style="font-size:12px; color:#64748b;">-</div>
+            </div>
+
+            <div>
+                <label style="display:block; font-weight:700; color:#334155; margin-bottom:6px;">
+                    Standar / Kriteria Akreditasi: <span style="color:#ef4444;">*</span>
+                </label>
+                <select name="accreditation_standard" required style="width:100%; height:38px; border-radius:10px; border:1px solid #cbd5e1; padding:0 12px; font-size:12.5px; outline:none; background:#fff;">
+                    <?php foreach (($accreditationStandards ?? []) as $std): ?>
+                        <option value="<?= esc($std) ?>" <?= str_contains($std, 'Kriteria 9') ? 'selected' : '' ?>>
+                            <?= esc($std) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div>
+                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:6px;">
+                        Judul Berkas Akreditasi (Opsional):
+                    </label>
+                    <input type="text" name="title" placeholder="Kosongkan jika menggunakan judul asli event..." style="width:100%; height:38px; border-radius:10px; border:1px solid #cbd5e1; padding:0 12px; font-size:12.5px; outline:none; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; font-weight:700; color:#334155; margin-bottom:6px;">
+                        Jenis Dokumen yang Diwajibkan:
+                    </label>
+                    <select name="doc_type" style="width:100%; height:38px; border-radius:10px; border:1px solid #cbd5e1; padding:0 12px; font-size:12.5px; outline:none; background:#fff;">
+                        <option value="all">Semua Dokumen (Proposal, LPJ, Surat Tugas)</option>
+                        <option value="report">Laporan Pertanggungjawaban (LPJ) &amp; Dokumentasi</option>
+                        <option value="proposal">Proposal Kegiatan &amp; RAB</option>
+                        <option value="assignment_letter">Surat Tugas &amp; SK Tim Pelaksana</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label style="display:block; font-weight:700; color:#334155; margin-bottom:6px;">
+                    Instruksi Catatan untuk Kepala Kampus (Opsional):
+                </label>
+                <textarea name="admin_notes" rows="2" placeholder="Contoh: Harap lengkapi berkas daftar hadir, notulensi, dan foto dokumentasi kegiatan..." style="width:100%; border-radius:10px; border:1px solid #cbd5e1; padding:8px 12px; font-size:12.5px; outline:none; box-sizing:border-box; font-family:inherit;"></textarea>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:14px 20px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+            <button type="button" onclick="document.getElementById('dialog-quick-accredit').close()" class="dx-btn dx-btn-sm" style="font-weight:700;">Batal</button>
+            <button type="submit" class="dx-btn dx-btn-primary dx-btn-sm" style="font-weight:700; background:#4f46e5; border-color:#4338ca;">
+                ⭐ Tetapkan Sebagai Data Akreditasi &rarr;
+            </button>
+        </div>
+    </form>
+</dialog>
