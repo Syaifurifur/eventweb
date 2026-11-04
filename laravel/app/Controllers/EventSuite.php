@@ -3843,12 +3843,18 @@ class EventSuite extends BaseController
 
     public function getAvailablePmbPeriods(): array
     {
-        // Default: hanya yang sedang berjalan dan sebelumnya
-        $periods = [
-            'September 2026 - September 2027' => 'September 2026 - September 2027 (Berjalan)',
+        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'September 2026 - September 2027');
+
+        // Daftar periode dasar (sedang berjalan dan sebelumnya)
+        $basePeriods = [
+            'September 2026 - September 2027' => 'September 2026 - September 2027',
             'September 2025 - September 2026' => 'September 2025 - September 2026',
             'September 2024 - September 2025' => 'September 2024 - September 2025',
         ];
+
+        if (! isset($basePeriods[$defaultPeriod])) {
+            $basePeriods = [$defaultPeriod => $defaultPeriod] + $basePeriods;
+        }
 
         // Ambil klaster tambahan yang dibuat khusus oleh Superadmin
         $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_pmb_periods', '');
@@ -3857,9 +3863,19 @@ class EventSuite extends BaseController
             if (is_array($customs)) {
                 foreach ($customs as $cKey => $cLabel) {
                     if (is_string($cKey) && trim($cKey) !== '') {
-                        $periods[$cKey] = $cLabel;
+                        $basePeriods[$cKey] = trim(preg_replace('/\s*\((?:Berjalan|Terbaru|Default)[^\)]*\)/i', '', (string) $cLabel));
                     }
                 }
+            }
+        }
+
+        $periods = [];
+        foreach ($basePeriods as $pKey => $pName) {
+            $cleanName = trim(preg_replace('/\s*\((?:Berjalan|Terbaru|Default)[^\)]*\)/i', '', (string) $pName));
+            if ($pKey === $defaultPeriod) {
+                $periods[$pKey] = $cleanName . ' (Berjalan)';
+            } else {
+                $periods[$pKey] = $cleanName;
             }
         }
 

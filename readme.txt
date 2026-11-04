@@ -511,10 +511,12 @@ paging laporan keberhasilan, Task Manager penugasan user, serta dokumentasi loka
 - Seluruh 146 prospek yang sudah tersimpan di database lokal otomatis di-backfill ke klaster 'September 2025 - September 2026'.
 - Bilah navigasi klaster masa PMB di bagian atas CRM Workspace menampilkan jumlah prospek per klaster secara real-time dan opsi "Semua Klaster PMB".
 - Khusus Super Admin / Admin Sistem: Disediakan tombol dan modal dialog "+ Buat Klasterisasi PMB Baru (Superadmin)" untuk membuat klaster tahun akademik baru secara dinamis yang tersimpan ke system_settings (`crm_custom_pmb_periods` & `one_campus_custom_pmb_periods`).
-- Fitur Menjadikan Klaster Default (Set as Default Cluster):
-  * Tombol cepat "⭐ Jadikan Default" muncul di samping badge status saat Super Admin membuka klaster non-default.
-  * Opsi checkbox "Langsung jadikan sebagai klaster default aktif" saat membuat klaster baru.
-  * Form pemilih langsung "Ganti Klaster Default Aktif" di dalam dialog modal Super Admin.
+- Fitur Menjadikan Klaster Default (Set as Default / Waktu PMB Berjalan):
+  * Pada One Campus Sixty School: Tombol cepat "⭐ Jadikan Default (Waktu Berjalan)" muncul di samping badge status saat Super Admin membuka klaster non-default.
+  * Label "(Berjalan)" kini terpasang secara dinamis pada klaster yang berstatus default di seluruh pill filter dan dropdown Sixty School.
+  * Pada CRM Workspace: Tombol cepat "⭐ Jadikan Default" muncul di samping badge status saat Super Admin membuka klaster non-default.
+  * Opsi checkbox "Langsung jadikan sebagai Klaster Default (Waktu PMB Berjalan)" saat membuat klaster baru.
+  * Form pemilih langsung "Tetapkan Klaster Default / Waktu PMB Berjalan" di dalam dialog modal Super Admin.
   * Nilai default tersimpan secara persisten ke database `system_settings` (`crm_default_pmb_period` & `one_campus_default_pmb_period`).
 - Form upload data leads Excel/CSV kini dilengkapi dropdown pilihan klaster masa PMB tujuan.
 - Filter pencarian toolbar CRM Workspace dilengkapi filter dropdown Klaster Masa PMB.

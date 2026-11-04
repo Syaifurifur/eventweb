@@ -28,8 +28,13 @@ Kredensial Default Login:
 
 ## Rangkuman Update Fitur Terbaru (November 2026)
 
-### 1. One Campus Sixty School - Klasterisasi Tahun PMB & Klaster Baru Khusus Superadmin
-- **Klaster Berjalan & Sebelumnya**: Secara default hanya menampilkan periode PMB yang sedang berjalan (**`September 2026 - September 2027`**) dan periode-periode sebelumnya (**`September 2025 - September 2026`**, **`September 2024 - September 2025`**, dst.).
+### 1. One Campus Sixty School - Klasterisasi Tahun PMB, Waktu PMB Berjalan & Klaster Baru Khusus Superadmin
+- **Klaster Berjalan & Sebelumnya**: Secara default menampilkan periode PMB yang sedang berjalan (dinamis sesuai pengaturan default aktif, bawaan: **`September 2026 - September 2027`**) dan periode-periode sebelumnya (**`September 2025 - September 2026`**, **`September 2024 - September 2025`**, dst.).
+- **Fitur Jadikan Default untuk Waktu PMB Berjalan**:
+  - Super Admin / Admin Sistem dapat menetapkan klaster mana pun sebagai **Waktu PMB Berjalan (Default)** via tombol cepat **`⭐ Jadikan Default (Waktu Berjalan)`** di bilah klaster Sixty School.
+  - Klaster yang ditetapkan sebagai default otomatis mendapatkan label dinamis **`(Berjalan)`** pada seluruh pill filter dan dropdown.
+  - Dialog pop-up Superadmin dilengkapi opsi checkbox **`Langsung jadikan sebagai Klaster Default (Waktu PMB Berjalan)`** saat menambah klaster baru, serta menu pemilih **`⭐ Tetapkan Klaster Default / Waktu PMB Berjalan`**.
+  - Nilai tersimpan secara persisten pada tabel `system_settings` (`one_campus_default_pmb_period`).
 - **Tombol Pembuatan Klaster Baru (Khusus Superadmin)**:
   - Tersedia tombol **"+ Buat Klasterisasi Baru (Superadmin)"** yang memunculkan dialog pembuatan klaster tahun mendatang atau periode custom.
   - Klaster yang dibuat otomatis tersimpan ke `system_settings` (`one_campus_custom_pmb_periods`) dan langsung aktif sebagai filter klaster.

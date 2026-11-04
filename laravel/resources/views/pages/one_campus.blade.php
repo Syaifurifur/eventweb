@@ -462,15 +462,15 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             </div>
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
                 <span class="status status-aktif" style="font-size: 0.8rem; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 999px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                    Klaster Default Aktif: <?= esc($defaultPmbPeriod ?? 'September 2026 - September 2027') ?>
+                    ✓ Waktu PMB Berjalan (Default): <?= esc($defaultPmbPeriod ?? 'September 2026 - September 2027') ?>
                 </span>
                 <?php $isSuper = (session('user.role') === 'Admin Sistem' || session('user.role') === 'Super Admin'); ?>
                 <?php if ($isSuper && $selectedPmbPeriod !== 'all' && $selectedPmbPeriod !== ($defaultPmbPeriod ?? 'September 2026 - September 2027')): ?>
                     <form action="<?= site_url('one-campus/pmb-clusters/set-default') ?>" method="post" style="display: inline-block;">
                         <?= csrf_field() ?>
                         <input type="hidden" name="pmb_period" value="<?= esc($selectedPmbPeriod, 'attr') ?>">
-                        <button type="submit" class="ghost-button compact-button" style="border-color: #f59e0b; color: #b45309; background: #fffbeb; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Jadikan klaster '<?= esc($selectedPmbPeriod, 'attr') ?>' sebagai default aktif Sixty School">
-                            ⭐ Jadikan Default
+                        <button type="submit" class="ghost-button compact-button" style="border-color: #f59e0b; color: #b45309; background: #fffbeb; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Jadikan klaster '<?= esc($selectedPmbPeriod, 'attr') ?>' sebagai default / waktu PMB berjalan Sixty School">
+                            ⭐ Jadikan Default (Waktu Berjalan)
                         </button>
                     </form>
                 <?php endif; ?>
@@ -1041,7 +1041,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
         </label>
         <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer;">
             <input type="checkbox" name="set_as_default" value="1" checked>
-            <span style="font-size: 0.82rem; font-weight: 600; color: var(--ink, #1e293b);">Langsung jadikan sebagai klaster default aktif Sixty School</span>
+            <span style="font-size: 0.82rem; font-weight: 600; color: var(--ink, #1e293b);">Langsung jadikan sebagai Klaster Default (Waktu PMB Berjalan)</span>
         </label>
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
             <button type="button" class="ghost-button" onclick="document.getElementById('dialog-add-pmb-cluster').close()">Batal</button>
@@ -1051,19 +1051,19 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
 
     <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line, #e2e8f0);">
         <span style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--ink, #1e293b); margin-bottom: 6px;">
-            ⭐ Ganti Klaster Default Aktif Sixty School:
+            ⭐ Tetapkan Klaster Default / Waktu PMB Berjalan:
         </span>
         <form action="<?= site_url('one-campus/pmb-clusters/set-default') ?>" method="post" style="display: flex; gap: 8px; align-items: center;">
             <?= csrf_field() ?>
             <select name="pmb_period" class="control" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
                 <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
                     <option value="<?= esc($pKey, 'attr') ?>" <?= (($defaultPmbPeriod ?? 'September 2026 - September 2027') === $pKey) ? 'selected' : '' ?>>
-                        <?= esc($pKey) ?><?= (($defaultPmbPeriod ?? 'September 2026 - September 2027') === $pKey) ? ' (Default Aktif)' : '' ?>
+                        <?= esc($pLabel) ?><?= (($defaultPmbPeriod ?? 'September 2026 - September 2027') === $pKey) ? ' (Default Berjalan Saat Ini)' : '' ?>
                     </option>
                 <?php endforeach; ?>
             </select>
             <button type="submit" class="primary-button compact-button" style="background: #0d9488; border-color: #0d9488; color: #ffffff; font-weight: 700;">
-                Simpan Default
+                Setel Waktu Berjalan
             </button>
         </form>
     </div>
