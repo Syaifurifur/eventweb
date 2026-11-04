@@ -28,6 +28,8 @@ $routes->group('crm', ['filter' => 'crmAuth'], static function ($routes) {
     $routes->get('/', 'CrmController::index');
     $routes->get('monitoring', 'CrmController::agentMonitoring');
     $routes->get('export-excel', 'CrmController::exportExcel');
+    $routes->post('pmb-clusters', 'CrmController::storeCrmPmbCluster');
+    $routes->post('pmb-clusters/set-default', 'CrmController::setDefaultCrmPmbCluster');
     $routes->post('logout', 'CrmController::logout');
     $routes->post('users', 'CrmController::storeUser');
     $routes->post('users/(:num)/delete', 'CrmController::deleteUser/$1');
@@ -131,6 +133,7 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
     $routes->post('one-campus/schools/(:num)/sync-drive', 'EventSuite::syncOneCampusSchoolToDrive/$1', ['filter' => 'access:one-campus']);
     $routes->post('one-campus/schools/(:num)/verify-bjs', 'EventSuite::verifyOneCampusSchoolBjs/$1', ['filter' => 'access:one-campus']);
     $routes->post('one-campus/pmb-clusters', 'EventSuite::storeOneCampusPmbCluster', ['filter' => 'access:one-campus']);
+    $routes->post('one-campus/pmb-clusters/set-default', 'EventSuite::setDefaultOneCampusPmbCluster', ['filter' => 'access:one-campus']);
     $routes->get('one-campus/pmb-template', 'EventSuite::downloadOneCampusPmbTemplate', ['filter' => 'access:one-campus']);
     $routes->post('one-campus/upload-pmb', 'EventSuite::uploadOneCampusPmbExcel', ['filter' => 'access:one-campus']);
     $routes->get('one-campus/schools/(:num)/students', 'EventSuite::oneCampusSchoolStudents/$1', ['filter' => 'access:one-campus']);

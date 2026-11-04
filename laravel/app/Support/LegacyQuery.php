@@ -185,6 +185,32 @@ class LegacyQuery
         return $this;
     }
 
+    public function groupBy(string|array ...$fields): static
+    {
+        foreach ($fields as $field) {
+            if (is_array($field)) {
+                foreach ($field as $sub) {
+                    $this->query->groupBy($sub);
+                }
+            } elseif (str_contains($field, ',')) {
+                foreach (explode(',', $field) as $sub) {
+                    $this->query->groupBy(trim($sub));
+                }
+            } else {
+                $this->query->groupBy($field);
+            }
+        }
+
+        return $this;
+    }
+
+    public function having(string $column, mixed $operator = null, mixed $value = null): static
+    {
+        $this->query->having($column, $operator, $value);
+
+        return $this;
+    }
+
     public function limit(int $limit, int $offset = 0): static
     {
         $this->query->limit($limit)->offset($offset);
@@ -285,5 +311,19 @@ class LegacyQuery
         $this->resetQuery();
 
         return $affected >= 0;
+    }
+
+    public function __call(string $method, array $arguments): mixed
+    {
+        if (method_exists($this->query, $method)) {
+            $result = $this->query->{$method}(...$arguments);
+            if ($result instanceof Builder) {
+                return $this;
+            }
+
+            return $result;
+        }
+
+        throw new \BadMethodCallException(sprintf('Method %s::%s does not exist.', static::class, $method));
     }
 }

@@ -29,6 +29,8 @@ Route::prefix('crm')->middleware('crm.auth')->group(function (): void {
     Route::get('/', [CrmController::class, 'index']);
     Route::get('monitoring', [CrmController::class, 'agentMonitoring']);
     Route::get('export-excel', [CrmController::class, 'exportExcel']);
+    Route::post('pmb-clusters', [CrmController::class, 'storeCrmPmbCluster']);
+    Route::post('pmb-clusters/set-default', [CrmController::class, 'setDefaultCrmPmbCluster']);
     Route::post('logout', [CrmController::class, 'logout']);
     Route::post('users', [CrmController::class, 'storeUser']);
     Route::post('users/{id}/delete', [CrmController::class, 'deleteUser'])->whereNumber('id');
@@ -141,6 +143,7 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('one-campus/schools/{id}/sync-drive', [EventSuite::class, 'syncOneCampusSchoolToDrive'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/schools/{id}/verify-bjs', [EventSuite::class, 'verifyOneCampusSchoolBjs'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/pmb-clusters', [EventSuite::class, 'storeOneCampusPmbCluster'])->middleware('access:one-campus');
+    Route::post('one-campus/pmb-clusters/set-default', [EventSuite::class, 'setDefaultOneCampusPmbCluster'])->middleware('access:one-campus');
     Route::get('one-campus/pmb-template', [EventSuite::class, 'downloadOneCampusPmbTemplate'])->middleware('access:one-campus');
     Route::post('one-campus/upload-pmb', [EventSuite::class, 'uploadOneCampusPmbExcel'])->middleware('access:one-campus');
     Route::get('one-campus/schools/{id}/students', [EventSuite::class, 'oneCampusSchoolStudents'])->middleware('access:one-campus')->whereNumber('id');

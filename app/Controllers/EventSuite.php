@@ -3151,12 +3151,16 @@ class EventSuite extends BaseController
         $bannerReports = (new OneCampusBannerReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
         $ojtReports = (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
 
-        $selectedPmbPeriod = trim((string) ($this->request->getGet('pmb_period') ?? ''));
-        if ($selectedPmbPeriod === '') {
-            $selectedPmbPeriod = 'September 2026 - September 2027';
+        $defaultPmbPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'September 2026 - September 2027');
+        $availablePmbPeriods = $this->getAvailablePmbPeriods();
+        if (! isset($availablePmbPeriods[$defaultPmbPeriod])) {
+            $availablePmbPeriods = [$defaultPmbPeriod => $defaultPmbPeriod] + $availablePmbPeriods;
         }
 
-        $availablePmbPeriods = $this->getAvailablePmbPeriods();
+        $selectedPmbPeriod = trim((string) ($this->request->getGet('pmb_period') ?? ''));
+        if ($selectedPmbPeriod === '') {
+            $selectedPmbPeriod = $defaultPmbPeriod;
+        }
 
         // Filter school reports by campus
         $campusSchoolReports = $this->filterOneCampusReportsByCampus($schoolReports, $selectedCampusId);
@@ -3223,6 +3227,7 @@ class EventSuite extends BaseController
             'campuses' => $visibleCampuses,
             'schoolReports' => $filteredSchoolReports,
             'allCampusSchoolReports' => $campusSchoolReports,
+            'defaultPmbPeriod' => $defaultPmbPeriod,
             'selectedPmbPeriod' => $selectedPmbPeriod,
             'selectedSort' => $selectedSort,
             'availablePmbPeriods' => $availablePmbPeriods,
@@ -3894,8 +3899,31 @@ class EventSuite extends BaseController
         $customs[$periodName] = $periodName . ' (Terbaru)';
         \App\Models\SystemSettingModel::setSetting('one_campus_custom_pmb_periods', json_encode($customs));
 
+        $setAsDefault = (bool) $this->request->getPost('set_as_default');
+        if ($setAsDefault) {
+            \App\Models\SystemSettingModel::setSetting('one_campus_default_pmb_period', $periodName, 'Klaster PMB default Sixty School');
+        }
+
         return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($periodName)))
-            ->with('success', 'Klasterisasi PMB baru "' . $periodName . '" berhasil dibuat oleh Superadmin!');
+            ->with('success', 'Klasterisasi PMB baru "' . $periodName . '" berhasil dibuat' . ($setAsDefault ? ' dan dijadikan klaster default aktif!' : ' oleh Superadmin!'));
+    }
+
+    public function setDefaultOneCampusPmbCluster()
+    {
+        $userRole = (string) session('user.role');
+        if ($userRole !== 'Admin Sistem' && $userRole !== 'Super Admin') {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Hanya Super Admin / Admin Sistem yang berhak mengubah klaster default.');
+        }
+
+        $period = trim((string) $this->request->getPost('pmb_period'));
+        if ($period === '' || $period === 'all') {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Pilih klaster PMB yang valid untuk dijadikan default.');
+        }
+
+        \App\Models\SystemSettingModel::setSetting('one_campus_default_pmb_period', $period, 'Klaster PMB default Sixty School');
+
+        return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($period)))
+            ->with('success', 'Klaster "' . $period . '" berhasil disetel sebagai klaster default Sixty School.');
     }
 
     public function downloadOneCampusPmbTemplate()

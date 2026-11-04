@@ -20,6 +20,7 @@ class CrmLeadModel extends Model
         'participant_status',
         'student_class',
         'stage',
+        'pmb_period',
         'prospect_status',
         'label',
         'agent_id',

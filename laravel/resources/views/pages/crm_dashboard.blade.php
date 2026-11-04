@@ -10,6 +10,11 @@ $filters = $filters ?? [];
 $schools = $schools ?? [];
 $leadLogsByLeadId = $leadLogsByLeadId ?? [];
 $currentUser = $crmUser ?? [];
+$availablePmbPeriods = $availablePmbPeriods ?? ['September 2025 - September 2026' => 'September 2025 - September 2026'];
+$defaultPmbPeriod = $defaultPmbPeriod ?? 'September 2025 - September 2026';
+$selectedPmbPeriod = $selectedPmbPeriod ?? 'September 2025 - September 2026';
+$pmbPeriodCounts = $pmbPeriodCounts ?? [];
+$isSuperAdmin = $isSuperAdmin ?? false;
 $selectedCount = 0;
 $leadPagination = $leadPagination ?? [
     'current' => 1,
@@ -755,6 +760,57 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
             </div>
         </section>
 
+        <!-- Klasterisasi Berdasarkan Data Masa PMB CRM -->
+        <div class="pmb-cluster-container" style="background: var(--surface, #ffffff); border: 1px solid var(--line, #e2e8f0); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.86rem; font-weight: 700; color: var(--ink, #1e293b); margin-right: 6px; display: inline-flex; align-items: center; gap: 5px;">
+                        🎯 <span>Klaster Masa PMB CRM:</span>
+                    </span>
+                    <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
+                        <?php $isActive = ($selectedPmbPeriod === $pKey); ?>
+                        <a href="<?= $quickFilterUrl(['pmb_period' => $pKey]) ?>"
+                           class="<?= $isActive ? 'primary-button compact-button' : 'ghost-button compact-button' ?>"
+                           style="<?= $isActive ? 'background: #0d9488; border-color: #0d9488; color: #ffffff; font-weight: 700;' : '' ?>">
+                            <?= esc($pLabel) ?>
+                            <span style="display: inline-block; padding: 1px 7px; margin-left: 6px; border-radius: 999px; font-size: 0.76rem; background: <?= $isActive ? 'rgba(255,255,255,0.28)' : 'var(--line, #cbd5e1)' ?>; color: <?= $isActive ? '#ffffff' : 'inherit' ?>;">
+                                <?= esc((string) ($pmbPeriodCounts[$pKey] ?? 0)) ?>
+                            </span>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php $isAllActive = ($selectedPmbPeriod === 'all'); ?>
+                    <a href="<?= $quickFilterUrl(['pmb_period' => 'all']) ?>"
+                       class="<?= $isAllActive ? 'primary-button compact-button' : 'ghost-button compact-button' ?>"
+                       style="<?= $isAllActive ? 'background: #0d9488; border-color: #0d9488; color: #ffffff; font-weight: 700;' : '' ?>">
+                        Semua Klaster PMB
+                        <span style="display: inline-block; padding: 1px 7px; margin-left: 6px; border-radius: 999px; font-size: 0.76rem; background: <?= $isAllActive ? 'rgba(255,255,255,0.28)' : 'var(--line, #cbd5e1)' ?>; color: <?= $isAllActive ? '#ffffff' : 'inherit' ?>;">
+                            <?= esc((string) ($pmbPeriodCounts['all'] ?? 0)) ?>
+                        </span>
+                    </a>
+
+                    <?php if (! empty($isSuperAdmin)): ?>
+                        <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-add-crm-pmb-cluster').showModal()" style="border-color: #f59e0b; color: #d97706; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.12);" title="Khusus Superadmin: Tambah Klasterisasi Masa PMB CRM Baru">
+                            &#10010; Buat Klasterisasi PMB Baru (Superadmin)
+                        </button>
+                    <?php endif; ?>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                    <span class="status status-aktif" style="font-size: 0.8rem; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 999px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                        ✓ Default Aktif: <?= esc($defaultPmbPeriod) ?>
+                    </span>
+                    <?php if (! empty($isSuperAdmin) && $selectedPmbPeriod !== 'all' && $selectedPmbPeriod !== $defaultPmbPeriod): ?>
+                        <form action="<?= site_url('crm/pmb-clusters/set-default') ?>" method="post" style="display: inline-block;">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="pmb_period" value="<?= esc($selectedPmbPeriod, 'attr') ?>">
+                            <button type="submit" class="ghost-button compact-button" style="border-color: #f59e0b; color: #b45309; background: #fffbeb; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Jadikan klaster '<?= esc($selectedPmbPeriod, 'attr') ?>' sebagai default aktif CRM">
+                                ⭐ Jadikan Default
+                            </button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
         <section class="crm-stats-grid">
             <article class="crm-stat-card crm-stat-card-accent">
                 <span>Total Data</span>
@@ -858,6 +914,12 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                 </div>
 
                 <form class="crm-filter-bar" action="<?= site_url('crm') ?>" method="get">
+                    <select class="control" name="pmb_period">
+                        <option value="all" <?= ($selectedPmbPeriod === 'all') ? 'selected' : '' ?>>Semua Klaster PMB</option>
+                        <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
+                            <option value="<?= esc($pKey, 'attr') ?>" <?= ($selectedPmbPeriod === $pKey) ? 'selected' : '' ?>><?= esc($pLabel) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                     <input class="control" type="search" name="q" placeholder="Cari nama/sekolah/WA..." value="<?= esc($filters['q'] ?? '') ?>">
                     <select class="control" name="campus_id">
                         <option value="">Semua Kampus</option>
@@ -1010,6 +1072,11 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                                 </span>
                                             </div>
                                         <?php endif; ?>
+                                        <div style="margin-top:3px;">
+                                            <span style="display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:6px; background:#f0fdf4; color:#15803d; font-size:10px; font-weight:700; border:1px solid #bbf7d0;" title="Klaster Masa PMB">
+                                                🎯 <?= esc($lead['pmb_period'] ?? 'September 2025 - September 2026') ?>
+                                            </span>
+                                        </div>
                                     </td>
                                     <?php
                                         $rawWhatsapp = preg_replace('/\D+/', '', (string) ($lead['whatsapp'] ?? '')) ?? '';
@@ -1257,6 +1324,16 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                     <p data-crm-event-empty hidden>Tidak ada event yang cocok.</p>
                                 </div>
                             </div>
+                            <label style="display: block; margin-bottom: 10px;">
+                                <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted, #64748b); display: block; margin-bottom: 4px;">Klaster Masa PMB</span>
+                                <select name="pmb_period" class="control" style="width: 100%; border-radius: 8px; padding: 7px 10px; font-size: 0.85rem;">
+                                    <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
+                                        <option value="<?= esc($pKey, 'attr') ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === 'September 2025 - September 2026')) ? 'selected' : '' ?>>
+                                            <?= esc($pLabel) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
                             <label class="crm-dropzone">
                                 <span>UPLOAD</span>
                                 <strong>Drag & drop file Excel .xlsx atau CSV</strong>
@@ -1279,7 +1356,7 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                 <div>
                                     <strong><?= esc($batch['batch_code']) ?></strong>
                                     <small><?= esc(date('d M Y, H.i', strtotime($batch['uploaded_at']))) ?> - <?= esc((string) $batch['total_rows']) ?> data</small>
-                                    <small><?= esc(($batch['campus_name'] ?: 'Tanpa kampus') . ' - ' . ($batch['event_code'] ?: 'Tanpa event')) ?></small>
+                                    <small><?= esc(($batch['campus_name'] ?: 'Tanpa kampus') . ' - ' . ($batch['event_code'] ?: 'Tanpa event')) ?><?= ! empty($batch['pmb_period']) ? ' • ' . esc($batch['pmb_period']) : '' ?></small>
                                 </div>
                                 <form action="<?= site_url('crm/batches/' . $batch['id'] . '/delete') ?>" method="post">
                                     <?= csrf_field() ?>
@@ -2293,6 +2370,66 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
         }
     })();
     </script>
+
+    <?php if (! empty($isSuperAdmin)): ?>
+    <!-- ==================== MODAL: TAMBAH KLASTERISASI MASA PMB CRM BARU (SUPERADMIN) ==================== -->
+    <dialog id="dialog-add-crm-pmb-cluster" class="panel" style="max-width: 480px; width: 92%; border-radius: 12px; background: var(--surface, #ffffff); color: var(--ink, #1e293b); border: 1px solid var(--line, #cbd5e1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line, #e2e8f0);">
+            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #d97706; display: flex; align-items: center; gap: 6px;">
+                <span>✨</span> Buat Klasterisasi Masa PMB CRM Baru
+            </h3>
+            <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-add-crm-pmb-cluster').close()">✕</button>
+        </div>
+        <form action="<?= site_url('crm/pmb-clusters') ?>" method="post">
+            <?= csrf_field() ?>
+            <p style="font-size: 0.82rem; color: var(--muted, #64748b); margin-top: 0; margin-bottom: 14px;">
+                Khusus Superadmin: Tambahkan klaster periode PMB mendatang atau tahun akademik terbaru untuk pengelolaan data prospek CRM.
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                <label>
+                    <span style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--ink, #1e293b); margin-bottom: 4px;">Tahun Mulai</span>
+                    <input class="control" type="number" name="start_year" min="2020" max="2040" value="<?= date('Y') + 1 ?>" required>
+                </label>
+                <label>
+                    <span style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--ink, #1e293b); margin-bottom: 4px;">Tahun Selesai</span>
+                    <input class="control" type="number" name="end_year" min="2021" max="2041" value="<?= date('Y') + 2 ?>" required>
+                </label>
+            </div>
+            <label style="display: block; margin-bottom: 14px;">
+                <span style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--ink, #1e293b); margin-bottom: 4px;">Nama Klaster (Otomatis / Custom)</span>
+                <input class="control" type="text" name="pmb_period_name" placeholder="Contoh: September 2026 - September 2027">
+                <span style="font-size: 0.74rem; color: var(--muted, #64748b); margin-top: 3px; display: block;">Kosongkan untuk otomatis menggunakan format bulan September.</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer;">
+                <input type="checkbox" name="set_as_default" value="1" checked>
+                <span style="font-size: 0.82rem; font-weight: 600; color: var(--ink, #1e293b);">Langsung jadikan sebagai klaster default aktif CRM</span>
+            </label>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="ghost-button" onclick="document.getElementById('dialog-add-crm-pmb-cluster').close()">Batal</button>
+                <button type="submit" class="primary-button" style="background: #f59e0b; border-color: #f59e0b; color: #ffffff; font-weight: 700;">Simpan Klaster Baru</button>
+            </div>
+        </form>
+
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line, #e2e8f0);">
+            <span style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--ink, #1e293b); margin-bottom: 6px;">
+                ⭐ Ganti Klaster Default Aktif CRM:
+            </span>
+            <form action="<?= site_url('crm/pmb-clusters/set-default') ?>" method="post" style="display: flex; gap: 8px; align-items: center;">
+                <?= csrf_field() ?>
+                <select name="pmb_period" class="control" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
+                    <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
+                        <option value="<?= esc($pKey, 'attr') ?>" <?= ($defaultPmbPeriod === $pKey) ? 'selected' : '' ?>>
+                            <?= esc($pKey) ?><?= ($defaultPmbPeriod === $pKey) ? ' (Default Aktif)' : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" class="primary-button compact-button" style="background: #0d9488; border-color: #0d9488; color: #ffffff; font-weight: 700;">
+                    Simpan Default
+                </button>
+            </form>
+        </div>
+    </dialog>
+    <?php endif; ?>
 
     <x-script />
 </body>

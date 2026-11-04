@@ -144,6 +144,24 @@ Kredensial Default Login:
 ### 6. Optimalisasi Tema Tampilan (Dark & Light Mode)
 - Seluruh teks, panel, tabel data, modal edit, dan kontrol form memiliki kontras tinggi yang konsisten agar mudah terbaca pada template Dark Mode maupun Light Mode.
 
+### 7. Klasterisasi Masa PMB pada CRM Workspace & Leads (September 2025 - September 2026)
+- **Klaster Default Masa PMB**: Data prospek CRM secara default dikelompokkan dan difilter pada masa PMB **`September 2025 - September 2026`**, dengan tombol cepat untuk beralih ke **Semua Klaster PMB** atau klaster periode tertentu.
+- **Pembuatan Klaster Baru Khusus Super Admin & Fitur Set Klaster Default**:
+  - Tombol **"+ Buat Klasterisasi PMB Baru (Superadmin)"** pada toolbar CRM Workspace membuka modal untuk membuat klaster periode baru.
+  - Tersedia opsi checkbox **"Langsung jadikan sebagai klaster default aktif"** saat membuat klaster baru.
+  - Tersedia tombol cepat **"⭐ Jadikan Default"** pada bilah klaster saat Super Admin membuka klaster non-default.
+  - Tersedia form pemilih langsung **"Ganti Klaster Default Aktif"** di dalam modal dialog Super Admin.
+  - Pengaturan klaster default tersimpan secara persisten ke database `system_settings` (`crm_default_pmb_period` dan `one_campus_default_pmb_period`) sehingga setiap user yang mengakses workspace otomatis diarahkan ke klaster default tersebut.
+- **Skema Database & Migrasi**:
+  - Kolom `pmb_period VARCHAR(80) NOT NULL DEFAULT 'September 2025 - September 2026'` ditambahkan pada tabel `crm_leads` dan `crm_upload_batches`.
+  - Index performa `idx_crm_leads_pmb` ditambahkan pada `crm_leads(pmb_period)`.
+  - Seluruh data prospek lama telah di-backfill ke `'September 2025 - September 2026'`.
+- **Integrasi Upload & Export Excel CRM**:
+  - Form upload file prospek Excel/CSV kini dilengkapi dropdown pemilihan klaster masa PMB.
+  - Export Excel CRM (`/crm/export-excel`) menyertakan kolom `Masa PMB`.
+  - Filter pencarian toolbar CRM Workspace dilengkapi filter dropdown `Klaster Masa PMB`.
+  - Paritas 100% konsisten pada CodeIgniter 4 dan Laravel.
+
 ---
 
 ## Pembaruan Skema Database (MySQL)
@@ -205,10 +223,19 @@ Kredensial Default Login:
 - `app/Views/pages/dashboard.php`: Widget Rekomendasi Cerdas AI Analisis Interaksi & Konversi Sekolah (ditempatkan di bagian paling bawah dashboard dengan dukungan penuh Dark Mode).
 - `app/Views/pages/one_campus.php`: UI klaster PMB, tombol buat klaster Superadmin, toolbar upload PMB & template, kontrol sorting PMB banyak ke sedikit, modal rincian mahasiswa baru, tombol & badge verifikasi BJS.
 - `app/Views/pages/one_campus_school_edit.php`: Halaman khusus kelola / edit data sekolah, MOU, verifikasi BJS, dan tabel lengkap mahasiswa baru terdaftar.
+- `app/Controllers/CrmController.php`: Logika klasterisasi masa PMB CRM (default 'September 2025 - September 2026'), pembuatan klaster baru khusus Superadmin, filter PMB toolbar & pills, tagging batch upload, dan export Excel Masa PMB.
+- `app/Models/CrmLeadModel.php`: Field allowed `pmb_period`.
+- `app/Models/CrmUploadBatchModel.php`: Field allowed `pmb_period`.
+- `app/Database/Migrations/2026-11-04-000004_AddPmbPeriodToCrmLeads.php`: Migrasi kolom `pmb_period` & index `idx_crm_leads_pmb` pada `crm_leads` dan `crm_upload_batches`.
+- `app/Views/pages/crm_dashboard.php`: UI bilah klaster masa PMB CRM, modal Superadmin tambah klaster baru, filter klaster toolbar, badge baris siswa, dan select klaster pada form upload Excel.
 
 ### Laravel (Parity):
-- `laravel/routes/web.php`: Route MOU download, edit school, Google Drive settings, test webhook, sync drive, PMB clusters, PMB template, PMB Excel upload, school students JSON, delete student, & verify BJS.
+- `laravel/routes/web.php`: Route MOU download, edit school, Google Drive settings, test webhook, sync drive, PMB clusters, PMB template, PMB Excel upload, school students JSON, delete student, verify BJS, & CRM PMB cluster creation.
 - `laravel/app/Controllers/EventSuite.php`: Paritas controller lengkap dengan CodeIgniter 4.
+- `laravel/app/Controllers/CrmController.php`: Paritas controller CRM lengkap dengan CodeIgniter 4.
+- `laravel/app/Models/CrmLeadModel.php`: Field fillable `pmb_period`.
+- `laravel/app/Models/CrmUploadBatchModel.php`: Field fillable `pmb_period`.
+- `laravel/resources/views/pages/crm_dashboard.blade.php`: Paritas view CRM lengkap dengan bilah klaster masa PMB, filter toolbar, badge tabel, dialog Superadmin, dan form upload PMB.
 - `laravel/app/Libraries/GoogleDriveUploadService.php`: Service cURL Google Apps Script webhook uploader.
 - `laravel/app/Models/OneCampusSchoolReportModel.php`: Field allowed Sixty School (`bjs_status`, `bjs_verified_at`, `bjs_verified_by`, `bjs_notes`).
 - `laravel/app/Models/OneCampusPmbStudentModel.php`: Model data mahasiswa baru hasil import Excel PMB.

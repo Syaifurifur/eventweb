@@ -506,7 +506,25 @@ paging laporan keberhasilan, Task Manager penugasan user, serta dokumentasi loka
 - Memberikan teks saran strategis AI yang kontekstual dan tombol aksi langsung (Kelola Sixty School).
 
 
+43. CRM Workspace & Sixty School - Klasterisasi Masa PMB & Fitur Set Klaster Default
+- Data prospek CRM (crm_leads) kini terklasterisasi berdasarkan masa PMB (`pmb_period`) dengan default aktif 'September 2025 - September 2026'.
+- Seluruh 146 prospek yang sudah tersimpan di database lokal otomatis di-backfill ke klaster 'September 2025 - September 2026'.
+- Bilah navigasi klaster masa PMB di bagian atas CRM Workspace menampilkan jumlah prospek per klaster secara real-time dan opsi "Semua Klaster PMB".
+- Khusus Super Admin / Admin Sistem: Disediakan tombol dan modal dialog "+ Buat Klasterisasi PMB Baru (Superadmin)" untuk membuat klaster tahun akademik baru secara dinamis yang tersimpan ke system_settings (`crm_custom_pmb_periods` & `one_campus_custom_pmb_periods`).
+- Fitur Menjadikan Klaster Default (Set as Default Cluster):
+  * Tombol cepat "⭐ Jadikan Default" muncul di samping badge status saat Super Admin membuka klaster non-default.
+  * Opsi checkbox "Langsung jadikan sebagai klaster default aktif" saat membuat klaster baru.
+  * Form pemilih langsung "Ganti Klaster Default Aktif" di dalam dialog modal Super Admin.
+  * Nilai default tersimpan secara persisten ke database `system_settings` (`crm_default_pmb_period` & `one_campus_default_pmb_period`).
+- Form upload data leads Excel/CSV kini dilengkapi dropdown pilihan klaster masa PMB tujuan.
+- Filter pencarian toolbar CRM Workspace dilengkapi filter dropdown Klaster Masa PMB.
+- Export Excel CRM (`/crm/export-excel`) menyertakan kolom "Masa PMB".
+- Kompatibilitas Dark Mode penuh untuk seluruh komponen klaster dan dialog modal.
+- Paritas 100% konsisten antara CodeIgniter 4 dan Laravel.
+
+
 Catatan File Penting yang Diubah/Ditambahkan
+- app/Database/Migrations/2026-11-04-000004_AddPmbPeriodToCrmLeads.php
 - app/Config/Routes.php
 - app/Controllers/EventSuite.php
 - app/Controllers/CrmController.php

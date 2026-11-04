@@ -137,6 +137,41 @@ class CrmController extends BaseController
         $currentUserId = (int) session('crmUser.id');
         $currentCrmCampusId = $this->currentCrmCampusId();
 
+        $defaultPmbPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
+        $availablePmbPeriods = $this->getAvailableCrmPmbPeriods();
+        if (! isset($availablePmbPeriods[$defaultPmbPeriod])) {
+            $availablePmbPeriods = [$defaultPmbPeriod => $defaultPmbPeriod] + $availablePmbPeriods;
+        }
+        $selectedPmbPeriod = trim((string) ($this->request->getGet('pmb_period') ?? ''));
+        if ($selectedPmbPeriod === '') {
+            $selectedPmbPeriod = $defaultPmbPeriod;
+        }
+
+        // Calculate lead counts per PMB cluster taking account user/campus scope
+        $pmbCountBuilder = (new CrmLeadModel())
+            ->select('crm_leads.pmb_period, COUNT(*) AS total')
+            ->join('events', 'events.id = crm_leads.event_id', 'left');
+        if (! $isAdmin) {
+            $pmbCountBuilder->where('crm_leads.agent_id', $currentUserId);
+        } elseif ($currentCrmCampusId !== null) {
+            $pmbCountBuilder->where('events.campus_id', $currentCrmCampusId);
+        }
+        $pmbCountRows = $pmbCountBuilder->groupBy('crm_leads.pmb_period')->findAll();
+        $pmbPeriodCounts = [];
+        $totalAllPmb = 0;
+        foreach ($pmbCountRows as $pRow) {
+            $pKey = $pRow['pmb_period'] ?: 'September 2025 - September 2026';
+            $pCount = (int) $pRow['total'];
+            $pmbPeriodCounts[$pKey] = ($pmbPeriodCounts[$pKey] ?? 0) + $pCount;
+            $totalAllPmb += $pCount;
+        }
+        foreach ($availablePmbPeriods as $pKey => $pLabel) {
+            if (! isset($pmbPeriodCounts[$pKey])) {
+                $pmbPeriodCounts[$pKey] = 0;
+            }
+        }
+        $pmbPeriodCounts['all'] = $totalAllPmb;
+
         $builder = $leadModel
             ->select('crm_leads.*, crm_users.full_name AS agent_name, crm_upload_batches.batch_code, events.code AS event_code, events.title AS event_title, campuses.name AS campus_name')
             ->join('crm_users', 'crm_users.id = crm_leads.agent_id', 'left')
@@ -192,6 +227,7 @@ class CrmController extends BaseController
             'to' => (string) $this->request->getGet('to'),
             'unassigned' => (string) $this->request->getGet('unassigned'),
             'prospect_priority' => (string) $this->request->getGet('prospect_priority'),
+            'pmb_period' => $selectedPmbPeriod,
         ];
         $paginationQuery = array_filter($filters, static fn (string $value): bool => $value !== '');
 
@@ -199,6 +235,11 @@ class CrmController extends BaseController
             'title' => 'CRM Admin',
             'crmUser' => session('crmUser'),
             'isAdmin' => $isAdmin,
+            'isSuperAdmin' => $this->isSuperAdmin(),
+            'defaultPmbPeriod' => $defaultPmbPeriod,
+            'availablePmbPeriods' => $availablePmbPeriods,
+            'selectedPmbPeriod' => $selectedPmbPeriod,
+            'pmbPeriodCounts' => $pmbPeriodCounts,
             'stats' => $this->crmStats($allLeads),
             'leads' => $leads,
             'leadLogsByLeadId' => $leadLogsByLeadId,
@@ -325,11 +366,14 @@ class CrmController extends BaseController
             return redirect()->to(site_url('crm'))->with('error', 'File tidak berisi data yang bisa dibaca.');
         }
 
+        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: 'September 2025 - September 2026';
+
         $batchCode = 'BATCH_' . date('YmdHis') . '_' . random_int(100, 999);
         $batchId = (new CrmUploadBatchModel())->insert([
             'batch_code' => $batchCode,
             'file_name' => $file->getClientName(),
             'event_id' => $eventId,
+            'pmb_period' => $pmbPeriod,
             'total_rows' => count($rows),
             'uploaded_by' => (int) session('crmUser.id'),
             'uploaded_at' => date('Y-m-d H:i:s'),
@@ -340,6 +384,7 @@ class CrmController extends BaseController
             $payload[] = [
                 'batch_id' => $batchId,
                 'event_id' => $eventId,
+                'pmb_period' => $pmbPeriod,
                 'student_name' => $row['student_name'],
                 'school_origin' => $row['school_origin'] ?: null,
                 'whatsapp' => $row['whatsapp'] ?: null,
@@ -357,7 +402,7 @@ class CrmController extends BaseController
 
         (new CrmLeadModel())->insertBatch($payload);
 
-        return redirect()->to(site_url('crm?event_id=' . $eventId))->with('success', count($payload) . ' data calon pendaftar berhasil diupload untuk event ' . $event['code'] . '.');
+        return redirect()->to(site_url('crm?pmb_period=' . urlencode($pmbPeriod) . '&event_id=' . $eventId))->with('success', count($payload) . ' data calon pendaftar berhasil diupload ke klaster PMB ' . $pmbPeriod . ' (Event ' . $event['code'] . ').');
     }
 
     public function assignLeads()
@@ -472,6 +517,10 @@ class CrmController extends BaseController
             'notes' => trim((string) $this->request->getPost('notes')) ?: null,
             'rejection_reason' => trim((string) $this->request->getPost('rejection_reason')) ?: null,
         ];
+        $pmbPeriodPost = trim((string) $this->request->getPost('pmb_period'));
+        if ($pmbPeriodPost !== '') {
+            $payload['pmb_period'] = $pmbPeriodPost;
+        }
         if ($payload['label'] === 'Closing') {
             $payload['stage'] = 'Tahap 3';
         }
@@ -875,6 +924,14 @@ class CrmController extends BaseController
 
     private function applyLeadFilters($builder): void
     {
+        $pmbPeriod = trim((string) $this->request->getGet('pmb_period'));
+        if ($pmbPeriod === '') {
+            $pmbPeriod = 'September 2025 - September 2026';
+        }
+        if ($pmbPeriod !== 'all') {
+            $builder->where('crm_leads.pmb_period', $pmbPeriod);
+        }
+
         $q = trim((string) $this->request->getGet('q'));
         if ($q !== '') {
             $builder
@@ -1890,6 +1947,114 @@ class CrmController extends BaseController
         return (string) session('crmUser.role') === 'Admin';
     }
 
+    public function isSuperAdmin(): bool
+    {
+        $eventHubRole = strtolower(trim((string) session('user.role')));
+        if (in_array($eventHubRole, ['super admin', 'admin sistem', 'dmer'], true)) {
+            return true;
+        }
+
+        $crmRole = (string) session('crmUser.role');
+        $crmCampus = (int) session('crmUser.campus_id');
+        return $crmRole === 'Admin' && $crmCampus === 0;
+    }
+
+    public function getAvailableCrmPmbPeriods(): array
+    {
+        // Default periods: September 2025 - September 2026 (requested), plus upcoming & previous
+        $periods = [
+            'September 2025 - September 2026' => 'September 2025 - September 2026 (Aktif / Data CRM)',
+            'September 2026 - September 2027' => 'September 2026 - September 2027',
+            'September 2024 - September 2025' => 'September 2024 - September 2025',
+        ];
+
+        // Ambil klaster tambahan yang dibuat khusus oleh Superadmin di CRM
+        $customJson = \App\Models\SystemSettingModel::getSetting('crm_custom_pmb_periods', '');
+        if ($customJson !== '') {
+            $customs = json_decode($customJson, true);
+            if (is_array($customs)) {
+                foreach ($customs as $cKey => $cLabel) {
+                    if (is_string($cKey) && trim($cKey) !== '') {
+                        $periods[$cKey] = $cLabel;
+                    }
+                }
+            }
+        }
+
+        // Sinkronisasi dengan klaster umum yang pernah dibuat di Sixty School jika ada
+        $sharedJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_pmb_periods', '');
+        if ($sharedJson !== '') {
+            $shared = json_decode($sharedJson, true);
+            if (is_array($shared)) {
+                foreach ($shared as $sKey => $sLabel) {
+                    if (is_string($sKey) && trim($sKey) !== '' && ! isset($periods[$sKey])) {
+                        $periods[$sKey] = $sLabel;
+                    }
+                }
+            }
+        }
+
+        return $periods;
+    }
+
+    public function storeCrmPmbCluster()
+    {
+        if (! $this->isSuperAdmin()) {
+            return redirect()->to(site_url('crm'))->with('error', 'Hanya Super Admin / Admin Sistem yang berhak membuat klasterisasi PMB baru.');
+        }
+
+        $periodName = trim((string) $this->request->getPost('pmb_period_name'));
+        $startMonth = trim((string) $this->request->getPost('start_month')) ?: 'September';
+        $startYear = (int) $this->request->getPost('start_year');
+        $endMonth = trim((string) $this->request->getPost('end_month')) ?: 'September';
+        $endYear = (int) $this->request->getPost('end_year');
+
+        if ($periodName === '' && $startYear > 2000 && $endYear > $startYear) {
+            $periodName = "{$startMonth} {$startYear} - {$endMonth} {$endYear}";
+        }
+
+        if ($periodName === '') {
+            return redirect()->to(site_url('crm'))->with('error', 'Nama atau rentang tahun periode klaster PMB baru wajib diisi.');
+        }
+
+        $customJson = \App\Models\SystemSettingModel::getSetting('crm_custom_pmb_periods', '');
+        $customs = [];
+        if ($customJson !== '') {
+            $decoded = json_decode($customJson, true);
+            if (is_array($decoded)) {
+                $customs = $decoded;
+            }
+        }
+
+        $customs[$periodName] = $periodName . ' (Terbaru)';
+        \App\Models\SystemSettingModel::setSetting('crm_custom_pmb_periods', json_encode($customs));
+
+        $setAsDefault = (bool) $this->request->getPost('set_as_default');
+        if ($setAsDefault) {
+            \App\Models\SystemSettingModel::setSetting('crm_default_pmb_period', $periodName, 'Klaster Masa PMB default untuk CRM Workspace');
+        }
+
+        return redirect()->to(site_url('crm?pmb_period=' . urlencode($periodName)))
+            ->with('success', 'Klasterisasi Masa PMB CRM baru "' . $periodName . '" berhasil dibuat' . ($setAsDefault ? ' dan dijadikan klaster default aktif.' : ' dan siap digunakan.'));
+    }
+
+    public function setDefaultCrmPmbCluster()
+    {
+        if (! $this->isSuperAdmin()) {
+            return redirect()->to(site_url('crm'))->with('error', 'Hanya Super Admin / Admin Sistem yang berhak mengubah klaster default.');
+        }
+
+        $period = trim((string) $this->request->getPost('pmb_period'));
+        if ($period === '' || $period === 'all') {
+            return redirect()->to(site_url('crm'))->with('error', 'Pilih klaster masa PMB yang valid untuk dijadikan default.');
+        }
+
+        \App\Models\SystemSettingModel::setSetting('crm_default_pmb_period', $period, 'Klaster Masa PMB default untuk CRM Workspace');
+
+        return redirect()->to(site_url('crm?pmb_period=' . urlencode($period)))
+            ->with('success', 'Klaster "' . $period . '" berhasil disetel sebagai klaster default aktif CRM.');
+    }
+
     private function requireCrmAdmin(): void
     {
         if (! $this->isCrmAdmin()) {
@@ -2032,6 +2197,7 @@ class CrmController extends BaseController
         $rows = [
             [
                 'No',
+                'Masa PMB',
                 'Nama Calon Mahasiswa',
                 'Email',
                 'Status Peserta',
@@ -2073,6 +2239,7 @@ class CrmController extends BaseController
 
             $rows[] = [
                 (string) ($index + 1),
+                (string) ($lead['pmb_period'] ?? 'September 2025 - September 2026'),
                 (string) ($lead['student_name'] ?? '-'),
                 (string) ($lead['email'] ?? '-'),
                 (string) ($lead['participant_status'] ?? 'Siswa'),

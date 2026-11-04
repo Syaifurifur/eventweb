@@ -13,6 +13,7 @@ class CrmUploadBatchModel extends Model
         'batch_code',
         'file_name',
         'event_id',
+        'pmb_period',
         'total_rows',
         'uploaded_by',
         'uploaded_at',
