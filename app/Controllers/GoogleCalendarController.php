@@ -15,6 +15,7 @@ class GoogleCalendarController extends BaseController
 
     public function __construct()
     {
+        parent::__construct();
         $this->google = new GoogleCalendarService();
     }
 
@@ -47,7 +48,7 @@ class GoogleCalendarController extends BaseController
 
         try {
             $this->google->handleCallback((int) session('user.id'), $code);
-            session()->remove(['google_oauth_state', 'google_oauth_user_id']);
+            session()->forget(['google_oauth_state', 'google_oauth_user_id']);
 
             return redirect()->to(site_url('calendar'))->with('success', 'Google Calendar berhasil terhubung.');
         } catch (\Throwable $error) {

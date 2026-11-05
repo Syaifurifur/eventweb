@@ -3,18 +3,18 @@
 namespace App\Libraries;
 
 use App\Models\GoogleTokenModel;
-use CodeIgniter\HTTP\CURLRequest;
 use Config\GoogleCalendar;
+use GuzzleHttp\Client;
 
 class GoogleCalendarService
 {
     private GoogleCalendar $config;
-    private CURLRequest $client;
+    private Client $client;
     private GoogleTokenModel $tokens;
 
     public function __construct()
     {
-        $this->config = config(GoogleCalendar::class);
+        $this->config = new GoogleCalendar();
         $this->client = service('curlrequest', [
             'timeout' => 20,
             'http_errors' => false,
@@ -30,8 +30,8 @@ class GoogleCalendarService
     public function authorizationUrl(int $userId): string
     {
         $state = bin2hex(random_bytes(24));
-        session()->set('google_oauth_state', $state);
-        session()->set('google_oauth_user_id', $userId);
+        session()->put('google_oauth_state', $state);
+        session()->put('google_oauth_user_id', $userId);
 
         return 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
             'client_id' => $this->config->clientId,

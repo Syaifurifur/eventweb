@@ -788,3 +788,26 @@ E. Paritas Penuh Dual Engine (CodeIgniter 4 & Laravel):
    - CI4: app/Models/SharedDocumentModel.php, app/Controllers/EventSuite.php, app/Views/pages/shared_documents.php, app/Config/Routes.php, app/Views/layouts/dashboard.php.
    - Laravel: laravel/app/Models/SharedDocumentModel.php, laravel/app/Controllers/EventSuite.php, laravel/resources/views/pages/shared_documents.blade.php, laravel/routes/web.php, laravel/resources/views/components/sidebar.blade.php.
 ================================================================================
+
+================================================================================
+14. MIGRASI PENUH FULL LARAVEL (SINGLE-ENGINE TRANSITION)
+================================================================================
+A. Keputusan & Alasan Arsitektur:
+   - Penghentian & pembersihan arsitektur ganda (Dual-Engine CI4 + Laravel) menjadi 100% Full Laravel 12.
+   - Menghilangkan beban overhead pemeliharaan ganda kode (controllers, models, views).
+   - Proyek kini sepenuhnya berjalan di atas ekosistem Laravel modern (Artisan, Blade, Eloquent, Queues).
+
+B. Langkah Migrasi yang Diselesaikan:
+   1. Pemindahan & Konsolidasi File Upload:
+      - Seluruh folder berkas fisik dari 'writable/uploads' (MOU, shared documents, templates, CRM follow up) dipindahkan ke 'storage/uploads'.
+      - Dibuat symlink storage publik via 'php artisan storage:link' ke 'public/storage'.
+      - Konstanta WRITEPATH pada AppServiceProvider diarahkan langsung ke storage_path().
+   2. Pemindahan Struktur Proyek ke Root:
+      - Seluruh isi 'laravel/' (app, bootstrap, config, database, public, resources, routes, storage, tests, vendor, artisan, .env, composer.json) dipindahkan langsung ke root project 'eventweb/'.
+      - Folder CI4 ('system/', 'app/' CI4, 'writable/', 'spark', 'server.php') dibersihkan secara aman.
+   3. Server & Port:
+      - EventHub Laravel kini menjadi aplikasi utama di port 8080: 'http://127.0.0.1:8080'.
+      - Menjalankan aplikasi cukup dengan: 'php artisan serve --port=8080' atau '.\serve-laravel.ps1'.
+   4. Backup Aman:
+      - Git branch 'backup-ci4-dual-engine' dibuat sebagai cadangan riwayat arsitektur CI4 terdahulu jika sewaktu-waktu dibutuhkan.
+================================================================================

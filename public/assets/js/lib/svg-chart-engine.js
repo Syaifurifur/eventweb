@@ -725,4 +725,3 @@
     // Override global Chart with SvgChart so all charts use 100% vector SVG in Firefox, Chrome, Edge & Safari
     global.Chart = SvgChart;
 })(window);
-

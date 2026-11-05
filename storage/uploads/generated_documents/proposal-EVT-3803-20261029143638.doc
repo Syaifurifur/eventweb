@@ -1,0 +1,33 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="EventHub Gemini Document Generator">
+<title>PROPOSAL EVT-3803</title>
+<style>
+@page Section1 { size: 21cm 29.7cm; margin: 2.5cm 2.5cm 2.5cm 2.5cm; }
+div.Section1 { page: Section1; }
+body { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.5; color: #111111; }
+h1 { font-size: 16pt; text-align: center; text-transform: uppercase; margin: 0 0 18pt; font-weight: bold; }
+h1.page-heading { page-break-before: always; margin-top: 0; }
+h1.first-heading { page-break-before: auto; }
+h2 { font-size: 13pt; margin: 14pt 0 6pt; font-weight: bold; }
+h3 { font-size: 12pt; margin: 10pt 0 4pt; font-weight: bold; }
+p { margin: 0 0 8pt; text-align: justify; }
+p.center { text-align: center; }
+p.signature-line { margin-top: 28pt; text-align: center; }
+ul, ol { margin: 0 0 8pt 24pt; padding: 0; }
+li { margin-bottom: 4pt; text-align: justify; }
+table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; }
+th, td { border: 1px solid #333333; padding: 5pt 6pt; vertical-align: top; font-size: 11pt; line-height: 1.35; }
+th { text-align: center; font-weight: bold; background: #eeeeee; }
+td.number, th.number { text-align: center; }
+.page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+<div class="Section1">
+<p>Proposal otomatis dibuat dari import data event.</p>
+</div>
+</body>
+</html>

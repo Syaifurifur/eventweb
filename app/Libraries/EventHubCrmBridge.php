@@ -25,7 +25,7 @@ class EventHubCrmBridge
                 return false;
             }
 
-            session()->set([
+            session()->put([
                 'crmLoggedIn' => true,
                 'crmUser' => [
                     'id' => (int) $crmUser['id'],
@@ -102,8 +102,8 @@ class EventHubCrmBridge
         }
 
         $campusScope = $this->crmCampusScope($eventHubUser);
-        session()->set('crmUser.role', 'Admin');
-        session()->set('crmUser.campus_id', $campusScope);
+        session()->put('crmUser.role', 'Admin');
+        session()->put('crmUser.campus_id', $campusScope);
 
         $crmUserId = (int) session('crmUser.id');
         if ($crmUserId <= 0) {

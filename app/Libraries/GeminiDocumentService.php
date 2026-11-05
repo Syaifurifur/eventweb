@@ -11,7 +11,7 @@ class GeminiDocumentService
 
     public function __construct(?Gemini $config = null)
     {
-        $this->config = $config ?? config(Gemini::class);
+        $this->config = $config ?? new Gemini();
     }
 
     public function isConfigured(): bool

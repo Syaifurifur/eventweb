@@ -12,6 +12,7 @@ use App\Models\CrmUserModel;
 use App\Models\EventModel;
 use App\Models\NotificationModel;
 use App\Models\UserModel;
+use App\Services\CrmAnalyticsService;
 
 class CrmController extends BaseController
 {
@@ -53,7 +54,7 @@ class CrmController extends BaseController
         }
 
         session()->regenerate(true);
-        session()->set([
+        session()->put([
             'crmLoggedIn' => true,
             'crmUser' => [
                 'id' => (int) $user['id'],
@@ -120,7 +121,7 @@ class CrmController extends BaseController
 
     public function logout()
     {
-        session()->remove(['crmLoggedIn', 'crmUser']);
+        session()->forget(['crmLoggedIn', 'crmUser']);
 
         if (session('isLoggedIn')) {
             return redirect()->to(site_url('dashboard'))->with('success', 'Anda sudah keluar dari CRM. Selama session EventHub masih aktif, akses CRM dapat dibuka otomatis.');
@@ -259,7 +260,6 @@ class CrmController extends BaseController
                 'query' => $paginationQuery,
             ],
             'schools' => $this->schoolOptions($allLeads),
-            'leadLogState' => $this->crmLeadLogState(),
         ]);
     }
 
@@ -292,6 +292,82 @@ class CrmController extends BaseController
             'isAdmin' => $isAdmin,
             'campusScope' => $currentCrmCampusId,
             'agentMonitoring' => $this->crmAgentMonitoring($leads, $agents),
+        ]);
+    }
+
+    public function analytics()
+    {
+        $isAdmin = $this->isCrmAdmin();
+        $currentUserId = (int) session('crmUser.id');
+        $currentCrmCampusId = $this->currentCrmCampusId();
+        $builder = (new CrmLeadModel())
+            ->select('crm_leads.*, events.code AS event_code, events.title AS event_title, events.category AS event_category, events.event_date, events.campus_id, campuses.name AS campus_name, crm_users.full_name AS agent_name')
+            ->join('events', 'events.id = crm_leads.event_id', 'left')
+            ->join('campuses', 'campuses.id = events.campus_id', 'left')
+            ->join('crm_users', 'crm_users.id = crm_leads.agent_id', 'left')
+            ->orderBy('crm_leads.created_at', 'DESC');
+
+        if (! $isAdmin) {
+            $builder->where('crm_leads.agent_id', $currentUserId);
+        } elseif ($currentCrmCampusId !== null) {
+            $builder->where('events.campus_id', $currentCrmCampusId);
+        }
+
+        $this->applyAnalyticsFilters($builder);
+        $leads = $builder->findAll();
+        $service = new CrmAnalyticsService();
+        $slaStatus = trim((string) $this->request->getGet('sla_status'));
+        $quality = trim((string) $this->request->getGet('quality'));
+        $leads = $service->applyOperationalFilters($leads, $slaStatus, $quality);
+        $analytics = $service->build($leads);
+        $focus = trim((string) $this->request->getGet('focus'));
+        $allowedFocus = [
+            'total', 'valid', 'assigned', 'unassigned', 'processed', 'fresh', 'closing', 'backlog',
+            'sla_missed', 'overdue', 'fresh7', 'data_quality', 'invalid_wa', 'duplicate',
+            'missing_school', 'processed_unassigned', 'closing_unverified',
+        ];
+        if (! in_array($focus, $allowedFocus, true)) {
+            $focus = '';
+        }
+
+        $events = $this->crmEventOptions();
+        $categories = [];
+        foreach ($events as $event) {
+            $category = trim((string) ($event['category'] ?? ''));
+            if ($category !== '') {
+                $categories[$category] = $category;
+            }
+        }
+        ksort($categories);
+
+        $filters = [
+            'from' => (string) $this->request->getGet('from'),
+            'to' => (string) $this->request->getGet('to'),
+            'campus_id' => (string) $this->request->getGet('campus_id'),
+            'event_id' => (string) $this->request->getGet('event_id'),
+            'category' => (string) $this->request->getGet('category'),
+            'school' => (string) $this->request->getGet('school'),
+            'agent_id' => (string) $this->request->getGet('agent_id'),
+            'stage' => (string) $this->request->getGet('stage'),
+            'label' => (string) $this->request->getGet('label'),
+            'assignment' => (string) $this->request->getGet('assignment'),
+            'sla_status' => $slaStatus,
+            'quality' => $quality,
+        ];
+
+        return view('pages/crm_analytics', [
+            'title' => 'Analisis CRM',
+            'crmUser' => session('crmUser'),
+            'isAdmin' => $isAdmin,
+            'campusScope' => $currentCrmCampusId,
+            'analytics' => $analytics,
+            'filters' => $filters,
+            'events' => $events,
+            'campuses' => $this->crmCampusOptions($currentCrmCampusId),
+            'agents' => $this->crmAgentOptions($currentCrmCampusId),
+            'schools' => $this->schoolOptions($leads),
+            'categories' => array_values($categories),
+            'drilldown' => $focus !== '' ? $service->drilldown($leads, $focus) : null,
         ]);
     }
 
@@ -552,7 +628,7 @@ class CrmController extends BaseController
 
         $followUpImage = null;
         $uploadedFile = $this->request->getFile('follow_up_image');
-        if ($uploadedFile !== null && $uploadedFile->getName() !== '') {
+        if ($uploadedFile !== null) {
             try {
                 $followUpImage = $this->storeFollowUpImage($uploadedFile, $id);
             } catch (\InvalidArgumentException $error) {
@@ -580,7 +656,7 @@ class CrmController extends BaseController
     {
         $log = (new CrmLeadLogModel())->find($id);
         if (! $log || empty($log['follow_up_image']) || empty($log['lead_id'])) {
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+            abort(404);
         }
 
         $lead = (new CrmLeadModel())
@@ -588,25 +664,25 @@ class CrmController extends BaseController
             ->join('events', 'events.id = crm_leads.event_id', 'left')
             ->find((int) $log['lead_id']);
         if (! $lead || ! $this->canManageLead($lead)) {
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+            abort(403);
         }
 
         $path = $this->followUpImageAbsolutePath((string) $log['follow_up_image']);
         if ($path === null) {
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+            abort(404);
         }
 
         $mime = mime_content_type($path);
         if (! in_array($mime, ['image/jpeg', 'image/png'], true)) {
-            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+            abort(404);
         }
 
-        return $this->response
-            ->setHeader('Content-Type', $mime)
-            ->setHeader('Content-Disposition', 'inline; filename="' . basename($path) . '"')
-            ->setHeader('X-Content-Type-Options', 'nosniff')
-            ->setHeader('Cache-Control', 'private, max-age=3600')
-            ->setBody((string) file_get_contents($path));
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
     }
 
     public function leadChatData(int $id)
@@ -700,7 +776,7 @@ class CrmController extends BaseController
         $db = db_connect();
         $msgId = 0;
         if ($db->tableExists('crm_chat_messages')) {
-            $db->table('crm_chat_messages')->insert([
+            $msgId = (int) $db->table('crm_chat_messages')->insert([
                 'lead_id' => $id,
                 'user_id' => (int) session('crmUser.id') ?: null,
                 'sender_type' => $senderType,
@@ -709,10 +785,10 @@ class CrmController extends BaseController
                 'attachment_image' => null,
                 'sent_via_wa' => $sentViaWa,
                 'created_at' => $now,
-            ]);
-            $msgId = (int) $db->insertID();
+            ], true);
         }
 
+        // If student replied and lead is still Tahap 1, automatically advance to Tahap 2 if requested
         $autoUpdated = false;
         if ($senderType === 'student' && ($lead['stage'] ?? 'Tahap 1') === 'Tahap 1') {
             $leadModel->update($id, [
@@ -1003,6 +1079,69 @@ class CrmController extends BaseController
         }
     }
 
+    private function applyAnalyticsFilters($builder): void
+    {
+        foreach (['stage', 'label'] as $field) {
+            $value = trim((string) $this->request->getGet($field));
+            if ($value !== '') {
+                $builder->where('crm_leads.' . $field, $value);
+            }
+        }
+
+        $campusScope = $this->currentCrmCampusId();
+        $campusId = $campusScope ?? (int) $this->request->getGet('campus_id');
+        if ($campusId > 0) {
+            $builder->where('events.campus_id', $campusId);
+        }
+
+        foreach (['event_id' => 'crm_leads.event_id', 'agent_id' => 'crm_leads.agent_id'] as $parameter => $field) {
+            $id = (int) $this->request->getGet($parameter);
+            if ($id > 0) {
+                $builder->where($field, $id);
+            }
+        }
+
+        $category = trim((string) $this->request->getGet('category'));
+        if ($category !== '') {
+            $builder->where('events.category', $category);
+        }
+
+        $school = trim((string) $this->request->getGet('school'));
+        if ($school !== '') {
+            $builder->where('crm_leads.school_origin', $school);
+        }
+
+        $assignment = trim((string) $this->request->getGet('assignment'));
+        if ($assignment === 'assigned') {
+            $builder->where('crm_leads.agent_id !=', null);
+        } elseif ($assignment === 'unassigned') {
+            $builder->where('crm_leads.agent_id', null);
+        }
+
+        $from = (string) $this->request->getGet('from');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) === 1) {
+            $builder->where('DATE(crm_leads.created_at) >=', $from);
+        }
+
+        $to = (string) $this->request->getGet('to');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) === 1) {
+            $builder->where('DATE(crm_leads.created_at) <=', $to);
+        }
+
+        $prospectPriority = trim((string) $this->request->getGet('prospect_priority'));
+        if ($prospectPriority === 'priority') {
+            $builder->groupStart()
+                ->where('crm_leads.prospect_status', 'priority')
+                ->orLike('crm_leads.notes', 'PROSPEK PRIORITAS')
+                ->groupEnd();
+        } elseif ($prospectPriority === 'nurture') {
+            $builder->groupStart()
+                ->where('crm_leads.prospect_status', 'nurture')
+                ->orLike('crm_leads.notes', 'FOLLOW UP LANJUTAN')
+                ->groupEnd();
+        }
+    }
+
     private function crmStats(array $leads): array
     {
         $stats = [
@@ -1106,6 +1245,35 @@ class CrmController extends BaseController
         ];
     }
 
+    private function crmLeadLogsByLeadIds(array $leadIds, int $perLead = 6): array
+    {
+        $leadIds = array_values(array_unique(array_filter(array_map('intval', $leadIds))));
+        $db = db_connect();
+        if ($leadIds === [] || ! $db->tableExists('crm_lead_logs')) {
+            return [];
+        }
+
+        $rows = $db->table('crm_lead_logs')
+            ->select('crm_lead_logs.*, crm_users.full_name AS actor_name')
+            ->join('crm_users', 'crm_users.id = crm_lead_logs.user_id', 'left')
+            ->whereIn('crm_lead_logs.lead_id', $leadIds)
+            ->orderBy('crm_lead_logs.created_at', 'DESC')
+            ->orderBy('crm_lead_logs.id', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $leadId = (int) ($row['lead_id'] ?? 0);
+            if ($leadId <= 0 || count($grouped[$leadId] ?? []) >= $perLead) {
+                continue;
+            }
+            $grouped[$leadId][] = $row;
+        }
+
+        return $grouped;
+    }
+
     private function crmLeadLogBuilder($db, string $selectedLabel, bool $withOrder)
     {
         $builder = $db->table('crm_lead_logs')
@@ -1139,35 +1307,6 @@ class CrmController extends BaseController
         unset($query['log_page']);
 
         return array_filter($query, static fn ($value): bool => $value !== '' && $value !== null);
-    }
-
-    private function crmLeadLogsByLeadIds(array $leadIds, int $perLead = 6): array
-    {
-        $leadIds = array_values(array_unique(array_filter(array_map('intval', $leadIds))));
-        $db = db_connect();
-        if ($leadIds === [] || ! $db->tableExists('crm_lead_logs')) {
-            return [];
-        }
-
-        $rows = $db->table('crm_lead_logs')
-            ->select('crm_lead_logs.*, crm_users.full_name AS actor_name')
-            ->join('crm_users', 'crm_users.id = crm_lead_logs.user_id', 'left')
-            ->whereIn('crm_lead_logs.lead_id', $leadIds)
-            ->orderBy('crm_lead_logs.created_at', 'DESC')
-            ->orderBy('crm_lead_logs.id', 'DESC')
-            ->get()
-            ->getResultArray();
-
-        $grouped = [];
-        foreach ($rows as $row) {
-            $leadId = (int) ($row['lead_id'] ?? 0);
-            if ($leadId <= 0 || count($grouped[$leadId] ?? []) >= $perLead) {
-                continue;
-            }
-            $grouped[$leadId][] = $row;
-        }
-
-        return $grouped;
     }
 
     private function logCrmLeadChange(array $lead, array $newData, string $action, string $summary, ?string $followUpImage = null): void
@@ -1331,8 +1470,11 @@ class CrmController extends BaseController
 
     private function jsonResponse(array $payload, int $status = 200)
     {
+        if (function_exists('response') && is_object(response()) && method_exists(response(), 'json')) {
+            return response()->json($payload, $status);
+        }
+
         return $this->response
-            ->setStatusCode($status)
             ->setHeader('Content-Type', 'application/json; charset=UTF-8')
             ->setBody((string) json_encode($payload, JSON_UNESCAPED_UNICODE));
     }
@@ -1550,7 +1692,7 @@ class CrmController extends BaseController
     private function crmEventOptions(): array
     {
         $builder = (new EventModel())
-            ->select('events.id, events.code, events.title, events.event_date, campuses.name AS campus_name')
+            ->select('events.id, events.code, events.title, events.category, events.campus_id, events.event_date, campuses.name AS campus_name')
             ->join('campuses', 'campuses.id = events.campus_id', 'left')
             ->orderBy('campuses.name', 'ASC')
             ->orderBy('events.event_date', 'DESC');

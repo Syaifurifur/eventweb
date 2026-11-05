@@ -230,7 +230,7 @@ class AuthController extends BaseController
         }
 
         session()->regenerate(true);
-        session()->set([
+        session()->put([
             'isLoggedIn' => true,
             'user' => [
                 'id' => (int) $user['id'],
@@ -251,7 +251,7 @@ class AuthController extends BaseController
 
     public function logout()
     {
-        session()->destroy();
+        session()->invalidate();
 
         return redirect()->to(site_url('login'))->with('success', 'Anda sudah logout.');
     }

@@ -1,26 +1,8 @@
 # EventHub / EventWeb - Aplikasi Penjadwalan & Manajemen Event Kampus
 
-Aplikasi Enterprise Penjadwalan, Manajemen Event, Task Manager, CRM Marketing Akademik, Dokumen AI, dan Program **One Campus** (Five OJT, Sixty School, Five Spanduk) berbasis PHP dengan **100% Strict Dual-Engine Parity**:
-- **CodeIgniter 4**: `http://127.0.0.1:8080`
-- **Laravel**: `http://127.0.0.1:8081`
-
-4. **Tabel `accreditation_documents`**:
-   - `id` (INT UNSIGNED, AUTO_INCREMENT PRIMARY KEY)
-   - `event_id` (INT UNSIGNED, FK to `events.id`)
-   - `campus_id` (INT UNSIGNED, FK to `campuses.id`)
-   - `title` (VARCHAR 255)
-   - `event_year` (INT)
-   - `accreditation_standard` (VARCHAR 120)
-   - `doc_type` (VARCHAR 50) - all, report, proposal, assignment_letter
-   - `status` (VARCHAR 40) - menunggu_kelengkapan, menunggu_verifikasi, terverifikasi
-   - `admin_notes` (TEXT)
-   - `campus_notes` (TEXT)
-   - `additional_evidence_path` (VARCHAR 255)
-   - `additional_evidence_name` (VARCHAR 255)
-   - `external_evidence_link` (VARCHAR 255)
-   - `designated_by`, `completed_by`, `verified_by` (INT UNSIGNED)
-   - `designated_at`, `completed_at`, `verified_at` (DATETIME)
-   - `created_at`, `updated_at` (DATETIME)
+Aplikasi Enterprise Penjadwalan, Manajemen Event, Task Manager, CRM Marketing Akademik, Dokumen AI, dan Program **One Campus** (Five OJT, Sixty School, Five Spanduk) berbasis **Full Laravel 12**:
+- **Aplikasi Utama**: `http://127.0.0.1:8080` (Laravel Framework 12)
+- **Apache XAMPP**: `http://localhost/eventweb/public` (atau via VirtualHost)
 
 ---
 
@@ -31,12 +13,10 @@ Pastikan layanan MySQL di XAMPP telah berjalan:
 # 1. Jalankan MySQL (Port 3306)
 & 'C:\xampp\mysql\bin\mysqld.exe' --defaults-file='C:\xampp\mysql\bin\my.ini' --standalone
 
-# 2. Jalankan CodeIgniter 4 (Port 8080)
-& 'C:\xampp\php\php.exe' -S 127.0.0.1:8080 -t public server.php
-
-# 3. Jalankan Laravel (Port 8081)
-Set-Location -LiteralPath 'c:\xampp\htdocs\eventweb\laravel'
-& 'C:\xampp\php\php.exe' artisan serve --host=127.0.0.1 --port=8081
+# 2. Jalankan EventHub Laravel (Port 8080)
+& 'C:\xampp\php\php.exe' artisan serve --host=127.0.0.1 --port=8080
+# atau cukup jalankan shortcut script:
+.\serve-laravel.ps1
 ```
 
 Kredensial Default Login:
@@ -67,9 +47,9 @@ Kredensial Default Login:
 ### 1. One Campus Sixty School - Klasterisasi Tahun PMB, Waktu PMB Berjalan & Klaster Baru Khusus Superadmin
 - **Klaster Berjalan & Sebelumnya**: Secara default menampilkan periode PMB yang sedang berjalan (dinamis sesuai pengaturan default aktif, bawaan: **`September 2026 - September 2027`**) dan periode-periode sebelumnya (**`September 2025 - September 2026`**, **`September 2024 - September 2025`**, dst.).
 - **Fitur Jadikan Default untuk Waktu PMB Berjalan**:
-  - Super Admin / Admin Sistem dapat menetapkan klaster mana pun sebagai **Waktu PMB Berjalan (Default)** via tombol cepat **`⭐ Jadikan Default (Waktu Berjalan)`** di bilah klaster Sixty School.
+  - Super Admin / Admin Sistem dapat menetapkan klaster mana pun sebagai **Waktu PMB Berjalan (Default)** via tombol cepat **`? Jadikan Default (Waktu Berjalan)`** di bilah klaster Sixty School.
   - Klaster yang ditetapkan sebagai default otomatis mendapatkan label dinamis **`(Berjalan)`** pada seluruh pill filter dan dropdown.
-  - Dialog pop-up Superadmin dilengkapi opsi checkbox **`Langsung jadikan sebagai Klaster Default (Waktu PMB Berjalan)`** saat menambah klaster baru, serta menu pemilih **`⭐ Tetapkan Klaster Default / Waktu PMB Berjalan`**.
+  - Dialog pop-up Superadmin dilengkapi opsi checkbox **`Langsung jadikan sebagai Klaster Default (Waktu PMB Berjalan)`** saat menambah klaster baru, serta menu pemilih **`? Tetapkan Klaster Default / Waktu PMB Berjalan`**.
   - Nilai tersimpan secara persisten pada tabel `system_settings` (`one_campus_default_pmb_period`).
 - **Tombol Pembuatan Klaster Baru (Khusus Superadmin)**:
   - Tersedia tombol **"+ Buat Klasterisasi Baru (Superadmin)"** yang memunculkan dialog pembuatan klaster tahun mendatang atau periode custom.
@@ -121,16 +101,16 @@ Kredensial Default Login:
 
 ### 3. Detail Data Mahasiswa Baru per Sekolah & Tampilan Kode Kampus
 - **Modal Interaktif di Sixty School**:
-  - Kolom **Perolehan PMB** pada tabel rekap menampilkan badge interaktif (*contoh: `15 Mhs 👁`*).
+  - Kolom **Perolehan PMB** pada tabel rekap menampilkan badge interaktif (*contoh: `15 Mhs ??`*).
   - Mengklik badge langsung membuka modal rincian mahasiswa baru via AJAX (`/one-campus/schools/{id}/students`) lengkap dengan kolom **Kampus / Kode** (*contoh: `[A1] Fatmawati (02)`*).
 - **Tabel Rincian di Halaman Edit Sekolah**:
   - Pada halaman khusus edit sekolah (`/one-campus/schools/{id}/edit`), tabel rincian mahasiswa baru menampilkan kolom **Kampus / Kode** berlabel badge warna, nomor pendaftaran, prodi, dan opsi hapus siswa.
 
 ### 4. Fasilitas Sortir Data PMB (Banyak ke Sedikit)
 - **Kontrol Sortir Cepat**:
-  - Tombol aksi **"⇅ PMB Terbanyak (Banyak ke Sedikit)"**, **"⇅ PMB Tersedikit"**, dan **"Nama Sekolah (A-Z)"**.
-  - Header kolom **"Perolehan PMB"** dapat diklik langsung untuk membalikkan urutan (toggle DESC/ASC) disertai indikator panah (▼/▲).
-  - Ketika diurutkan dari terbanyak ke tersedikit, tabel menampilkan badge medali peringkat (🥇 Juara 1, 🥈 Juara 2, 🥉 Juara 3, dan #4, #5, dst.).
+  - Tombol aksi **"? PMB Terbanyak (Banyak ke Sedikit)"**, **"? PMB Tersedikit"**, dan **"Nama Sekolah (A-Z)"**.
+  - Header kolom **"Perolehan PMB"** dapat diklik langsung untuk membalikkan urutan (toggle DESC/ASC) disertai indikator panah (?/?).
+  - Ketika diurutkan dari terbanyak ke tersedikit, tabel menampilkan badge medali peringkat (?? Juara 1, ?? Juara 2, ?? Juara 3, dan #4, #5, dst.).
 
 ### 5. Rekomendasi Cerdas AI di Dashboard Utama (Analisis Interaksi Sekolah) & Scoping Per User
 - **Widget Rekomendasi Strategis AI**:
@@ -162,17 +142,17 @@ Kredensial Default Login:
   - Menggunakan Webhook Google Apps Script (tanpa biaya GCP, tanpa library composer berat, berjalan di akun Google Admin).
   - Ketika opsi *"Otomatis upload ke Google Drive saat form disimpan"* dicentang, file PDF yang diunggah seketika dikirim ke folder Drive target dan URL berkas Google Drive otomatis tersimpan ke field `mou_drive_link`.
 - **Tombol Sinkronisasi Cepat ("Kirim ke Drive")**:
-  - Untuk data sekolah yang sudah memiliki file MOU lokal namun belum tersinkronisasi ke Google Drive, tersedia tombol **"☁ Kirim ke Drive"** pada tabel rekap dan halaman edit untuk mengunggahnya secara instan.
+  - Untuk data sekolah yang sudah memiliki file MOU lokal namun belum tersinkronisasi ke Google Drive, tersedia tombol **"? Kirim ke Drive"** pada tabel rekap dan halaman edit untuk mengunggahnya secara instan.
 - **Drawer Pengaturan Google Drive Admin**:
   - Email Akun Google Drive Admin MOU (`gdrive_admin_email`).
   - URL / ID Folder Google Drive MOU (`gdrive_mou_folder_url`).
   - Label Nama Folder Google Drive Admin (`gdrive_mou_folder_name`).
   - URL Webhook Google Apps Script (`gdrive_webhook_url`).
   - Checkbox toggle aktivasi upload otomatis (`gdrive_auto_upload_enabled`).
-  - Tombol **"⚡ Uji Koneksi Webhook"** untuk validasi koneksi ke Apps Script.
+  - Tombol **"? Uji Koneksi Webhook"** untuk validasi koneksi ke Apps Script.
   - Template Script Apps Script siap pakai dengan fungsi `setupOtorisasi()` untuk mencegah error izin DriveApp.
 - **Endpoint Streaming PDF**: Route `GET /one-campus/schools/{id}/mou` menampilkan PDF secara inline langsung di browser.
-- Tabel rekap menampilkan indikator status dokumen: **"Lihat PDF MOU"** (merah), **"Buka di Drive ↗"** (biru), **"Kirim ke Drive"** (teal), atau **"Belum ada MOU"**.
+- Tabel rekap menampilkan indikator status dokumen: **"Lihat PDF MOU"** (merah), **"Buka di Drive ?"** (biru), **"Kirim ke Drive"** (teal), atau **"Belum ada MOU"**.
 
 ### 4. Fasilitas Impersonate untuk Super Admin
 - Super Admin / Admin Sistem memiliki kemampuan untuk impersonate (login sementara) ke seluruh akun user untuk memeriksa kegiatan, event, dan hak akses user tersebut.
@@ -190,7 +170,7 @@ Kredensial Default Login:
 - **Pembuatan Klaster Baru Khusus Super Admin & Fitur Set Klaster Default**:
   - Tombol **"+ Buat Klasterisasi PMB Baru (Superadmin)"** pada toolbar CRM Workspace membuka modal untuk membuat klaster periode baru.
   - Tersedia opsi checkbox **"Langsung jadikan sebagai klaster default aktif"** saat membuat klaster baru.
-  - Tersedia tombol cepat **"⭐ Jadikan Default"** pada bilah klaster saat Super Admin membuka klaster non-default.
+  - Tersedia tombol cepat **"? Jadikan Default"** pada bilah klaster saat Super Admin membuka klaster non-default.
   - Tersedia form pemilih langsung **"Ganti Klaster Default Aktif"** di dalam modal dialog Super Admin.
   - Pengaturan klaster default tersimpan secara persisten ke database `system_settings` (`crm_default_pmb_period` dan `one_campus_default_pmb_period`) sehingga setiap user yang mengakses workspace otomatis diarahkan ke klaster default tersebut.
 - **Skema Database & Migrasi**:
@@ -205,15 +185,15 @@ Kredensial Default Login:
 
 ### 8. Fasilitas Dokumen Akreditasi Kampus (BAN-PT / LAM-INFOKOM)
 - **Fitur Mencari dari Dokumen Event & Tombol Jadikan Data Akreditasi**:
-  - **Pencarian Cerdas Dokumen Event (Live Search & Filter)**: Di halaman Dokumen Akreditasi (`/documents/accreditation`), tombol **`🔍 Cari Dokumen Event & Jadikan Akreditasi`** membuka modal pencarian interaktif yang dilengkapi:
+  - **Pencarian Cerdas Dokumen Event (Live Search & Filter)**: Di halaman Dokumen Akreditasi (`/documents/accreditation`), tombol **`?? Cari Dokumen Event & Jadikan Akreditasi`** membuka modal pencarian interaktif yang dilengkapi:
     - Input live search realtime untuk menyaring dokumen event berdasarkan judul, kode event (`EVT-...`), nama kampus, atau kategori event.
     - Filter dropdown kampus dan filter ketersediaan berkas (*Semua Event*, *Hanya yang Memiliki Proposal/LPJ*, *Hanya yang Belum Akreditasi*).
-    - Menampilkan status ketersediaan berkas asli dokumen event: Proposal (`📄 Proposal ✓`), LPJ/Laporan (`📑 LPJ ✓`), dan Surat Tugas.
-    - Pada setiap baris hasil pencarian dokumen event, tersedia tombol mencolok: **`⭐ Jadikan Data Akreditasi`** yang sekali klik langsung memilih event tersebut dan membuka form penetapan akreditasi (Kriteria 1-9, jenis berkas, instruksi ke Kepala Kampus).
+    - Menampilkan status ketersediaan berkas asli dokumen event: Proposal (`?? Proposal ?`), LPJ/Laporan (`?? LPJ ?`), dan Surat Tugas.
+    - Pada setiap baris hasil pencarian dokumen event, tersedia tombol mencolok: **`? Jadikan Data Akreditasi`** yang sekali klik langsung memilih event tersebut dan membuka form penetapan akreditasi (Kriteria 1-9, jenis berkas, instruksi ke Kepala Kampus).
   - **Tombol Satu Klik di Halaman Dokumen Event (`/documents`)**:
-    - Pada tabel rekap seluruh dokumen event di halaman `/documents`, setiap baris event kini dilengkapi tombol aksi **`🎓 Jadikan Akreditasi`** khusus Admin.
+    - Pada tabel rekap seluruh dokumen event di halaman `/documents`, setiap baris event kini dilengkapi tombol aksi **`?? Jadikan Akreditasi`** khusus Admin.
     - Ketika diklik, dialog pop-up konfirmasi langsung muncul untuk menetapkan dokumen event tersebut menjadi data akreditasi tanpa perlu berpindah halaman.
-    - Jika event sudah pernah didaftarkan ke akreditasi, sistem secara otomatis menampilkan badge informatif **`🎓 Terdaftar Akreditasi`** yang dapat diklik langsung menuju berkas akreditasi terkait.
+    - Jika event sudah pernah didaftarkan ke akreditasi, sistem secara otomatis menampilkan badge informatif **`?? Terdaftar Akreditasi`** yang dapat diklik langsung menuju berkas akreditasi terkait.
 - **Penetapan Dokumen Event untuk Akreditasi oleh Admin**:
   - Admin (Admin Sistem, Super Admin, DMER) dapat memilih dan menetapkan dokumen event kegiatan kampus sebagai Dokumen Bukti Akreditasi via tombol **"+ Pilih Dokumen Event untuk Akreditasi"**.
   - Admin menentukan Kriteria Akreditasi (BAN-PT / LAM-INFOKOM Kriteria 1-9), judul berkas, jenis dokumen wajib (*all*, *report*, *proposal*, *assignment_letter*), serta instruksi khusus untuk Kepala Kampus.
@@ -256,15 +236,15 @@ Kredensial Default Login:
 
 ### 8. Fasilitas Dokumen Akreditasi Kampus (BAN-PT / LAM-INFOKOM)
 - **Fitur Mencari dari Dokumen Event & Tombol Jadikan Data Akreditasi**:
-  - **Pencarian Cerdas Dokumen Event (Live Search & Filter)**: Di halaman Dokumen Akreditasi (`/documents/accreditation`), tombol **`🔍 Cari Dokumen Event & Jadikan Akreditasi`** membuka modal pencarian interaktif yang dilengkapi:
+  - **Pencarian Cerdas Dokumen Event (Live Search & Filter)**: Di halaman Dokumen Akreditasi (`/documents/accreditation`), tombol **`?? Cari Dokumen Event & Jadikan Akreditasi`** membuka modal pencarian interaktif yang dilengkapi:
     - Input live search realtime untuk menyaring dokumen event berdasarkan judul, kode event (`EVT-...`), nama kampus, atau kategori event.
     - Filter dropdown kampus dan filter ketersediaan berkas (*Semua Event*, *Hanya yang Memiliki Proposal/LPJ*, *Hanya yang Belum Akreditasi*).
-    - Menampilkan status ketersediaan berkas asli dokumen event: Proposal (`📄 Proposal ✓`), LPJ/Laporan (`📑 LPJ ✓`), dan Surat Tugas.
-    - Pada setiap baris hasil pencarian dokumen event, tersedia tombol mencolok: **`⭐ Jadikan Data Akreditasi`** yang sekali klik langsung memilih event tersebut dan membuka form penetapan akreditasi (Kriteria 1-9, jenis berkas, instruksi ke Kepala Kampus).
+    - Menampilkan status ketersediaan berkas asli dokumen event: Proposal (`?? Proposal ?`), LPJ/Laporan (`?? LPJ ?`), dan Surat Tugas.
+    - Pada setiap baris hasil pencarian dokumen event, tersedia tombol mencolok: **`? Jadikan Data Akreditasi`** yang sekali klik langsung memilih event tersebut dan membuka form penetapan akreditasi (Kriteria 1-9, jenis berkas, instruksi ke Kepala Kampus).
   - **Tombol Satu Klik di Halaman Dokumen Event (`/documents`)**:
-    - Pada tabel rekap seluruh dokumen event di halaman `/documents`, setiap baris event kini dilengkapi tombol aksi **`🎓 Jadikan Akreditasi`** khusus Admin.
+    - Pada tabel rekap seluruh dokumen event di halaman `/documents`, setiap baris event kini dilengkapi tombol aksi **`?? Jadikan Akreditasi`** khusus Admin.
     - Ketika diklik, dialog pop-up konfirmasi langsung muncul untuk menetapkan dokumen event tersebut menjadi data akreditasi tanpa perlu berpindah halaman.
-    - Jika event sudah pernah didaftarkan ke akreditasi, sistem secara otomatis menampilkan badge informatif **`🎓 Terdaftar Akreditasi`** yang dapat diklik langsung menuju berkas akreditasi terkait.
+    - Jika event sudah pernah didaftarkan ke akreditasi, sistem secara otomatis menampilkan badge informatif **`?? Terdaftar Akreditasi`** yang dapat diklik langsung menuju berkas akreditasi terkait.
 - **Penetapan Dokumen Event untuk Akreditasi oleh Admin**:
   - Admin (Admin Sistem, Super Admin, DMER) dapat memilih dan menetapkan dokumen event kegiatan kampus sebagai Dokumen Bukti Akreditasi via tombol **"+ Pilih Dokumen Event untuk Akreditasi"**.
   - Admin menentukan Kriteria Akreditasi (BAN-PT / LAM-INFOKOM Kriteria 1-9), judul berkas, jenis dokumen wajib (*all*, *report*, *proposal*, *assignment_letter*), serta instruksi khusus untuk Kepala Kampus.
@@ -444,7 +424,7 @@ Kredensial Default Login:
     * Bekerja konsisten di semua halaman pada dashboard layout CodeIgniter 4 (`app/Views/layouts/dashboard.php`) dan Laravel Blade (`laravel/resources/views/components/navbar.blade.php`).
 - **Penyempurnaan Halaman Inbox Notifikasi (`/notifications`)**:
   - Menampilkan badge kategori khusus `Sixty School` dengan warna cyan yang khas.
-  - Tombol **"Buka →"** pada setiap notifikasi Sixty School langsung mengarahkan user ke halaman manajemen Sixty School (`/one-campus/schools`).
+  - Tombol **"Buka ?"** pada setiap notifikasi Sixty School langsung mengarahkan user ke halaman manajemen Sixty School (`/one-campus/schools`).
   - Dilengkapi penanda status visual (`Baru`, `Belum dibaca`, tanggal & waktu pendaftaran).
   - Dilengkapi tombol cepat **"Tandai semua dibaca"** yang memperbarui status baca di tabel `notifications`.
   - State kosong (*empty state*) yang informatif dan elegan ketika tidak ada notifikasi.

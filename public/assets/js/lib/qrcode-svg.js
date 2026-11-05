@@ -66,7 +66,6 @@
         return a;
     }
 
-    // EC Level L block table for versions 1..10: [numBlocks1, totalCodewords1, dataCodewords1, numBlocks2, totalCodewords2, dataCodewords2]
     const RS_BLOCK_TABLE_L = [
         null,
         [1, 26, 19],
@@ -185,7 +184,6 @@
     function createData(typeNumber, bytes) {
         const rsBlocks = getRSBlocks(typeNumber);
         const buffer = new BitBuffer();
-        // Byte mode = 4 (0100)
         buffer.put(4, 4);
         buffer.put(bytes.length, typeNumber < 10 ? 8 : 16);
         for (let i = 0; i < bytes.length; i++) {
@@ -277,7 +275,6 @@
         setupPositionProbePattern(moduleCount - 7, 0);
         setupPositionProbePattern(0, moduleCount - 7);
 
-        // Timing pattern
         for (let r = 8; r < moduleCount - 8; r++) {
             if (modules[r][6] === null) modules[r][6] = (r % 2 === 0);
         }
@@ -285,7 +282,6 @@
             if (modules[6][c] === null) modules[6][c] = (c % 2 === 0);
         }
 
-        // Alignment pattern
         const pos = PATTERN_POSITION_TABLE[typeNumber] || [];
         for (let i = 0; i < pos.length; i++) {
             for (let j = 0; j < pos.length; j++) {
@@ -304,7 +300,6 @@
             }
         }
 
-        // Type number (if >= 7)
         if (typeNumber >= 7) {
             const bits = getBCHTypeNumber(typeNumber);
             for (let i = 0; i < 18; i++) {
@@ -314,7 +309,6 @@
             }
         }
 
-        // Type Info (EC Level L = 1, Mask 0)
         const maskPattern = 0;
         const typeInfoData = (1 << 3) | maskPattern;
         const bits = getBCHTypeInfo(typeInfoData);
@@ -330,7 +324,6 @@
         }
         modules[moduleCount - 8][8] = true;
 
-        // Map Data
         const data = createData(typeNumber, bytes);
         let inc = -1;
         let row = moduleCount - 1;
@@ -398,17 +391,14 @@
         canvas.height = height;
         const ctx = canvas.getContext('2d');
 
-        // Background
         ctx.fillStyle = '#0f172a';
         ctx.fillRect(0, 0, width, height);
 
-        // White Card
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.roundRect(40, 40, width - 80, height - 80, 24);
         ctx.fill();
 
-        // Header Badge
         ctx.fillStyle = '#2563eb';
         ctx.beginPath();
         ctx.roundRect(190, 72, 300, 34, 17);
@@ -418,17 +408,14 @@
         ctx.textAlign = 'center';
         ctx.fillText('SCAN QR CODE KUESIONER EVENT', width / 2, 94);
 
-        // Event Title
         ctx.fillStyle = '#0f172a';
         ctx.font = 'bold 22px Inter, Segoe UI, Arial, sans-serif';
         ctx.fillText(String(eventTitle || 'Event Kampus').slice(0, 42), width / 2, 142);
 
-        // Campus Name
         ctx.fillStyle = '#475569';
         ctx.font = '600 15px Inter, Segoe UI, Arial, sans-serif';
         ctx.fillText(String(campusName || 'EventHub Integrated Scheduler').slice(0, 50), width / 2, 170);
 
-        // Draw QR Modules
         const qrBoxSize = 440;
         const margin = 2;
         const totalModules = qr.count + margin * 2;
@@ -457,7 +444,6 @@
             }
         }
 
-        // Footer Link Text
         ctx.fillStyle = '#0f172a';
         ctx.font = 'bold 14px Inter, Segoe UI, Arial, sans-serif';
         ctx.fillText('Atau buka melalui tautan berikut:', width / 2, 695);

@@ -2052,7 +2052,7 @@ class EventSuite extends BaseController
         return redirect()->to(site_url('events/' . $code . '/documents/' . $type . '/file'));
     }
 
-    public function accreditationDocuments(): string
+    public function accreditationDocuments()
     {
         $roleName = (string) session('user.role');
         $normRole = strtolower($this->normalizedRoleName($roleName));
@@ -2517,7 +2517,7 @@ class EventSuite extends BaseController
         ];
     }
 
-    public function documentTemplates(): string
+    public function documentTemplates()
     {
         $activeDocType = trim((string) $this->request->getGet('type'));
         if (! in_array($activeDocType, ['proposal', 'report'], true)) {
@@ -2586,7 +2586,7 @@ class EventSuite extends BaseController
             $docType = 'proposal';
         }
 
-        $targetDir = FCPATH . 'uploads' . DIRECTORY_SEPARATOR . 'templates';
+        $targetDir = public_path('uploads/templates');
         if (! is_dir($targetDir)) {
             @mkdir($targetDir, 0777, true);
         }
@@ -2595,7 +2595,7 @@ class EventSuite extends BaseController
         $filePath = null;
 
         $file = $this->request->getFile('template_file');
-        if ($file && $file->isValid() && ! $file->hasMoved()) {
+        if ($file && $file->isValid()) {
             $ext = strtolower($file->getClientExtension());
             $format = in_array($ext, ['doc', 'docx', 'pdf', 'dotx'], true) ? strtoupper($ext) : 'DOCX';
             $newName = 'template_' . $docType . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
@@ -2650,8 +2650,8 @@ class EventSuite extends BaseController
         ];
 
         $file = $this->request->getFile('template_file');
-        if ($file && $file->isValid() && ! $file->hasMoved()) {
-            $targetDir = FCPATH . 'uploads' . DIRECTORY_SEPARATOR . 'templates';
+        if ($file && $file->isValid()) {
+            $targetDir = public_path('uploads/templates');
             if (! is_dir($targetDir)) {
                 @mkdir($targetDir, 0777, true);
             }
@@ -2685,7 +2685,7 @@ class EventSuite extends BaseController
         return redirect()->to(site_url('document-templates?type=' . $docType))->with('success', 'Template berhasil dihapus.');
     }
 
-    public function sharedDocuments(): string
+    public function sharedDocuments()
     {
         $roleName = (string) session('user.role');
         $normRole = strtolower($this->normalizedRoleName($roleName));
@@ -3074,7 +3074,7 @@ class EventSuite extends BaseController
             ->setBody(file_get_contents($fullPath));
     }
 
-    public function aiGenerateDocument(): string
+    public function aiGenerateDocument()
     {
         $eventIdentifier = trim((string) ($this->request->getGet('event') ?: $this->request->getGet('code') ?: $this->request->getGet('event_id')));
         $type = trim((string) $this->request->getGet('type')) ?: 'proposal';
@@ -3465,9 +3465,9 @@ class EventSuite extends BaseController
             $html .= '    <thead><tr style="background:#f1f5f9;"><th style="border:1px solid #cbd5e1; padding:8px; text-align:center; width:40px;">No</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left; width:180px;">Jabatan</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">Nama Petugas / PIC</th><th style="border:1px solid #cbd5e1; padding:8px; text-align:left;">Deskripsi Tanggung Jawab</th></tr></thead>';
             $html .= '    <tbody>';
             $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">1</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:600;">Penanggung Jawab</td><td style="border:1px solid #cbd5e1; padding:6px;">Kepala Kampus ' . $campus . '</td><td style="border:1px solid #cbd5e1; padding:6px;">Pengarah kebijakan umum kegiatan</td></tr>';
-            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">2</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:600;">Ketua Pelaksana / PIC</td><td style="border:1px solid #cbd5e1; padding:6px;">' . $picName . '</td><td style="border:1px solid #cbd5e1; padding:6px;">Koordinasi operasional lapangan dan laporan</td></tr>';
-            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">3</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:600;">Sie Acara & Presenter</td><td style="border:1px solid #cbd5e1; padding:6px;">Tim Markom & Dosen UBSI</td><td style="border:1px solid #cbd5e1; padding:6px;">Penyampaian materi dan pemanduan forum</td></tr>';
-            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">4</td><td style="border:1px solid #cbd5e1; padding:6px; font-weight:600;">Sie Logistik & Dokumentasi</td><td style="border:1px solid #cbd5e1; padding:6px;">Staf IT & Humas Kampus</td><td style="border:1px solid #cbd5e1; padding:6px;">Perlengkapan, soundsystem, foto & video</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">2</td><td style="border:1px solid #cbd5e1; padding:6px;">Ketua Pelaksana / PIC</td><td style="border:1px solid #cbd5e1; padding:6px;">' . $picName . '</td><td style="border:1px solid #cbd5e1; padding:6px;">Koordinasi operasional lapangan dan laporan</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">3</td><td style="border:1px solid #cbd5e1; padding:6px;">Sie Acara & Presenter</td><td style="border:1px solid #cbd5e1; padding:6px;">Tim Markom & Dosen UBSI</td><td style="border:1px solid #cbd5e1; padding:6px;">Penyampaian materi dan pemanduan forum</td></tr>';
+            $html .= '      <tr><td style="border:1px solid #cbd5e1; padding:6px; text-align:center;">4</td><td style="border:1px solid #cbd5e1; padding:6px;">Sie Logistik & Dokumentasi</td><td style="border:1px solid #cbd5e1; padding:6px;">Staf IT & Humas Kampus</td><td style="border:1px solid #cbd5e1; padding:6px;">Perlengkapan, soundsystem, foto & video</td></tr>';
             $html .= '    </tbody>';
             $html .= '  </table>';
             $html .= '</div>';
@@ -6513,7 +6513,7 @@ class EventSuite extends BaseController
         ];
         $data['demoRoles'] = (new RoleModel())->orderBy('is_system', 'DESC')->orderBy('name', 'ASC')->findAll();
 
-        return view('layouts/dashboard', $data);
+        return view('layouts/dashboard', $data)->render();
     }
 
     private function manageableTaskEvents(): array

@@ -19,6 +19,7 @@ class EventChecklistItemModel extends Model
         'assigned_at',
         'deadline',
         'status',
+        'is_active',
         'notes',
         'material_drive_link',
         'drive_link',
@@ -27,6 +28,12 @@ class EventChecklistItemModel extends Model
         'completed_at',
     ];
     protected $useTimestamps = true;
+
+    protected function newQuery(): \Illuminate\Database\Query\Builder
+    {
+        return parent::newQuery()
+            ->where('event_checklist_items.is_active', 1);
+    }
 
     public function forEvent(int $eventId): array
     {

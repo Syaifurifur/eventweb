@@ -2,44 +2,47 @@
 
 namespace App\Controllers;
 
-use CodeIgniter\Controller;
-use CodeIgniter\HTTP\RequestInterface;
-use CodeIgniter\HTTP\ResponseInterface;
-use Psr\Log\LoggerInterface;
+use App\Support\LegacyRequest;
+use App\Support\LegacyResponse;
+use App\Support\LegacyValidationErrors;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Validator;
 
-/**
- * BaseController provides a convenient place for loading components
- * and performing functions that are needed by all your controllers.
- *
- * Extend this class in any new controllers:
- * ```
- *     class Home extends BaseController
- * ```
- *
- * For security, be sure to declare any new methods as protected or private.
- */
 abstract class BaseController extends Controller
 {
-    /**
-     * Be sure to declare properties for any property fetch you initialized.
-     * The creation of dynamic property is deprecated in PHP 8.2.
-     */
+    protected LegacyRequest $request;
+    protected LegacyResponse $response;
+    protected LegacyValidationErrors $validator;
 
-    protected $helpers = ['url', 'form'];
-
-    /**
-     * @return void
-     */
-    public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
+    public function __construct()
     {
-        // Load here all helpers you want to be available in your controllers that extend BaseController.
-        // Caution: Do not put the this below the parent::initController() call below.
-        // $this->helpers = ['form', 'url'];
+        $this->request = new LegacyRequest(request());
+        $this->response = new LegacyResponse();
+        $this->validator = new LegacyValidationErrors();
+    }
 
-        // Caution: Do not edit this line.
-        parent::initController($request, $response, $logger);
+    protected function validate(array $rules): bool
+    {
+        $laravelRules = [];
+        foreach ($rules as $field => $ruleSet) {
+            $converted = [];
+            foreach (explode('|', $ruleSet) as $rule) {
+                if ($rule === 'permit_empty') { $converted[] = 'nullable'; continue; }
+                if ($rule === 'valid_date') { $converted[] = 'date'; continue; }
+                if ($rule === 'valid_email') { $converted[] = 'email'; continue; }
+                if ($rule === 'is_natural') { array_push($converted, 'integer', 'min:0'); continue; }
+                if ($rule === 'is_natural_no_zero') { array_push($converted, 'integer', 'min:1'); continue; }
+                if (preg_match('/^min_length\[(\d+)]$/', $rule, $match)) { $converted[] = 'min:' . $match[1]; continue; }
+                if (preg_match('/^max_length\[(\d+)]$/', $rule, $match)) { $converted[] = 'max:' . $match[1]; continue; }
+                if (preg_match('/^in_list\[(.*)]$/', $rule, $match)) { $converted[] = 'in:' . $match[1]; continue; }
+                $converted[] = $rule;
+            }
+            $laravelRules[$field] = $converted;
+        }
 
-        // Preload any models, libraries, etc, here.
-        // $this->session = service('session');
+        $validation = Validator::make($this->request->all(), $laravelRules);
+        $this->validator->set($validation->errors()->toArray());
+
+        return ! $validation->fails();
     }
 }

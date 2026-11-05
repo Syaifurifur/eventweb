@@ -40,10 +40,7 @@ class NationalSchoolModel extends Model
             $builder = $this->like('npsn', $query, 'after')
                 ->orderBy('npsn', 'ASC')
                 ->limit($limit);
-            $results = $builder->findAll();
-
-            // If exact match exists, make sure it's first
-            return $results;
+            return $builder->findAll();
         }
 
         // Text search: search by name or city
