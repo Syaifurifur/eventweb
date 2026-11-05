@@ -418,9 +418,12 @@ Kredensial Default Login:
     2. **Kota / Kabupaten** (`city`)
     3. **Jenis SKL** (`school_type`: otomatis memilih opsi `SMA`, `SMK`, `MA`, atau `Lainnya`)
     4. **Status SKL** (`school_status`: otomatis memilih opsi `Negeri` atau `Swasta`)
-  - **Dropdown Rekomendasi Autocomplete**: Pengguna dapat melihat saran sekolah langsung saat mengetik NPSN atau mengetik nama sekolah, lengkap dengan lencana NPSN, jenis & status sekolah, serta lokasi kabupaten/kecamatan.
-  - Memberikan indikator kilat visual hijau dan notifikasi bahwa data sekolah telah terisi otomatis dari referensi resmi nasional.
-- **100% Strict Dual-Engine Parity**: Didukung penuh pada CodeIgniter 4 dan Laravel melalui endpoint API `/one-campus/schools/lookup-npsn`.
+  - **Dropdown Rekomendasi Autocomplete Cerdas & Pencocokan Presisi (Prefix-Matching)**:
+    * **Pencarian NPSN Presisi Tinggi**: Ketika mengetik angka pada kolom NPSN, sistem melakukan *prefix-matching* ketat (`npsn LIKE '$q%'`), bukan pencocokan acak di tengah atau akhir digit. Menghilangkan hasil yang tidak relevan (seperti NPSN yang hanya berakhiran angka pencarian).
+    * **Highlighting Real-Time**: Teks angka NPSN atau nama sekolah yang cocok langsung ditandai dengan sorotan (*highlight*) warna kuning kontras di dalam dropdown.
+    * **Edukasi & Panduan Input Otomatis**: Jika angka NPSN yang diketik tidak memiliki awalan valid (misalnya `123`), dropdown menampilkan panduan ramah bahwa format 8 digit NPSN di Indonesia diawali kode wilayah 10 s.d 70 (contoh: `20100104`, `202xxxxx`, `697xxxxx`).
+    * Memberikan indikator kilat visual hijau dan notifikasi bahwa data sekolah telah terisi otomatis dari referensi resmi nasional.
+- **100% Strict Dual-Engine Parity**: Didukung penuh pada CodeIgniter 4 dan Laravel melalui endpoint API `/one-campus/schools/lookup-npsn`, lengkap dengan dukungan parameter `$side` (`before`, `after`, `both`, `none`) pada query builder `LegacyQuery`.
 
 ### 11. Notifikasi Email Otomatis ke markom851@bsi.ac.id & Lonceng Notifikasi Sistem (One Campus Sixty School)
 - **Pengiriman Email Otomatis ke `markom851@bsi.ac.id`**:

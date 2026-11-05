@@ -127,15 +127,51 @@ class LegacyQuery
         return $this;
     }
 
-    public function like(string $field, string $value): static
+    public function like(string $field, string $value, string $side = 'both'): static
     {
-        $this->activeQuery()->where($field, 'like', '%' . $value . '%');
+        $pattern = match (strtolower($side)) {
+            'before' => '%' . $value,
+            'after' => $value . '%',
+            'none' => $value,
+            default => '%' . $value . '%',
+        };
+        $this->activeQuery()->where($field, 'like', $pattern);
         return $this;
     }
 
-    public function orLike(string $field, string $value): static
+    public function orLike(string $field, string $value, string $side = 'both'): static
     {
-        $this->activeQuery()->orWhere($field, 'like', '%' . $value . '%');
+        $pattern = match (strtolower($side)) {
+            'before' => '%' . $value,
+            'after' => $value . '%',
+            'none' => $value,
+            default => '%' . $value . '%',
+        };
+        $this->activeQuery()->orWhere($field, 'like', $pattern);
+        return $this;
+    }
+
+    public function notLike(string $field, string $value, string $side = 'both'): static
+    {
+        $pattern = match (strtolower($side)) {
+            'before' => '%' . $value,
+            'after' => $value . '%',
+            'none' => $value,
+            default => '%' . $value . '%',
+        };
+        $this->activeQuery()->where($field, 'not like', $pattern);
+        return $this;
+    }
+
+    public function orNotLike(string $field, string $value, string $side = 'both'): static
+    {
+        $pattern = match (strtolower($side)) {
+            'before' => '%' . $value,
+            'after' => $value . '%',
+            'none' => $value,
+            default => '%' . $value . '%',
+        };
+        $this->activeQuery()->orWhere($field, 'not like', $pattern);
         return $this;
     }
 

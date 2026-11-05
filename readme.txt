@@ -670,9 +670,11 @@ B. Mekanisme Rekomendasi & Auto-Fill Cerdas:
    - Efek Visual: Kolom input yang terisi memancarkan kilau hijau (glow feedback) disertai pesan konfirmasi:
      '✅ [Nama Sekolah] terisi otomatis dari Data Kemendikdasmen/Kemenag!'.
 
-C. Dropdown Autocomplete Real-Time:
-   - Pengguna cukup mengetik beberapa digit NPSN (mulai 3 digit) untuk melihat daftar rekomendasi sekolah.
-   - Setiap saran menampilkan badge NPSN monospace, nama sekolah, badge jenis & status sekolah, serta lokasi kota & kecamatan.
+C. Dropdown Autocomplete Real-Time & Pencarian Presisi (Prefix-Matching):
+   - Pencarian Angka NPSN Ketat: Menggunakan filter awalan (prefix LIKE '$q%'), bukan wildcard di tengah atau akhir angka. Menghilangkan hasil yang tidak sesuai (misal: mencari awalan tidak akan memunculkan NPSN yang hanya berakhiran angka tersebut).
+   - Highlighting Kata Kunci: Digit NPSN atau karakter nama sekolah yang cocok langsung disorot (highlight) dengan warna kuning kontras di dalam dropdown.
+   - Panduan & Feedback Cerdas: Jika pengguna mengetik digit NPSN yang belum memiliki awalan valid (misal: '123'), dropdown secara transparan mengedukasi bahwa format NPSN 8 digit di Indonesia diawali kode wilayah 10 s.d 70 (contoh: 20100104, 202xxxxx, 697xxxxx).
+   - Setiap saran menampilkan badge NPSN monospace ber-highlight, nama sekolah, badge jenis & status sekolah, serta lokasi kota & kecamatan.
    - Klik salah satu saran langsung mengisikan seluruh data form dalam 1 kali klik.
    - Pengguna juga dapat mengetik nama sekolah pada kolom Nama Sekolah untuk menemukan NPSN dan data lengkapnya.
 

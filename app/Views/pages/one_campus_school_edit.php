@@ -496,7 +496,23 @@ function setupSchoolNpsnLookup(formEl, lookupUrl) {
                 if (indicator) indicator.style.display = 'none';
                 if (res.status !== 'success' || !res.suggestions || res.suggestions.length === 0) {
                     if (dropdown) {
-                        dropdown.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--text-muted, #64748b); font-size: 0.78rem;">Tidak ditemukan sekolah yang cocok</div>';
+                        const isNumeric = /^\d+$/.test(query);
+                        let emptyHtml = '';
+                        if (isNumeric) {
+                            emptyHtml = `
+                                <div style="padding: 12px 14px; text-align: center; color: var(--text-muted, #64748b); font-size: 0.78rem;">
+                                    <div style="font-weight: 700; color: #dc2626; margin-bottom: 4px;">⚠️ NPSN "${escapeHtml(query)}" tidak ditemukan</div>
+                                    <div style="font-size: 0.72rem; line-height: 1.4;">Format 8 digit NPSN di Indonesia diawali kode provinsi 10 s.d 70 (contoh: 20100104, 202xxxxx, 697xxxxx).</div>
+                                </div>
+                            `;
+                        } else {
+                            emptyHtml = `
+                                <div style="padding: 12px 14px; text-align: center; color: var(--text-muted, #64748b); font-size: 0.78rem;">
+                                    Tidak ditemukan sekolah dengan kata kunci "<strong>${escapeHtml(query)}</strong>".
+                                </div>
+                            `;
+                        }
+                        dropdown.innerHTML = emptyHtml;
                         dropdown.style.display = 'block';
                     }
                     return;
@@ -506,16 +522,36 @@ function setupSchoolNpsnLookup(formEl, lookupUrl) {
                     fillForm(res.exact_match);
                 }
 
-                renderDropdown(res.suggestions);
+                renderDropdown(res.suggestions, query);
             })
             .catch(() => {
                 if (indicator) indicator.style.display = 'none';
             });
     }
 
-    function renderDropdown(items) {
+    function highlightQuery(text, q) {
+        if (!text || !q) return escapeHtml(text || '');
+        const escText = escapeHtml(text);
+        const escQ = escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return escText.replace(new RegExp(`(${escQ})`, 'gi'), '<mark style="background: #fef08a; color: #854d0e; padding: 0 2px; border-radius: 2px;">$1</mark>');
+    }
+
+    function renderDropdown(items, query) {
         if (!dropdown) return;
         dropdown.innerHTML = '';
+
+        const header = document.createElement('div');
+        header.style.padding = '6px 12px';
+        header.style.fontSize = '0.7rem';
+        header.style.fontWeight = '700';
+        header.style.color = '#64748b';
+        header.style.background = 'var(--surface-subtle, #f8fafc)';
+        header.style.borderBottom = '1px solid var(--border-color, #e2e8f0)';
+        header.style.textTransform = 'uppercase';
+        header.style.letterSpacing = '0.04em';
+        header.innerHTML = `Rekomendasi Sekolah (${items.length} hasil)`;
+        dropdown.appendChild(header);
+
         items.forEach(item => {
             const div = document.createElement('div');
             div.style.padding = '8px 12px';
@@ -531,8 +567,8 @@ function setupSchoolNpsnLookup(formEl, lookupUrl) {
             div.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                     <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-family: monospace; font-weight: 800; background: #e0e7ff; color: #4338ca; padding: 1px 6px; border-radius: 4px; font-size: 0.74rem;">${escapeHtml(item.npsn)}</span>
-                        <strong style="color: var(--text-main, #1e293b);">${escapeHtml(item.school_name || item.name)}</strong>
+                        <span style="font-family: monospace; font-weight: 800; background: #e0e7ff; color: #4338ca; padding: 1px 6px; border-radius: 4px; font-size: 0.74rem;">${highlightQuery(item.npsn, query)}</span>
+                        <strong style="color: var(--text-main, #1e293b);">${highlightQuery(item.school_name || item.name, query)}</strong>
                     </div>
                     <span style="background: ${statusBg}; color: ${statusColor}; font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; white-space: nowrap;">${escapeHtml(item.school_type)} ${escapeHtml(item.school_status)}</span>
                 </div>
