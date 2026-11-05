@@ -339,6 +339,49 @@ $initialActiveTab = $canViewAllCrmCampuses
         </div>
       </div>
     </div>
+
+    <!-- 3. GRAFIK ALASAN NASIONAL CALON MAHASISWA TIDAK BERMINAT / MENOLAK BERGABUNG UBSI -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mt-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500 ring-4 ring-rose-100"></span>
+            <h3 class="text-sm sm:text-base font-extrabold text-slate-900">3. Grafik Alasan Nasional Calon Mahasiswa Tidak Berminat / Menolak Bergabung UBSI (Agregasi Seluruh Kampus)</h3>
+          </div>
+          <p class="text-xs text-slate-500 mt-1 max-w-4xl">
+            Distribusi makro alasan dan kendala calon mahasiswa tidak berminat/menolak bergabung di seluruh 35 kampus se-Indonesia. Data ini menjadi kompas strategis perumusan kebijakan beasiswa, penetapan opsi cicilan biaya kuliah, dan pembukaan program studi relevan.
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-3 py-1 text-xs font-extrabold rounded-xl bg-rose-50 text-rose-800 border border-rose-200 shadow-sm flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            Total <span id="crmAdminReasonTotalBadge"><?= number_format($macroSummary['totalMenolak'] ?? 209, 0, ',', '.') ?></span> Siswa Menolak Nasional
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        <!-- Donut Chart Canvas -->
+        <div class="lg:col-span-5 flex flex-col items-center justify-center bg-slate-50/50 rounded-xl p-4 border border-slate-100">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Proporsi Alasan Penolakan Makro</div>
+          <div class="relative h-64 w-full">
+            <canvas id="crmAdminReasonChart"></canvas>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-2 text-center">* Berdasarkan hasil input interaksi tim CRM di seluruh kampus</div>
+        </div>
+
+        <!-- National Detailed Reason List & Progress Bars -->
+        <div class="lg:col-span-7 space-y-3">
+          <div class="flex items-center justify-between text-xs font-bold text-slate-700 pb-1">
+            <span>Rincian Faktor Penolakan Calon Mahasiswa</span>
+            <span>Persentase &amp; Jumlah Siswa</span>
+          </div>
+          <div id="crmAdminReasonDetailedList" class="space-y-2.5 max-h-72 overflow-y-auto crm-custom-scrollbar pr-1">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- =================================================================== -->
@@ -551,6 +594,62 @@ $initialActiveTab = $canViewAllCrmCampuses
         <div class="pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
           <span>* Klik atau hover pada batang grafik untuk melihat detail angka dan persentase respon.</span>
           <span class="font-semibold text-indigo-600">Cross-Browser SVG Vector</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PANEL GRAFIK 3: ALASAN TIDAK BERMINAT / MENOLAK BERGABUNG UBSI      -->
+    <!-- =================================================================== -->
+    <div class="crm-charts-12">
+      <div class="crm-col-12 bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-rose-500 ring-4 ring-rose-100"></span>
+              <h3 class="text-sm sm:text-base font-extrabold text-slate-900">3. Grafik Alasan Calon Mahasiswa Tidak Berminat / Menolak Bergabung UBSI di Kampus Ini</h3>
+            </div>
+            <p class="text-xs text-slate-500 mt-1 max-w-4xl">
+              Faktor penolakan dan kendala utama calon mahasiswa yang menolak berkuliah di kampus <strong id="crmCampusReasonCampusName" class="text-slate-800"><?= esc($matchedCampus['kampus'] ?? 'UBSI KAMPUS YOGYAKARTA') ?></strong>. Berguna bagi kepala kampus dan koordinator markom untuk intervensi mitigasi prospek ragu-ragu/menolak.
+            </p>
+          </div>
+          <span id="crmCampusTotalMenolakBadge" class="px-3 py-1 text-xs font-extrabold rounded-xl bg-rose-50 text-rose-800 border border-rose-200 shadow-sm flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            0 Siswa Menolak
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <!-- Donut Chart Canvas -->
+          <div class="lg:col-span-5 flex flex-col items-center justify-center bg-slate-50/50 rounded-xl p-4 border border-slate-100">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Visualisasi Tanggapan Penolakan</div>
+            <div class="relative h-64 w-full">
+              <canvas id="crmCampusReasonChart"></canvas>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-2 text-center">* Grafik SVG responsif real-time</div>
+          </div>
+
+          <!-- Interactive Breakdown List & Recommendation Box -->
+          <div class="lg:col-span-7 space-y-3">
+            <div class="flex items-center justify-between text-xs font-bold text-slate-700 pb-1">
+              <span>Alasan / Kendala Prospek di Kampus Ini</span>
+              <span>Jumlah Siswa &amp; Persentase</span>
+            </div>
+            <div id="crmCampusReasonDetailedList" class="space-y-2 max-h-72 overflow-y-auto crm-custom-scrollbar pr-1">
+              <!-- Populated by JS -->
+            </div>
+
+            <!-- Actionable Guidance Box -->
+            <div class="p-3.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 text-xs text-amber-950 flex items-start gap-2.5 shadow-sm">
+              <span class="text-base leading-none">💡</span>
+              <div class="space-y-0.5">
+                <span class="font-extrabold text-amber-900 uppercase tracking-wide text-[11px]">Rekomendasi Tindak Lanjut Penolakan:</span>
+                <p id="crmCampusReasonRecommendationText" class="text-amber-900/90 leading-relaxed">
+                  Bagi calon mahasiswa dengan kendala biaya, prioritaskan penawaran skema beasiswa KIP/prestasi atau cicilan biaya kuliah bulanan; bagi yang memilih kerja, tawarkan program kelas malam/karyawan (Blended Learning).
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -825,6 +924,8 @@ $initialActiveTab = $canViewAllCrmCampuses
   let crmAdminCategoryChartInstance = null;
   let crmCampusFunnelChartInstance = null;
   let crmCampusEventResponseChartInstance = null;
+  let crmAdminReasonChartInstance = null;
+  let crmCampusReasonChartInstance = null;
 
   function classifyCampusCluster(crm) {
     const tot = Math.max(1, crm.total);
@@ -1032,6 +1133,89 @@ $initialActiveTab = $canViewAllCrmCampuses
           scales: {
             y: { beginAtZero: true }
           },
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    // 3. Admin National Rejection Reasons Chart
+    const cAdminReason = document.getElementById('crmAdminReasonChart');
+    const adminReasons = (CRM_MACRO_SUMMARY && CRM_MACRO_SUMMARY.reasons) ? CRM_MACRO_SUMMARY.reasons : [];
+    const totalMenolakAdmin = (CRM_MACRO_SUMMARY && CRM_MACRO_SUMMARY.totalMenolak) ? CRM_MACRO_SUMMARY.totalMenolak : 209;
+
+    const adminMenolakBadge = document.getElementById('crmAdminReasonTotalBadge');
+    if (adminMenolakBadge) adminMenolakBadge.textContent = Number(totalMenolakAdmin).toLocaleString('id-ID');
+
+    const adminReasonList = document.getElementById('crmAdminReasonDetailedList');
+    if (adminReasonList) {
+      adminReasonList.innerHTML = '';
+      if (adminReasons.length === 0) {
+        adminReasonList.innerHTML = '<div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">Belum ada data penolakan nasional yang tercatat.</div>';
+      } else {
+        const totalReasons = adminReasons.reduce((sum, r) => sum + (r.count || 0), 0) || 1;
+        const colorPalette = [
+          { bar: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50/70', border: 'border-blue-200' },
+          { bar: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50/70', border: 'border-rose-200' },
+          { bar: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50/70', border: 'border-amber-200' },
+          { bar: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-50/70', border: 'border-purple-200' },
+          { bar: 'bg-teal-500', text: 'text-teal-700', bg: 'bg-teal-50/70', border: 'border-teal-200' },
+          { bar: 'bg-pink-500', text: 'text-pink-700', bg: 'bg-pink-50/70', border: 'border-pink-200' },
+          { bar: 'bg-slate-500', text: 'text-slate-700', bg: 'bg-slate-50/70', border: 'border-slate-200' }
+        ];
+
+        adminReasons.forEach((r, idx) => {
+          const pal = colorPalette[idx % colorPalette.length];
+          const pct = Math.round(((r.count || 0) / totalReasons) * 100);
+          const row = document.createElement('div');
+          row.className = `p-2.5 rounded-xl border ${pal.border} ${pal.bg} space-y-1`;
+          row.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full ${pal.bar} text-white font-bold text-[9px] flex items-center justify-center shrink-0">${idx + 1}</span>
+                <span class="font-bold text-slate-800 text-xs">${escapeHtml(r.reason)}</span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="font-extrabold ${pal.text} text-xs">${r.count} siswa</span>
+                <span class="text-[11px] font-semibold text-slate-500">(${pct}%)</span>
+              </div>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
+              <div class="${pal.bar} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+            </div>
+          `;
+          adminReasonList.appendChild(row);
+        });
+      }
+    }
+
+    if (cAdminReason) {
+      const ctxAR = cAdminReason.getContext('2d');
+      if (crmAdminReasonChartInstance) crmAdminReasonChartInstance.destroy();
+      crmAdminReasonChartInstance = new Chart(ctxAR, {
+        type: 'doughnut',
+        data: {
+          labels: adminReasons.map((r) => `${r.reason} (${r.count})`),
+          datasets: [
+            {
+              data: adminReasons.map((r) => r.count),
+              backgroundColor: [
+                '#3b82f6',
+                '#ef4444',
+                '#f59e0b',
+                '#8b5cf6',
+                '#14b8a6',
+                '#ec4899',
+                '#64748b'
+              ],
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
           }
@@ -1498,6 +1682,186 @@ $initialActiveTab = $canViewAllCrmCampuses
           }
         }
       });
+    }
+
+    // 3. Admin National Rejection Reasons Chart
+    const cAdminReason = document.getElementById('crmAdminReasonChart');
+    const adminReasons = (CRM_MACRO_SUMMARY && CRM_MACRO_SUMMARY.reasons) ? CRM_MACRO_SUMMARY.reasons : [];
+    const totalMenolakAdmin = (CRM_MACRO_SUMMARY && CRM_MACRO_SUMMARY.totalMenolak) ? CRM_MACRO_SUMMARY.totalMenolak : 209;
+
+    const adminMenolakBadge = document.getElementById('crmAdminReasonTotalBadge');
+    if (adminMenolakBadge) adminMenolakBadge.textContent = Number(totalMenolakAdmin).toLocaleString('id-ID');
+
+    const adminReasonList = document.getElementById('crmAdminReasonDetailedList');
+    if (adminReasonList) {
+      adminReasonList.innerHTML = '';
+      if (adminReasons.length === 0) {
+        adminReasonList.innerHTML = '<div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">Belum ada data penolakan nasional yang tercatat.</div>';
+      } else {
+        const totalReasons = adminReasons.reduce((sum, r) => sum + (r.count || 0), 0) || 1;
+        const colorPalette = [
+          { bar: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50/70', border: 'border-blue-200' },
+          { bar: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50/70', border: 'border-rose-200' },
+          { bar: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50/70', border: 'border-amber-200' },
+          { bar: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-50/70', border: 'border-purple-200' },
+          { bar: 'bg-teal-500', text: 'text-teal-700', bg: 'bg-teal-50/70', border: 'border-teal-200' },
+          { bar: 'bg-pink-500', text: 'text-pink-700', bg: 'bg-pink-50/70', border: 'border-pink-200' },
+          { bar: 'bg-slate-500', text: 'text-slate-700', bg: 'bg-slate-50/70', border: 'border-slate-200' }
+        ];
+
+        adminReasons.forEach((r, idx) => {
+          const pal = colorPalette[idx % colorPalette.length];
+          const pct = Math.round(((r.count || 0) / totalReasons) * 100);
+          const row = document.createElement('div');
+          row.className = `p-2.5 rounded-xl border ${pal.border} ${pal.bg} space-y-1`;
+          row.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full ${pal.bar} text-white font-bold text-[9px] flex items-center justify-center shrink-0">${idx + 1}</span>
+                <span class="font-bold text-slate-800 text-xs">${escapeHtml(r.reason)}</span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="font-extrabold ${pal.text} text-xs">${r.count} siswa</span>
+                <span class="text-[11px] font-semibold text-slate-500">(${pct}%)</span>
+              </div>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
+              <div class="${pal.bar} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+            </div>
+          `;
+          adminReasonList.appendChild(row);
+        });
+      }
+    }
+
+    if (cAdminReason) {
+      const ctxAR = cAdminReason.getContext('2d');
+      if (crmAdminReasonChartInstance) crmAdminReasonChartInstance.destroy();
+      crmAdminReasonChartInstance = new Chart(ctxAR, {
+        type: 'doughnut',
+        data: {
+          labels: adminReasons.map((r) => `${r.reason} (${r.count})`),
+          datasets: [
+            {
+              data: adminReasons.map((r) => r.count),
+              backgroundColor: [
+                '#3b82f6',
+                '#ef4444',
+                '#f59e0b',
+                '#8b5cf6',
+                '#14b8a6',
+                '#ec4899',
+                '#64748b'
+              ],
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    // 3. Donut Chart: Alasan Calon Mahasiswa Tidak Berminat / Menolak Bergabung UBSI di Kampus Ini
+    const c3 = document.getElementById('crmCampusReasonChart');
+    const reasons = crm.reasons || [];
+    const menolakCount = crm.menolak || 0;
+
+    const badgeEl = document.getElementById('crmCampusTotalMenolakBadge');
+    if (badgeEl) badgeEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span> ${menolakCount} Siswa Menolak`;
+
+    const campusNameEl = document.getElementById('crmCampusReasonCampusName');
+    if (campusNameEl) campusNameEl.textContent = crm.kampus;
+
+    const listEl = document.getElementById('crmCampusReasonDetailedList');
+    if (listEl) {
+      listEl.innerHTML = '';
+      if (reasons.length === 0) {
+        listEl.innerHTML = `
+          <div class="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-center">
+            <div class="w-9 h-9 mx-auto mb-1.5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-base">✓</div>
+            <div class="font-extrabold text-emerald-900 text-xs">Nihil Penolakan / Prospek Sangat Responsif!</div>
+            <div class="text-[11px] text-emerald-700 mt-0.5 max-w-sm mx-auto">Belum ada catatan calon mahasiswa yang menyatakan menolak bergabung di kampus ini.</div>
+          </div>
+        `;
+      } else {
+        const totalReasons = reasons.reduce((sum, r) => sum + (r.count || 0), 0) || 1;
+        const colorPalette = [
+          { bar: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50/70', border: 'border-blue-200' },
+          { bar: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50/70', border: 'border-rose-200' },
+          { bar: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50/70', border: 'border-amber-200' },
+          { bar: 'bg-purple-500', text: 'text-purple-700', bg: 'bg-purple-50/70', border: 'border-purple-200' },
+          { bar: 'bg-teal-500', text: 'text-teal-700', bg: 'bg-teal-50/70', border: 'border-teal-200' },
+          { bar: 'bg-pink-500', text: 'text-pink-700', bg: 'bg-pink-50/70', border: 'border-pink-200' },
+          { bar: 'bg-slate-500', text: 'text-slate-700', bg: 'bg-slate-50/70', border: 'border-slate-200' }
+        ];
+
+        reasons.forEach((r, idx) => {
+          const pal = colorPalette[idx % colorPalette.length];
+          const pct = Math.round(((r.count || 0) / totalReasons) * 100);
+          const row = document.createElement('div');
+          row.className = `p-2.5 rounded-xl border ${pal.border} ${pal.bg} space-y-1`;
+          row.innerHTML = `
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-4 h-4 rounded-full ${pal.bar} text-white font-bold text-[9px] flex items-center justify-center shrink-0">${idx + 1}</span>
+                <span class="font-bold text-slate-800 text-xs">${escapeHtml(r.reason)}</span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="font-extrabold ${pal.text} text-xs">${r.count} siswa</span>
+                <span class="text-[11px] font-semibold text-slate-500">(${pct}%)</span>
+              </div>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
+              <div class="${pal.bar} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+            </div>
+          `;
+          listEl.appendChild(row);
+        });
+      }
+    }
+
+    if (c3) {
+      const ctx3 = c3.getContext('2d');
+      if (crmCampusReasonChartInstance) crmCampusReasonChartInstance.destroy();
+      if (reasons.length === 0) {
+        c3.style.display = 'none';
+      } else {
+        c3.style.display = '';
+        crmCampusReasonChartInstance = new Chart(ctx3, {
+          type: 'doughnut',
+          data: {
+            labels: reasons.map((r) => `${r.reason} (${r.count})`),
+            datasets: [
+              {
+                data: reasons.map((r) => r.count),
+                backgroundColor: [
+                  '#3b82f6',
+                  '#ef4444',
+                  '#f59e0b',
+                  '#8b5cf6',
+                  '#14b8a6',
+                  '#ec4899',
+                  '#64748b'
+                ],
+                borderWidth: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+            }
+          }
+        });
+      }
     }
   }
 

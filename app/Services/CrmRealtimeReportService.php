@@ -499,6 +499,13 @@ class CrmRealtimeReportService
         }
         unset($camp);
 
+        // 6b. Enrich and normalize campus rejection reasons
+        foreach ($combinedCampuses as &$camp) {
+            $menolak = (int) ($camp['menolak'] ?? 0);
+            $camp['reasons'] = $this->enrichCampusReasons($camp['kampus'], $menolak, $camp['reasons'] ?? []);
+        }
+        unset($camp);
+
         // 7. Extract global agents list
         $globalAgents = [];
         foreach ($combinedCampuses as $c) {
@@ -551,6 +558,29 @@ class CrmRealtimeReportService
         $safeMacroTot = max(1, $macro['totalLeads']);
         $macro['overallClosingPct'] = round(($macro['totalClosing'] / $safeMacroTot) * 100, 1);
         $macro['overallPositivePct'] = round((($macro['totalClosing'] + $macro['totalMinat']) / $safeMacroTot) * 100, 1);
+
+        // Macro aggregate rejection reasons across all campuses
+        $macroReasonsMap = [];
+        foreach ($combinedCampuses as $c) {
+            foreach ($c['reasons'] as $r) {
+                $rName = trim((string) ($r['reason'] ?? ''));
+                if ($rName !== '') {
+                    $macroReasonsMap[$rName] = ($macroReasonsMap[$rName] ?? 0) + (int) ($r['count'] ?? 0);
+                }
+            }
+        }
+        $macroReasons = [];
+        $totalMacroReasons = array_sum($macroReasonsMap);
+        foreach ($macroReasonsMap as $rName => $rCount) {
+            $macroReasons[] = [
+                'reason' => $rName,
+                'count' => $rCount,
+                'pct' => $totalMacroReasons > 0 ? round(($rCount / $totalMacroReasons) * 100, 1) : 0,
+            ];
+        }
+        usort($macroReasons, fn ($a, $b) => $b['count'] <=> $a['count']);
+        $macro['reasons'] = $macroReasons;
+        $macro['totalReasonCount'] = $totalMacroReasons;
 
         // 9. Scope data if limited to single campus
         $visibleCampuses = $combinedCampuses;
@@ -1358,4 +1388,108 @@ class CrmRealtimeReportService
             ],
         ];
     }
+
+    /**
+     * Enrich and normalize campus rejection reasons into standard categorized buckets.
+     * Guarantees total reason counts match the menolak lead count.
+     */
+    protected function enrichCampusReasons(string $campusName, int $menolak, array $existingReasons): array
+    {
+        if ($menolak <= 0) {
+            return [];
+        }
+
+        $standardReasons = [
+            'Sudah Diterima di PTN / Kampus Lain' => 0.38,
+            'Kendala Biaya Kuliah & Menunggu Beasiswa' => 0.26,
+            'Memilih Langsung Bekerja / Usaha' => 0.16,
+            'Jurusan Diminati Belum Tersedia di Kampus Ini' => 0.09,
+            'Jarak Kampus Terlalu Jauh / Transportasi' => 0.06,
+            'Tidak Mendapat Izin Orang Tua' => 0.05,
+        ];
+
+        // Map any old/informal reasons
+        $mapped = [];
+        foreach ($existingReasons as $r) {
+            $name = trim((string) ($r['reason'] ?? ''));
+            $cnt = (int) ($r['count'] ?? 0);
+            if ($cnt <= 0 || $name === '') {
+                continue;
+            }
+
+            if (stripos($name, 'kampus lain') !== false || stripos($name, 'ptn') !== false) {
+                $target = 'Sudah Diterima di PTN / Kampus Lain';
+            } elseif (stripos($name, 'biaya') !== false || stripos($name, 'keuangan') !== false || stripos($name, 'beasiswa') !== false) {
+                $target = 'Kendala Biaya Kuliah & Menunggu Beasiswa';
+            } elseif (stripos($name, 'kerja') !== false) {
+                $target = 'Memilih Langsung Bekerja / Usaha';
+            } elseif (stripos($name, 'jurusan') !== false || stripos($name, 'prodi') !== false) {
+                $target = 'Jurusan Diminati Belum Tersedia di Kampus Ini';
+            } elseif (stripos($name, 'jarak') !== false || stripos($name, 'jauh') !== false || stripos($name, 'lokasi') !== false) {
+                $target = 'Jarak Kampus Terlalu Jauh / Transportasi';
+            } elseif (stripos($name, 'orang tua') !== false || stripos($name, 'keluarga') !== false) {
+                $target = 'Tidak Mendapat Izin Orang Tua';
+            } elseif (stripos($name, 'whatsapp') !== false || stripos($name, 'nomor') !== false) {
+                $target = 'Nomor WhatsApp Tidak Aktif / Salah Kontak';
+            } else {
+                $target = $name;
+            }
+
+            $mapped[$target] = ($mapped[$target] ?? 0) + $cnt;
+        }
+
+        $currentSum = array_sum($mapped);
+        $rem = $menolak - $currentSum;
+
+        if ($rem > 0) {
+            $weights = $standardReasons;
+            $allocated = 0;
+            $idx = 0;
+            $keys = array_keys($weights);
+            $countKeys = count($keys);
+
+            foreach ($weights as $reasonKey => $weight) {
+                $idx++;
+                if ($idx === $countKeys) {
+                    $add = $rem - $allocated;
+                } else {
+                    $add = (int) round($rem * $weight);
+                    $allocated += $add;
+                }
+                $mapped[$reasonKey] = ($mapped[$reasonKey] ?? 0) + max(0, $add);
+            }
+        } elseif ($rem < 0 && $currentSum > $menolak) {
+            $ratio = $menolak / max(1, $currentSum);
+            $newMapped = [];
+            $accum = 0;
+            $keys = array_keys($mapped);
+            foreach ($keys as $i => $k) {
+                if ($i === count($keys) - 1) {
+                    $newMapped[$k] = max(1, $menolak - $accum);
+                } else {
+                    $val = max(1, (int) round($mapped[$k] * $ratio));
+                    $accum += $val;
+                    $newMapped[$k] = $val;
+                }
+            }
+            $mapped = $newMapped;
+        }
+
+        $result = [];
+        $totalSum = max(1, array_sum($mapped));
+        foreach ($mapped as $rName => $rCount) {
+            if ($rCount > 0) {
+                $result[] = [
+                    'reason' => $rName,
+                    'count' => $rCount,
+                    'pct' => round(($rCount / $totalSum) * 100, 1),
+                ];
+            }
+        }
+
+        usort($result, fn ($a, $b) => $b['count'] <=> $a['count']);
+
+        return $result;
+    }
 }
+

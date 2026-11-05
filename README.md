@@ -494,6 +494,10 @@ Kredensial Default Login:
   - **Chart 1 (Donut Chart)**: Visualisasi proporsi tanggapan calon mahasiswa di kampus terpilih (Closing PMB, Minat/Tertarik, Ragu-ragu/Pertimbangan, Menolak, Tidak Merespon, Fresh Belum Dihubungi).
   - **Chart 2 (Horizontal Stacked Bar Chart)**: Komparasi performa dan respon calon mahasiswa antar-event yang telah dilaksanakan di kampus tersebut.
   - **Chart 3 (Macro Comparative Bar Chart)**: Komparasi volume dan persentase respon lintas seluruh kampus di Indonesia untuk level Admin Pusat.
+- **Grafik & Analisis Alasan Tidak Berminat / Menolak Bergabung UBSI (Real-Time SVG)**:
+  - **Grafik Penolakan di View Kampus Pelaksana**: Menampilkan Donut Chart interaktif dan rincian faktor penolakan siswa di kampus terkait (*Sudah Diterima di PTN/Kampus Lain*, *Kendala Biaya Kuliah & Menunggu Beasiswa*, *Memilih Langsung Bekerja*, *Jurusan Diminati Belum Tersedia*, *Jarak Kampus Terlalu Jauh*, *Tidak Mendapat Izin Orang Tua*), dilengkapi progress bar persentase dan kotak rekomendasi taktis tindak lanjut penolakan (skema cicilan kuliah bulanan, beasiswa KIP/prestasi, kelas malam/karyawan Blended Learning).
+  - **Grafik Penolakan Makro Nasional (View Admin Pusat)**: Agregasi nasional seluruh data penolakan dari 35 kampus se-Indonesia untuk kompas strategis manajemen dalam merancang kebijakan PMB dan promosi beasiswa.
+  - Penanganan status adaptif: menampilkan ilustrasi hijau *Nihil Penolakan* jika kampus belum memiliki catatan penolakan.
 - **Sinkronisasi & Pembaruan Data Real-Time**:
   - Indikator status `🟢 Real-Time Sync Aktif` dengan penunjuk timestamp WIB presisi (`H:i:s WIB`).
   - Tombol interaktif **"🔄 Refresh Real-Time"** untuk memperbarui data seketika melalui endpoint AJAX `/laporan-crm/realtime-data` tanpa memuat ulang (reload) halaman browser.

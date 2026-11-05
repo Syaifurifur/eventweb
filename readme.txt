@@ -831,7 +831,10 @@ B. Komponen & Fungsionalitas Utama:
       - Chart 1: Donut Chart distribusi tanggapan prospek (Closing PMB, Minat, Ragu-ragu, Menolak, Tidak Respon, Fresh).
       - Chart 2: Horizontal Stacked Bar Chart komparasi perolehan respon per event di kampus terkait.
       - Chart 3: Bar Chart agregasi volume & persentase respon makro se-Indonesia (khusus Admin Pusat).
-   4. Live Polling & Refresh Real-Time:
+   4. Grafik Alasan Tidak Berminat / Menolak Bergabung UBSI:
+      - Grafik Donut & Progress Bar Alasan di Kampus Pelaksana: Menampilkan alasan penolakan siswa (Diterima di PTN/Kampus Lain, Kendala Biaya Kuliah, Memilih Bekerja, Jurusan Tidak Tersedia, Jarak Kampus Jauh, Tidak Diizinkan Orang Tua), serta kotak instruksi mitigasi follow-up.
+      - Grafik Donut Alasan Nasional (Makro Admin Pusat): Agregasi alasan penolakan seluruh 35 kampus se-Indonesia sebagai dasar perumusan kebijakan beasiswa & program cicilan PMB.
+   5. Live Polling & Refresh Real-Time:
       - Indikator badge 'Real-Time Sync Aktif' dengan penunjuk jam WIB live.
       - Tombol 'Refresh Real-Time' memicu request AJAX ke endpoint '/laporan-crm/realtime-data' secara asinkron tanpa reload browser.
       - Auto-sync otomatis setiap 30 detik di background.
