@@ -214,8 +214,13 @@ $userInitial = strtoupper(substr($userName, 0, 1));
                         <a href="<?= site_url('calendar') ?>" class="w-10 h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full hidden sm:flex justify-center items-center hover:bg-primary-50 transition" title="Kalender Event" aria-label="Kalender Event">
                             <iconify-icon icon="solar:calendar-outline" class="text-neutral-900 dark:text-white text-xl"></iconify-icon>
                         </a>
-                        <a href="<?= site_url('notifications') ?>" class="has-indicator w-10 h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full flex justify-center items-center hover:bg-primary-50 transition" title="Notifikasi" aria-label="Notifikasi">
+                        <a href="<?= site_url('notifications') ?>" class="has-indicator relative w-10 h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full flex justify-center items-center hover:bg-primary-50 transition" title="Notifikasi" aria-label="Notifikasi">
                             <iconify-icon icon="iconoir:bell" class="text-neutral-900 dark:text-white text-xl"></iconify-icon>
+                            <?php if (!empty($unreadNotificationsCount) && $unreadNotificationsCount > 0): ?>
+                                <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-neutral-800 shadow-sm animate-pulse" title="<?= esc((string) $unreadNotificationsCount) ?> belum dibaca">
+                                    <?= $unreadNotificationsCount > 99 ? '99+' : $unreadNotificationsCount ?>
+                                </span>
+                            <?php endif; ?>
                         </a>
                         <button data-dropdown-toggle="dropdownProfile" class="flex items-center gap-2.5 py-1 ps-1.5 pe-3 rounded-full bg-neutral-100 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 hover:border-primary-600 transition" type="button">
                             <span class="w-8 h-8 rounded-full bg-primary-600 text-white font-bold text-sm flex items-center justify-center shrink-0">

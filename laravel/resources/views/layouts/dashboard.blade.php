@@ -31,7 +31,7 @@
         <?php endif; ?>
 
         <!-- ..:: WowDash Navbar Start ::.. -->
-        <x-navbar :title="$title ?? 'Dashboard'" :currentUser="$currentUser ?? []" />
+        <x-navbar :title="$title ?? 'Dashboard'" :currentUser="$currentUser ?? []" :unreadNotificationsCount="$unreadNotificationsCount ?? 0" />
         <!-- ..:: WowDash Navbar End ::.. -->
 
         <div class="dashboard-main-body">

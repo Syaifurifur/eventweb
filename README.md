@@ -421,3 +421,29 @@ Kredensial Default Login:
   - **Dropdown Rekomendasi Autocomplete**: Pengguna dapat melihat saran sekolah langsung saat mengetik NPSN atau mengetik nama sekolah, lengkap dengan lencana NPSN, jenis & status sekolah, serta lokasi kabupaten/kecamatan.
   - Memberikan indikator kilat visual hijau dan notifikasi bahwa data sekolah telah terisi otomatis dari referensi resmi nasional.
 - **100% Strict Dual-Engine Parity**: Didukung penuh pada CodeIgniter 4 dan Laravel melalui endpoint API `/one-campus/schools/lookup-npsn`.
+
+### 11. Notifikasi Email Otomatis ke markom851@bsi.ac.id & Lonceng Notifikasi Sistem (One Campus Sixty School)
+- **Pengiriman Email Otomatis ke `markom851@bsi.ac.id`**:
+  - Setiap kali ada pengisian data sekolah baru pada modul **One Campus Sixty School**, sistem secara otomatis mengirimkan email notifikasi ke alamat tujuan: **`markom851@bsi.ac.id`**.
+  - **Desain Template Email HTML Modern & Responsif**:
+    * Menggunakan branding visual resmi EventHub Markom dengan skema warna biru-cyan.
+    * Subjek email terstruktur: `[One Campus Sixty School] Data Sekolah Baru: {Nama Sekolah} ({Kota})`.
+    * Memuat rincian lengkap: Nama Sekolah, NPSN, Kota/Kabupaten, Bentuk/Status Sekolah, Kepala Sekolah, Kontak/Email Sekolah.
+    * Memuat rincian program & kampus: Kampus Pengusul, Periode PMB, Status BJS, Target Mahasiswa PMB, Nama & Kontak PIC Guru.
+    * Memuat identitas penginput (Nama User & Email) serta stempel waktu pendaftaran (*timestamp* WIB).
+    * Dilengkapi tombol Call to Action (CTA) interaktif untuk langsung membuka data terkait di EventHub.
+    * Disertai format pesan alternatif plain text (*multipart MIME*) untuk kompatibilitas klien email.
+    * Mekanisme *fail-safe* dengan try-catch & fallback PHP `mail()` sehingga proses input data sekolah tidak pernah terganggu meskipun mail server lokal tidak aktif.
+- **Integrasi Lonceng Notifikasi Sistem (In-App Bell Notification)**:
+  - Menyisipkan entri notifikasi baru bertipe `sixty-school` ke tabel `notifications` untuk Admin Sistem (User ID 1), seluruh akun dengan role administratif (`Admin Sistem`, `Super Admin`, `DMER`, `Admin`), dan user penginput.
+  - **Badge Indikator Real-Time pada Ikon Lonceng Navbar**:
+    * Navbar menampilkan lencana merah menyala (*pulse badge*) dengan angka penghitung notifikasi belum dibaca (*unread counter*).
+    * Bekerja konsisten di semua halaman pada dashboard layout CodeIgniter 4 (`app/Views/layouts/dashboard.php`) dan Laravel Blade (`laravel/resources/views/components/navbar.blade.php`).
+- **Penyempurnaan Halaman Inbox Notifikasi (`/notifications`)**:
+  - Menampilkan badge kategori khusus `Sixty School` dengan warna cyan yang khas.
+  - Tombol **"Buka →"** pada setiap notifikasi Sixty School langsung mengarahkan user ke halaman manajemen Sixty School (`/one-campus/schools`).
+  - Dilengkapi penanda status visual (`Baru`, `Belum dibaca`, tanggal & waktu pendaftaran).
+  - Dilengkapi tombol cepat **"Tandai semua dibaca"** yang memperbarui status baca di tabel `notifications`.
+  - State kosong (*empty state*) yang informatif dan elegan ketika tidak ada notifikasi.
+- **100% Dual-Engine Parity**:
+  - Diimplementasikan secara identik pada CodeIgniter 4 dan Laravel, termasuk dukungan mailer `LegacyMailer` yang mendukung HTML dan `setAltMessage`.

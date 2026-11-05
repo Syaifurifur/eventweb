@@ -3998,24 +3998,37 @@ class EventSuite extends BaseController
         $bjsVerifiedAt = $bjsStatus === 'Aktif' ? date('Y-m-d H:i:s') : null;
         $bjsVerifiedBy = $bjsStatus === 'Aktif' ? (int) session('user.id') : null;
 
-        (new OneCampusSchoolReportModel())->insert([
-            'campus_id' => $this->oneCampusInputCampusId(),
+        $campusId = $this->oneCampusInputCampusId();
+        $city = trim((string) $this->request->getPost('city'));
+        $schoolType = trim((string) $this->request->getPost('school_type')) ?: 'SMA';
+        $schoolStatus = trim((string) $this->request->getPost('school_status')) ?: 'Negeri';
+        $headmasterName = trim((string) $this->request->getPost('headmaster_name'));
+        $schoolPhone = trim((string) $this->request->getPost('school_phone'));
+        $schoolEmail = trim((string) $this->request->getPost('school_email'));
+        $position = trim((string) $this->request->getPost('position')) ?: 'Kontak Sekolah';
+        $pmbCount = (int) $this->request->getPost('pmb_count');
+        $status = trim((string) $this->request->getPost('status')) ?: 'Aktif';
+        $notes = trim((string) $this->request->getPost('notes'));
+        $currentUserId = (int) session('user.id');
+
+        $schoolData = [
+            'campus_id' => $campusId,
             'npsn' => $npsn !== '' ? $npsn : null,
             'school_name' => $schoolName,
-            'city' => trim((string) $this->request->getPost('city')) ?: null,
-            'school_type' => trim((string) $this->request->getPost('school_type')) ?: 'SMA',
-            'school_status' => trim((string) $this->request->getPost('school_status')) ?: 'Negeri',
-            'headmaster_name' => trim((string) $this->request->getPost('headmaster_name')) ?: null,
-            'school_phone' => trim((string) $this->request->getPost('school_phone')) ?: null,
-            'school_email' => trim((string) $this->request->getPost('school_email')) ?: null,
+            'city' => $city !== '' ? $city : null,
+            'school_type' => $schoolType,
+            'school_status' => $schoolStatus,
+            'headmaster_name' => $headmasterName !== '' ? $headmasterName : null,
+            'school_phone' => $schoolPhone !== '' ? $schoolPhone : null,
+            'school_email' => $schoolEmail !== '' ? $schoolEmail : null,
             'contact_name' => $contactName ?: null,
             'contact_phone' => $contactPhone ?: null,
             'contact_email' => $contactEmail ?: null,
             'teacher_name' => $contactName ?: ($schoolName . ' PIC'),
-            'phone' => $contactPhone ?: (trim((string) $this->request->getPost('school_phone')) ?: '-'),
-            'position' => trim((string) $this->request->getPost('position')) ?: 'Kontak Sekolah',
-            'pmb_count' => (int) $this->request->getPost('pmb_count'),
-            'status' => trim((string) $this->request->getPost('status')) ?: 'Aktif',
+            'phone' => $contactPhone ?: ($schoolPhone ?: '-'),
+            'position' => $position,
+            'pmb_count' => $pmbCount,
+            'status' => $status,
             'bjs_status' => $bjsStatus,
             'bjs_verified_at' => $bjsVerifiedAt,
             'bjs_verified_by' => $bjsVerifiedBy,
@@ -4023,9 +4036,30 @@ class EventSuite extends BaseController
             'mou_file' => $mouFile,
             'mou_drive_link' => $mouDriveLink !== '' ? $mouDriveLink : null,
             'mou_uploaded_at' => $mouUploadedAt,
-            'notes' => trim((string) $this->request->getPost('notes')) ?: null,
-            'created_by' => (int) session('user.id'),
-        ]);
+            'notes' => $notes !== '' ? $notes : null,
+            'created_by' => $currentUserId,
+        ];
+
+        (new OneCampusSchoolReportModel())->insert($schoolData);
+
+        // Ambil info penginput dan kampus
+        $submitter = (new UserModel())->withDeleted()->find($currentUserId);
+        $submitterName = (string) ($submitter['name'] ?? session('user.name') ?? 'Admin');
+        $submitterEmail = (string) ($submitter['email'] ?? session('user.email') ?? '-');
+
+        $campusName = 'Semua Kampus';
+        if ($campusId !== null) {
+            $campusRecord = (new CampusModel())->find($campusId);
+            if ($campusRecord) {
+                $campusName = $campusRecord['name'] . (! empty($campusRecord['kode_kampus']) ? ' (' . $campusRecord['kode_kampus'] . ')' : '');
+            }
+        }
+
+        // 1. Kirim Email Notifikasi ke markom851@bsi.ac.id
+        $this->sendOneCampusSchoolNotificationEmail($schoolData, $campusName, $submitterName, $submitterEmail);
+
+        // 2. Masukkan ke lonceng notifikasi (In-App Notification)
+        $this->notifyOneCampusSchoolRegistered($schoolData, $submitterName, $currentUserId);
 
         return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod)))
             ->with('success', 'Data sekolah penerima BJS berhasil disimpan ke tahun PMB ' . $pmbPeriod . '.' . $driveNotice);
@@ -5262,24 +5296,44 @@ class EventSuite extends BaseController
 
     public function notifications(): string
     {
-        $data = $this->applicationData();
+        $currentUserId = (int) session('user.id');
+        $builder = (new NotificationModel())
+            ->orderBy('created_at', 'DESC');
+        if ($currentUserId > 0) {
+            $builder->groupStart()
+                ->where('user_id', $currentUserId)
+                ->orWhere('user_id', 1)
+                ->groupEnd();
+        } else {
+            $builder->where('user_id', 1);
+        }
+        $notifications = $builder->findAll(50);
 
         return $this->render('pages/notifications', [
             'title' => 'Notifikasi',
             'active' => 'notifications',
-            'notifications' => $data['notifications'],
+            'notifications' => $notifications,
         ]);
     }
 
     public function markNotificationsRead()
     {
-        (new NotificationModel())
-            ->where('user_id', (int) session('user.id'))
-            ->where('read_at', null)
+        $currentUserId = (int) session('user.id');
+        $model = new NotificationModel();
+        if ($currentUserId > 0) {
+            $model->groupStart()
+                ->where('user_id', $currentUserId)
+                ->orWhere('user_id', 1)
+                ->groupEnd();
+        } else {
+            $model->where('user_id', 1);
+        }
+
+        $model->where('read_at', null)
             ->set(['read_at' => date('Y-m-d H:i:s')])
             ->update();
 
-        return redirect()->to(site_url('notifications'))->with('success', 'Semua notifikasi ditandai dibaca.');
+        return redirect()->to(site_url('notifications'))->with('success', 'Semua notifikasi ditandai sudah dibaca.');
     }
 
     public function users(): string
@@ -6048,6 +6102,19 @@ class EventSuite extends BaseController
 
     private function render(string $view, array $data = []): string
     {
+        $currentUserId = (int) session('user.id');
+        if (! isset($data['unreadNotificationsCount'])) {
+            $unreadQuery = (new NotificationModel())->where('read_at', null);
+            if ($currentUserId > 0) {
+                $unreadQuery->groupStart()
+                    ->where('user_id', $currentUserId)
+                    ->orWhere('user_id', 1)
+                    ->groupEnd();
+                $data['unreadNotificationsCount'] = $unreadQuery->countAllResults();
+            } else {
+                $data['unreadNotificationsCount'] = 0;
+            }
+        }
         $data['content'] = view($view, $data);
         $data['currentUser'] = session('user') ?: [
             'name' => 'Guest',
@@ -10664,6 +10731,200 @@ class EventSuite extends BaseController
             return $email->send(false);
         } catch (\Throwable $error) {
             log_message('error', 'Gagal mengirim email aktivasi user: ' . $error->getMessage());
+
+            return false;
+        }
+    }
+
+    private function notifyOneCampusSchoolRegistered(array $schoolData, string $submitterName, int $currentUserId): void
+    {
+        $schoolName = (string) ($schoolData['school_name'] ?? 'Sekolah');
+        $city = (string) ($schoolData['city'] ?? '');
+        $pmbPeriod = (string) ($schoolData['pmb_period'] ?? '');
+
+        $locationPart = $city !== '' ? ' (' . $city . ')' : '';
+        $message = 'Data sekolah baru Sixty School: ' . $schoolName . $locationPart . ' untuk ' . $pmbPeriod . ' oleh ' . $submitterName . '.';
+        if (mb_strlen($message) > 250) {
+            $message = mb_substr($message, 0, 247) . '...';
+        }
+
+        $recipientIds = [1];
+        if ($currentUserId > 0) {
+            $recipientIds[] = $currentUserId;
+        }
+
+        $adminUsers = (new UserModel())
+            ->whereIn('role', ['Admin Sistem', 'Super Admin', 'DMER', 'Admin'])
+            ->findAll();
+
+        foreach ($adminUsers as $admin) {
+            $recipientIds[] = (int) $admin['id'];
+        }
+
+        $recipientIds = array_values(array_unique(array_filter($recipientIds, fn (int $id): bool => $id > 0)));
+
+        $notificationModel = new NotificationModel();
+        foreach ($recipientIds as $uid) {
+            $notificationModel->insert([
+                'user_id' => $uid,
+                'type' => 'sixty-school',
+                'message' => $message,
+                'read_at' => null,
+            ]);
+        }
+    }
+
+    private function sendOneCampusSchoolNotificationEmail(array $schoolData, string $campusName, string $submitterName, string $submitterEmail): bool
+    {
+        $recipient = 'markom851@bsi.ac.id';
+        $schoolName = (string) ($schoolData['school_name'] ?? '-');
+        $city = (string) ($schoolData['city'] ?? '-');
+        $npsn = (string) ($schoolData['npsn'] ?? '-');
+        $schoolType = (string) ($schoolData['school_type'] ?? '-');
+        $schoolStatus = (string) ($schoolData['school_status'] ?? '-');
+        $pmbPeriod = (string) ($schoolData['pmb_period'] ?? '-');
+        $headmaster = (string) ($schoolData['headmaster_name'] ?? '-');
+        $schoolPhone = (string) ($schoolData['school_phone'] ?? '-');
+        $schoolEmail = (string) ($schoolData['school_email'] ?? '-');
+        $contactName = (string) ($schoolData['contact_name'] ?? '-');
+        $contactPhone = (string) ($schoolData['contact_phone'] ?? '-');
+        $contactEmail = (string) ($schoolData['contact_email'] ?? '-');
+        $pmbCount = (int) ($schoolData['pmb_count'] ?? 0);
+        $bjsStatus = (string) ($schoolData['bjs_status'] ?? '-');
+        $notes = (string) ($schoolData['notes'] ?? '-');
+        $detailUrl = site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod));
+        $now = date('d F Y, H:i') . ' WIB';
+
+        $subject = '[One Campus Sixty School] Data Sekolah Baru: ' . $schoolName . ' (' . $city . ')';
+
+        $htmlMessage = '
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>' . htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') . '</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 24px; }
+        .email-card { max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+        .email-hdr { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; padding: 26px 28px; }
+        .email-hdr h1 { margin: 0; font-size: 20px; font-weight: 700; }
+        .email-hdr p { margin: 6px 0 0; font-size: 13px; opacity: 0.9; }
+        .email-body { padding: 24px 28px; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .badge-cyan { background: #e0f2fe; color: #0284c7; }
+        .badge-green { background: #dcfce7; color: #15803d; }
+        .table-data { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        .table-data th, .table-data td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; text-align: left; vertical-align: top; }
+        .table-data th { width: 34%; color: #64748b; font-weight: 600; background: #f8fafc; }
+        .table-data td { color: #0f172a; font-weight: 500; }
+        .sec-title { font-size: 13px; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 6px; border-left: 3px solid #0284c7; padding-left: 8px; }
+        .btn-link { display: inline-block; background: #0284c7; color: #ffffff !important; text-decoration: none; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 13px; margin-top: 22px; }
+        .email-ftr { background: #f8fafc; padding: 16px 28px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="email-card">
+        <div class="email-hdr">
+            <h1>Notifikasi One Campus Sixty School</h1>
+            <p>Pengisian data sekolah mitra baru telah berhasil disimpan ke sistem.</p>
+        </div>
+        <div class="email-body">
+            <p style="margin-top:0; font-size: 13.5px; line-height: 1.55;">
+                Halo Tim Marketing Komunikasi (Markom),<br>
+                Terdapat penambahan data sekolah baru pada program <strong>One Campus Sixty School</strong> oleh <strong>' . htmlspecialchars($submitterName, ENT_QUOTES, 'UTF-8') . '</strong> (' . htmlspecialchars($submitterEmail, ENT_QUOTES, 'UTF-8') . ').
+            </p>
+
+            <div class="sec-title">Informasi Sekolah</div>
+            <table class="table-data">
+                <tr><th>Nama Sekolah</th><td><strong>' . htmlspecialchars($schoolName, ENT_QUOTES, 'UTF-8') . '</strong></td></tr>
+                <tr><th>NPSN</th><td>' . htmlspecialchars($npsn, ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Kota / Kabupaten</th><td>' . htmlspecialchars($city, ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Bentuk / Status</th><td>' . htmlspecialchars($schoolType . ' (' . $schoolStatus . ')', ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Kepala Sekolah</th><td>' . htmlspecialchars($headmaster, ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Kontak Sekolah</th><td>' . htmlspecialchars($schoolPhone . ' / ' . $schoolEmail, ENT_QUOTES, 'UTF-8') . '</td></tr>
+            </table>
+
+            <div class="sec-title">Detail Kampus & Program PMB</div>
+            <table class="table-data">
+                <tr><th>Kampus Pengusul</th><td>' . htmlspecialchars($campusName, ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Periode PMB</th><td><span class="badge badge-cyan">' . htmlspecialchars($pmbPeriod, ENT_QUOTES, 'UTF-8') . '</span></td></tr>
+                <tr><th>Status BJS</th><td><span class="badge badge-green">' . htmlspecialchars($bjsStatus, ENT_QUOTES, 'UTF-8') . '</span></td></tr>
+                <tr><th>Target / Perolehan Mhs</th><td>' . $pmbCount . ' Mahasiswa</td></tr>
+                <tr><th>PIC / Kontak Guru</th><td>' . htmlspecialchars($contactName, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($contactPhone . ' / ' . $contactEmail, ENT_QUOTES, 'UTF-8') . ')</td></tr>
+                <tr><th>Catatan</th><td>' . nl2br(htmlspecialchars($notes, ENT_QUOTES, 'UTF-8')) . '</td></tr>
+                <tr><th>Waktu Pendaftaran</th><td>' . $now . '</td></tr>
+            </table>
+
+            <div style="text-align: center;">
+                <a href="' . $detailUrl . '" class="btn-link">Lihat Selengkapnya di EventHub &rarr;</a>
+            </div>
+        </div>
+        <div class="email-ftr">
+            &copy; ' . date('Y') . ' EventHub &bull; Markom Universitas Bina Sarana Informatika.<br>
+            Pemberitahuan otomatis ini dikirim ke ' . htmlspecialchars($recipient, ENT_QUOTES, 'UTF-8') . '.
+        </div>
+    </div>
+</body>
+</html>';
+
+        $plainTextMessage = implode("\n", [
+            'PENGISIAN DATA BARU ONE CAMPUS SIXTY SCHOOL',
+            '==========================================',
+            'Nama Sekolah   : ' . $schoolName,
+            'NPSN           : ' . $npsn,
+            'Kota           : ' . $city,
+            'Bentuk/Status  : ' . $schoolType . ' (' . $schoolStatus . ')',
+            'Kepala Sekolah : ' . $headmaster,
+            'Kampus         : ' . $campusName,
+            'Periode PMB    : ' . $pmbPeriod,
+            'Status BJS     : ' . $bjsStatus,
+            'Perolehan Mhs  : ' . $pmbCount . ' Mahasiswa',
+            'PIC Guru       : ' . $contactName . ' (' . $contactPhone . ' / ' . $contactEmail . ')',
+            'Penginput      : ' . $submitterName . ' (' . $submitterEmail . ')',
+            'Waktu Input    : ' . $now,
+            'Tautan         : ' . $detailUrl,
+        ]);
+
+        $config = [
+            'protocol' => env('email.protocol', 'mail'),
+            'SMTPHost' => env('email.SMTPHost', ''),
+            'SMTPUser' => env('email.SMTPUser', ''),
+            'SMTPPass' => env('email.SMTPPass', ''),
+            'SMTPPort' => (int) env('email.SMTPPort', 25),
+            'SMTPCrypto' => env('email.SMTPCrypto', 'tls'),
+            'mailType' => 'html',
+            'charset' => 'UTF-8',
+            'newline' => "\r\n",
+            'CRLF' => "\r\n",
+        ];
+
+        try {
+            $email = service('email', $config, false);
+            $email->setFrom(env('email.fromEmail', 'noreply@eventhub.local'), env('email.fromName', 'EventHub Markom'));
+            $email->setTo($recipient);
+            $email->setSubject($subject);
+            $email->setMessage($htmlMessage);
+            if (is_object($email) && method_exists($email, 'setAltMessage')) {
+                $email->setAltMessage($plainTextMessage);
+            }
+
+            $sent = $email->send(false);
+            if (! $sent) {
+                $headers = "MIME-Version: 1.0\r\n" .
+                           "Content-type: text/html; charset=UTF-8\r\n" .
+                           "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
+                @mail($recipient, $subject, $htmlMessage, $headers);
+            }
+
+            return true;
+        } catch (\Throwable $error) {
+            log_message('error', 'Gagal mengirim email Sixty School: ' . $error->getMessage());
+            try {
+                $headers = "MIME-Version: 1.0\r\n" .
+                           "Content-type: text/html; charset=UTF-8\r\n" .
+                           "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
+                @mail($recipient, $subject, $htmlMessage, $headers);
+            } catch (\Throwable) {}
 
             return false;
         }

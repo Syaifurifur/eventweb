@@ -6589,3 +6589,27 @@ html.dark .control {
     font-size: 12px;
     font-weight: 600;
 }
+
+.status-sixty-school,
+.status-sixty_school {
+    background: rgba(14, 165, 233, 0.15);
+    color: #0284c7;
+    border: 1px solid rgba(14, 165, 233, 0.35);
+}
+
+html.dark .status-sixty-school,
+html.dark .status-sixty_school {
+    background: rgba(14, 165, 233, 0.22);
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.45);
+}
+
+html.dark .notification-item {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+html.dark .notification-item.is-unread {
+    background: rgba(14, 165, 233, 0.08);
+    border-left-color: #38bdf8;
+}
