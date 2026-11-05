@@ -466,3 +466,26 @@ Kredensial Default Login:
   - Tombol master di header modal untuk menyalin rangkuman seluruh informasi sekolah dalam satu blok teks terformat rapi dan siap dibagikan ke WhatsApp/Email.
 - **100% Strict Dual-Engine Parity**:
   - Diimplementasikan secara identik pada CodeIgniter 4 (`app/Views/pages/one_campus.php`, `app/Views/pages/one_campus_school_edit.php`) dan Laravel Blade (`laravel/resources/views/pages/one_campus.blade.php`, `laravel/resources/views/pages/one_campus_school_edit.blade.php`).
+
+### 13. Fitur Pusat Unduhan & Repositori Dokumen (Upload oleh Admin, Download oleh Seluruh User)
+- **Akses Terpusat & Terbuka untuk Seluruh User**:
+  - Menu baru **"Pusat Unduhan & Dokumen"** (URL `/shared-documents` atau alias `/downloads`) disematkan pada sidebar kelompok menu *Dokumen & Laporan*.
+  - Terbuka untuk **seluruh pengguna** dari berbagai role (`Admin Sistem`, `Kepala Kampus`, `Marketing Akademik`, `MARKOM`, `Event Creator`, `Pimpinan`, `Staff Operasional`, `Tim Design`).
+  - Menyediakan direktori terpusat untuk panduan operasional (SOP), format proposal baku, format LPJ kegiatan, SK Rektorat, brosur/flyer promosi, dan formulir resmi.
+- **Wewenang Pengelolaan Berkas oleh Admin**:
+  - Role berwewenang (`Admin Sistem`, `Super Admin`, `DMER`, `Admin`) dilengkapi tombol **"+ Upload Dokumen Baru"** untuk mengunggah berkas.
+  - Mendukung aneka format berkas: PDF (`.pdf`), Word (`.docx`, `.doc`), Excel (`.xlsx`, `.xls`, `.csv`), PowerPoint (`.pptx`), Gambar (`.png`, `.jpg`, `.webp`), dan Arsip (`.zip`, `.rar`, `.7z`) dengan batas berkas hingga 50 MB.
+  - Admin dapat memperbarui rincian dokumen (*Edit Informasi*) atau mengganti file yang telah diunggah.
+  - Admin dapat mengarsipkan/mengaktifkan status berkas serta menghapus dokumen secara permanen dari basis data dan media penyimpanan server (`writable/uploads/shared_documents/`).
+- **Fitur Download & Pratinjau Interaktif (User Experience)**:
+  - Tombol **"Unduh Berkas"** sekali klik langsung memulai pengunduhan file dengan nama asli dan tipe MIME yang tepat.
+  - Penghitung unduhan (*real-time download counter*) otomatis mencatat total berapa kali sebuah dokumen telah diunduh oleh civitas kampus.
+  - Tombol **"Preview"** untuk berkas PDF dan gambar langsung membuka pratinjau inline peramban di tab baru.
+  - Tombol **"Salin Tautan Unduh"** untuk kemudahan membagikan direct download link melalui WhatsApp atau email disertai toast notifikasi otomatis.
+- **Pencarian, Filter, & Statistik Lengkap**:
+  - Filter kategori fleksibel: *Panduan & SOP*, *Template & Format*, *SK & Regulasi*, *Brosur & Materi Promosi*, *Dokumen Akreditasi*, *Formulir & Administrasi*, dan *Lainnya*.
+  - Filter jenis ekstensi berkas dan sortir berdasarkan dokumen terbaru, paling populer (terbanyak diunduh), nama A-Z/Z-A, dan ukuran berkas.
+  - Panel statistik atas menampilkan: *Total Dokumen Aktif*, *Total Diunduh (All-time)*, *Jumlah Kategori*, dan *Total Kapasitas Berkas*.
+- **100% Strict Dual-Engine Parity**:
+  - **CodeIgniter 4**: `app/Models/SharedDocumentModel.php`, `app/Controllers/EventSuite.php`, `app/Views/pages/shared_documents.php`, `app/Config/Routes.php`, `app/Views/layouts/dashboard.php`.
+  - **Laravel**: `laravel/app/Models/SharedDocumentModel.php`, `laravel/app/Controllers/EventSuite.php`, `laravel/resources/views/pages/shared_documents.blade.php`, `laravel/routes/web.php`, `laravel/resources/views/components/sidebar.blade.php`.

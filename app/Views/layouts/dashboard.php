@@ -23,6 +23,7 @@ $navGroups = [
             ['key' => 'documents', 'label' => 'Dokumen Event', 'url' => site_url('documents'), 'icon' => 'solar:document-text-outline'],
             ['key' => 'accreditation-documents', 'label' => 'Dokumen Akreditasi', 'url' => site_url('documents/accreditation'), 'icon' => 'solar:diploma-verified-outline'],
             ['key' => 'document-templates', 'label' => 'Template Dokumen', 'url' => site_url('document-templates'), 'icon' => 'solar:documents-minimalistic-outline'],
+            ['key' => 'shared-documents', 'label' => 'Pusat Unduhan & Dokumen', 'url' => site_url('shared-documents'), 'icon' => 'solar:cloud-download-outline'],
             ['key' => 'crm-report', 'label' => 'Laporan CRM', 'url' => site_url('laporan-crm'), 'icon' => 'solar:pie-chart-3-outline'],
         ],
     ],
@@ -59,6 +60,7 @@ $canViewSpecialAnalytics = in_array(($currentUser['role'] ?? ''), ['Admin Sistem
 $canAccessItem = static function (string $key) use ($isAdminSystem, $userPermissions, $canViewSpecialAnalytics): bool {
     return $isAdminSystem
         || in_array($key, $userPermissions, true)
+        || ($key === 'shared-documents')
         || ($key === 'task-manager' && in_array('dashboard', $userPermissions, true))
         || ($key === 'crm-report' && (in_array('reports', $userPermissions, true) || in_array('crm', $userPermissions, true) || in_array('dashboard', $userPermissions, true)))
         || ($key === 'document-templates' && (in_array('documents', $userPermissions, true) || $isAdminSystem))

@@ -2685,6 +2685,395 @@ class EventSuite extends BaseController
         return redirect()->to(site_url('document-templates?type=' . $docType))->with('success', 'Template berhasil dihapus.');
     }
 
+    public function sharedDocuments(): string
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer', 'admin'], true);
+
+        $q = trim((string) $this->request->getGet('q'));
+        $category = trim((string) $this->request->getGet('category'));
+        $format = strtolower(trim((string) $this->request->getGet('format')));
+        $status = trim((string) $this->request->getGet('status'));
+        $sort = trim((string) $this->request->getGet('sort')) ?: 'newest';
+
+        $model = new \App\Models\SharedDocumentModel();
+        $builder = (new \App\Models\SharedDocumentModel());
+
+        if (! $isAdmin) {
+            $builder = $builder->where('status', 'active');
+        } elseif ($status !== '') {
+            $builder = $builder->where('status', $status);
+        }
+
+        if ($category !== '') {
+            $builder = $builder->where('category', $category);
+        }
+
+        if ($format !== '') {
+            if ($format === 'word') {
+                $builder = $builder->whereIn('file_extension', ['doc', 'docx', 'dotx']);
+            } elseif ($format === 'excel') {
+                $builder = $builder->whereIn('file_extension', ['xls', 'xlsx', 'csv']);
+            } elseif ($format === 'ppt') {
+                $builder = $builder->whereIn('file_extension', ['ppt', 'pptx']);
+            } elseif ($format === 'archive') {
+                $builder = $builder->whereIn('file_extension', ['zip', 'rar', '7z', 'tar', 'gz']);
+            } elseif ($format === 'image') {
+                $builder = $builder->whereIn('file_extension', ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+            } else {
+                $builder = $builder->where('file_extension', $format);
+            }
+        }
+
+        switch ($sort) {
+            case 'popular':
+                $builder = $builder->orderBy('download_count', 'DESC')->orderBy('id', 'DESC');
+                break;
+            case 'oldest':
+                $builder = $builder->orderBy('id', 'ASC');
+                break;
+            case 'name_asc':
+                $builder = $builder->orderBy('title', 'ASC');
+                break;
+            case 'name_desc':
+                $builder = $builder->orderBy('title', 'DESC');
+                break;
+            case 'size_desc':
+                $builder = $builder->orderBy('file_size', 'DESC');
+                break;
+            case 'newest':
+            default:
+                $builder = $builder->orderBy('id', 'DESC');
+                break;
+        }
+
+        $allDocs = $builder->findAll();
+
+        if ($q !== '') {
+            $qLower = strtolower($q);
+            $allDocs = array_values(array_filter($allDocs, static function ($doc) use ($qLower) {
+                return str_contains(strtolower((string) ($doc['title'] ?? '')), $qLower)
+                    || str_contains(strtolower((string) ($doc['file_name'] ?? '')), $qLower)
+                    || str_contains(strtolower((string) ($doc['description'] ?? '')), $qLower)
+                    || str_contains(strtolower((string) ($doc['category'] ?? '')), $qLower)
+                    || str_contains(strtolower((string) ($doc['uploader_name'] ?? '')), $qLower);
+            }));
+        }
+
+        // Aggregate statistics
+        $allActiveDocs = (new \App\Models\SharedDocumentModel())->where('status', 'active')->findAll();
+        $totalActiveCount = count($allActiveDocs);
+        $totalDownloads = 0;
+        $totalBytes = 0;
+        $activeCategories = [];
+        foreach ($allActiveDocs as $d) {
+            $totalDownloads += (int) ($d['download_count'] ?? 0);
+            $totalBytes += (int) ($d['file_size'] ?? 0);
+            if (! empty($d['category'])) {
+                $activeCategories[$d['category']] = true;
+            }
+        }
+
+        $availableCategories = [
+            'Panduan & SOP',
+            'Template & Format',
+            'SK & Regulasi',
+            'Brosur & Materi Promosi',
+            'Dokumen Akreditasi',
+            'Formulir & Administrasi',
+            'Lainnya',
+        ];
+
+        foreach ($allDocs as &$doc) {
+            $bytes = (int) ($doc['file_size'] ?? 0);
+            if ($bytes >= 1048576) {
+                $doc['formatted_size'] = round($bytes / 1048576, 2) . ' MB';
+            } elseif ($bytes >= 1024) {
+                $doc['formatted_size'] = round($bytes / 1024, 1) . ' KB';
+            } else {
+                $doc['formatted_size'] = $bytes . ' B';
+            }
+            $ext = strtolower((string) ($doc['file_extension'] ?? ''));
+            $doc['can_preview'] = in_array($ext, ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'txt'], true);
+        }
+        unset($doc);
+
+        return $this->render('pages/shared_documents', [
+            'title' => 'Pusat Unduhan & Dokumen',
+            'active' => 'shared-documents',
+            'documents' => $allDocs,
+            'isAdmin' => $isAdmin,
+            'stats' => [
+                'total_documents' => $totalActiveCount,
+                'total_downloads' => $totalDownloads,
+                'total_bytes' => $totalBytes,
+                'categories_count' => count($activeCategories),
+            ],
+            'categories' => $availableCategories,
+            'filters' => [
+                'q' => $q,
+                'category' => $category,
+                'format' => $format,
+                'status' => $status,
+                'sort' => $sort,
+            ],
+        ]);
+    }
+
+    public function uploadSharedDocument()
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer', 'admin'], true);
+
+        if (! $isAdmin) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Hanya Admin yang berwenang untuk mengupload dokumen.');
+        }
+
+        $title = trim((string) $this->request->getPost('title'));
+        $category = trim((string) $this->request->getPost('category')) ?: 'Lainnya';
+        $description = trim((string) $this->request->getPost('description'));
+        $status = in_array($this->request->getPost('status'), ['active', 'archived'], true) ? $this->request->getPost('status') : 'active';
+
+        if ($title === '') {
+            return redirect()->back()->withInput()->with('error', 'Judul dokumen wajib diisi.');
+        }
+
+        $file = $this->request->getFile('document_file');
+        if (! $file || ! $file->isValid() || $file->hasMoved()) {
+            return redirect()->back()->withInput()->with('error', 'File dokumen wajib dipilih dan harus valid.');
+        }
+
+        $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'shared_documents';
+        if (! is_dir($targetDir)) {
+            @mkdir($targetDir, 0775, true);
+        }
+
+        $origName = $file->getClientName();
+        $ext = strtolower($file->getClientExtension() ?: pathinfo($origName, PATHINFO_EXTENSION));
+        $safeSlug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', strtolower($title)) ?: 'dokumen';
+        $safeSlug = substr(trim($safeSlug, '-'), 0, 50);
+        $fileName = 'shared-' . $safeSlug . '-' . date('YmdHis') . '-' . bin2hex(random_bytes(3)) . '.' . $ext;
+
+        $file->move($targetDir, $fileName, true);
+        $fullPath = $targetDir . DIRECTORY_SEPARATOR . $fileName;
+        $fileSize = is_file($fullPath) ? filesize($fullPath) : $file->getSize();
+        $mimeType = $file->getClientMimeType() ?: 'application/octet-stream';
+
+        $model = new \App\Models\SharedDocumentModel();
+        $model->insert([
+            'title' => $title,
+            'category' => $category,
+            'description' => $description,
+            'file_path' => 'uploads/shared_documents/' . $fileName,
+            'file_name' => $origName,
+            'file_size' => $fileSize,
+            'file_extension' => $ext,
+            'mime_type' => $mimeType,
+            'download_count' => 0,
+            'status' => $status,
+            'uploaded_by' => (int) session('user.id'),
+            'uploader_name' => (string) (session('user.name') ?? 'Admin'),
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return redirect()->to(site_url('shared-documents'))->with('success', 'Dokumen "' . $title . '" berhasil diunggah dan siap diunduh oleh seluruh user.');
+    }
+
+    public function updateSharedDocument($id)
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer', 'admin'], true);
+
+        if (! $isAdmin) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Hanya Admin yang berwenang mengubah dokumen.');
+        }
+
+        $model = new \App\Models\SharedDocumentModel();
+        $doc = $model->find((int) $id);
+        if (! $doc) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Dokumen tidak ditemukan.');
+        }
+
+        $title = trim((string) $this->request->getPost('title'));
+        $category = trim((string) $this->request->getPost('category')) ?: ($doc['category'] ?? 'Lainnya');
+        $description = trim((string) $this->request->getPost('description'));
+        $status = in_array($this->request->getPost('status'), ['active', 'archived'], true) ? $this->request->getPost('status') : ($doc['status'] ?? 'active');
+
+        if ($title === '') {
+            return redirect()->back()->with('error', 'Judul dokumen tidak boleh kosong.');
+        }
+
+        $updateData = [
+            'title' => $title,
+            'category' => $category,
+            'description' => $description,
+            'status' => $status,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        $file = $this->request->getFile('document_file');
+        if ($file && $file->isValid() && ! $file->hasMoved()) {
+            $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'shared_documents';
+            if (! is_dir($targetDir)) {
+                @mkdir($targetDir, 0775, true);
+            }
+
+            $oldPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, (string) $doc['file_path']);
+            if (is_file($oldPath)) {
+                @unlink($oldPath);
+            }
+
+            $origName = $file->getClientName();
+            $ext = strtolower($file->getClientExtension() ?: pathinfo($origName, PATHINFO_EXTENSION));
+            $safeSlug = preg_replace('/[^a-zA-Z0-9_-]+/', '-', strtolower($title)) ?: 'dokumen';
+            $safeSlug = substr(trim($safeSlug, '-'), 0, 50);
+            $fileName = 'shared-' . $safeSlug . '-' . date('YmdHis') . '-' . bin2hex(random_bytes(3)) . '.' . $ext;
+
+            $file->move($targetDir, $fileName, true);
+            $fullPath = $targetDir . DIRECTORY_SEPARATOR . $fileName;
+
+            $updateData['file_path'] = 'uploads/shared_documents/' . $fileName;
+            $updateData['file_name'] = $origName;
+            $updateData['file_size'] = is_file($fullPath) ? filesize($fullPath) : $file->getSize();
+            $updateData['file_extension'] = $ext;
+            $updateData['mime_type'] = $file->getClientMimeType() ?: 'application/octet-stream';
+        }
+
+        $model->update((int) $id, $updateData);
+
+        return redirect()->to(site_url('shared-documents'))->with('success', 'Data dokumen berhasil diperbarui.');
+    }
+
+    public function deleteSharedDocument($id)
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer', 'admin'], true);
+
+        if (! $isAdmin) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Hanya Admin yang berwenang menghapus dokumen.');
+        }
+
+        $model = new \App\Models\SharedDocumentModel();
+        $doc = $model->find((int) $id);
+        if (! $doc) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Dokumen tidak ditemukan.');
+        }
+
+        $filePath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, (string) $doc['file_path']);
+        if (is_file($filePath)) {
+            @unlink($filePath);
+        }
+
+        $model->delete((int) $id);
+
+        return redirect()->to(site_url('shared-documents'))->with('success', 'Dokumen "' . $doc['title'] . '" berhasil dihapus.');
+    }
+
+    public function toggleSharedDocumentStatus($id)
+    {
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer', 'admin'], true);
+
+        if (! $isAdmin) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Hanya Admin yang berwenang mengubah status dokumen.');
+        }
+
+        $model = new \App\Models\SharedDocumentModel();
+        $doc = $model->find((int) $id);
+        if (! $doc) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Dokumen tidak ditemukan.');
+        }
+
+        $newStatus = ($doc['status'] ?? 'active') === 'active' ? 'archived' : 'active';
+        $model->update((int) $id, ['status' => $newStatus, 'updated_at' => date('Y-m-d H:i:s')]);
+
+        $statusLabel = $newStatus === 'active' ? 'diaktifkan kembali' : 'diarsipkan';
+        return redirect()->to(site_url('shared-documents'))->with('success', 'Status dokumen berhasil ' . $statusLabel . '.');
+    }
+
+    public function downloadSharedDocument($id)
+    {
+        $model = new \App\Models\SharedDocumentModel();
+        $doc = $model->find((int) $id);
+        if (! $doc) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Dokumen yang diminta tidak ditemukan.');
+        }
+
+        $roleName = (string) session('user.role');
+        $normRole = strtolower($this->normalizedRoleName($roleName));
+        $isAdmin = in_array($normRole, ['admin sistem', 'super admin', 'dmer', 'admin'], true);
+
+        if (($doc['status'] ?? 'active') === 'archived' && ! $isAdmin) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Dokumen ini sedang diarsipkan oleh Admin.');
+        }
+
+        $fullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, (string) $doc['file_path']);
+        if (! is_file($fullPath)) {
+            $publicFallback = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, (string) $doc['file_path']);
+            if (is_file($publicFallback)) {
+                $fullPath = $publicFallback;
+            } else {
+                return redirect()->to(site_url('shared-documents'))->with('error', 'Berkas fisik dokumen tidak ditemukan di server.');
+            }
+        }
+
+        $model->update((int) $id, [
+            'download_count' => (int) ($doc['download_count'] ?? 0) + 1,
+        ]);
+
+        $downloadName = ! empty($doc['file_name']) ? $doc['file_name'] : basename($fullPath);
+
+        return $this->response->download($fullPath, null)->setFileName($downloadName);
+    }
+
+    public function previewSharedDocument($id)
+    {
+        $model = new \App\Models\SharedDocumentModel();
+        $doc = $model->find((int) $id);
+        if (! $doc) {
+            return redirect()->to(site_url('shared-documents'))->with('error', 'Dokumen tidak ditemukan.');
+        }
+
+        $fullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, (string) $doc['file_path']);
+        if (! is_file($fullPath)) {
+            $publicFallback = FCPATH . str_replace('/', DIRECTORY_SEPARATOR, (string) $doc['file_path']);
+            if (is_file($publicFallback)) {
+                $fullPath = $publicFallback;
+            } else {
+                return redirect()->to(site_url('shared-documents'))->with('error', 'Berkas fisik tidak ditemukan di server.');
+            }
+        }
+
+        $ext = strtolower((string) ($doc['file_extension'] ?? pathinfo($fullPath, PATHINFO_EXTENSION)));
+        $mimeMap = [
+            'pdf' => 'application/pdf',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'txt' => 'text/plain',
+        ];
+
+        if (! isset($mimeMap[$ext])) {
+            return $this->downloadSharedDocument($id);
+        }
+
+        $mimeType = $mimeMap[$ext];
+        $downloadName = ! empty($doc['file_name']) ? $doc['file_name'] : basename($fullPath);
+
+        return $this->response
+            ->setHeader('Content-Type', $mimeType)
+            ->setHeader('Content-Disposition', 'inline; filename="' . addslashes($downloadName) . '"')
+            ->setBody(file_get_contents($fullPath));
+    }
+
     public function aiGenerateDocument(): string
     {
         $eventIdentifier = trim((string) ($this->request->getGet('event') ?: $this->request->getGet('code') ?: $this->request->getGet('event_id')));

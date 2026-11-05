@@ -757,3 +757,32 @@ D. Dukungan Penuh Tema & Dual Engine:
      * CI4: app/Views/pages/one_campus.php, app/Views/pages/one_campus_school_edit.php, public/assets/css/app.css.
      * Laravel: laravel/resources/views/pages/one_campus.blade.php, laravel/resources/views/pages/one_campus_school_edit.blade.php, laravel/public/assets/css/app.css.
 ================================================================================
+
+================================================================================
+13. FITUR PUSAT UNDUHAN & REPOSITORI DOKUMEN (UPLOAD ADMIN, DOWNLOAD ALL USERS)
+================================================================================
+A. Akses Terbuka Seluruh Pengguna (All Users Download Portal):
+   - Menu 'Pusat Unduhan & Dokumen' (/shared-documents atau /downloads) disematkan di sidebar kelompok 'Dokumen & Laporan'.
+   - Dapat diakses oleh seluruh user dari semua role (Admin, Kepala Kampus, Markom, Event Creator, Pimpinan, Staf SO, Tim Design, dll).
+   - Menampilkan repositori terpusat berisi buku panduan (SOP), format proposal baku, format LPJ, SK rektorat, dan brosur promosi kampus.
+
+B. Wewenang Pengelolaan Dokumen Khusus Admin:
+   - Tombol '+ Upload Dokumen Baru' khusus untuk role administratif (Admin Sistem, Super Admin, DMER, Admin).
+   - Mendukung format file: PDF, Word (docx/doc), Excel (xlsx/xls), PPT, Gambar (PNG/JPG), dan Arsip (ZIP/RAR) hingga 50 MB.
+   - Admin dapat mengedit judul, kategori, deskripsi, mengganti berkas fisik, mengarsipkan/mengaktifkan status, serta menghapus dokumen secara permanen.
+
+C. Fitur Download & Micro-Interaction Pengguna:
+   - Tombol 'Unduh Berkas' dengan auto-increment download counter setiap kali berkas diunduh.
+   - Tombol 'Preview' instan inline browser untuk format berkas PDF dan Gambar.
+   - Tombol 'Salin Link Unduh' ke clipboard dengan notifikasi toast konfirmasi.
+
+D. Filter, Pencarian, & Metrik:
+   - Pencarian cerdas berdasarkan judul, kata kunci, nama file, atau deskripsi.
+   - Filter berdasarkan Kategori (Panduan, Template, SK/Regulasi, Brosur, Akreditasi, Formulir, Lainnya) dan Format Berkas.
+   - Sortir berdasarkan: Terbaru, Terbanyak Diunduh (Populer), Nama A-Z, dan Ukuran Berkas.
+   - Panel ringkasan statistik: Total Dokumen, Total Unduhan, Jumlah Kategori, dan Total Kapasitas Berkas.
+
+E. Paritas Penuh Dual Engine (CodeIgniter 4 & Laravel):
+   - CI4: app/Models/SharedDocumentModel.php, app/Controllers/EventSuite.php, app/Views/pages/shared_documents.php, app/Config/Routes.php, app/Views/layouts/dashboard.php.
+   - Laravel: laravel/app/Models/SharedDocumentModel.php, laravel/app/Controllers/EventSuite.php, laravel/resources/views/pages/shared_documents.blade.php, laravel/routes/web.php, laravel/resources/views/components/sidebar.blade.php.
+================================================================================

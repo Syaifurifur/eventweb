@@ -112,6 +112,14 @@ $routes->group('', ['filter' => 'auth'], static function ($routes) {
     $routes->post('document-templates/create', 'EventSuite::createDocumentTemplate', ['filter' => 'role:Admin Sistem']);
     $routes->post('document-templates/(:segment)/update', 'EventSuite::updateDocumentTemplate/$1', ['filter' => 'role:Admin Sistem']);
     $routes->post('document-templates/(:segment)/delete', 'EventSuite::deleteDocumentTemplate/$1', ['filter' => 'role:Admin Sistem']);
+    $routes->get('shared-documents', 'EventSuite::sharedDocuments');
+    $routes->get('downloads', 'EventSuite::sharedDocuments');
+    $routes->get('shared-documents/(:num)/download', 'EventSuite::downloadSharedDocument/$1');
+    $routes->get('shared-documents/(:num)/preview', 'EventSuite::previewSharedDocument/$1');
+    $routes->post('shared-documents/upload', 'EventSuite::uploadSharedDocument');
+    $routes->post('shared-documents/(:num)/update', 'EventSuite::updateSharedDocument/$1');
+    $routes->post('shared-documents/(:num)/delete', 'EventSuite::deleteSharedDocument/$1');
+    $routes->post('shared-documents/(:num)/toggle-status', 'EventSuite::toggleSharedDocumentStatus/$1');
     $routes->get('generate-documents', 'EventSuite::generateDocuments', ['filter' => 'access:documents']);
     $routes->get('generate-documents/(:segment)', 'EventSuite::generateDocuments/$1', ['filter' => 'access:documents']);
     $routes->post('generate-documents/(:segment)/(:segment)/generate', 'EventSuite::generateDocument/$1/$2', ['filter' => 'access:documents']);

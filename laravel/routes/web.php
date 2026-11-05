@@ -120,6 +120,15 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('document-templates/{id}/update', [EventSuite::class, 'updateDocumentTemplate'])->middleware('role:Admin Sistem');
     Route::post('document-templates/{id}/delete', [EventSuite::class, 'deleteDocumentTemplate'])->middleware('role:Admin Sistem');
 
+    Route::get('shared-documents', [EventSuite::class, 'sharedDocuments']);
+    Route::get('downloads', [EventSuite::class, 'sharedDocuments']);
+    Route::get('shared-documents/{id}/download', [EventSuite::class, 'downloadSharedDocument']);
+    Route::get('shared-documents/{id}/preview', [EventSuite::class, 'previewSharedDocument']);
+    Route::post('shared-documents/upload', [EventSuite::class, 'uploadSharedDocument']);
+    Route::post('shared-documents/{id}/update', [EventSuite::class, 'updateSharedDocument']);
+    Route::post('shared-documents/{id}/delete', [EventSuite::class, 'deleteSharedDocument']);
+    Route::post('shared-documents/{id}/toggle-status', [EventSuite::class, 'toggleSharedDocumentStatus']);
+
     Route::get('generate-documents', [EventSuite::class, 'generateDocuments'])->middleware('access:documents');
     Route::get('generate-documents/{type}', [EventSuite::class, 'generateDocuments'])->middleware('access:documents');
     Route::post('generate-documents/{code}/{type}/generate', [EventSuite::class, 'generateDocument'])->middleware('access:documents');
