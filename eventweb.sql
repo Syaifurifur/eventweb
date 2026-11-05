@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 04 Nov 2026 pada 23.38
+-- Waktu pembuatan: 05 Nov 2026 pada 08.35
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -60,7 +60,7 @@ INSERT INTO `accreditation_documents` (`id`, `event_id`, `campus_id`, `title`, `
 (2, 1447, 3, 'Bukti Akreditasi Laravel - 174138', 2026, 'Kriteria 9 - Luaran dan Capaian Tridharma', 'all', 'terverifikasi', 'Dokumen lengkap dan telah diverifikasi valid untuk Instrumen Kriteria 9.', 'Berkas daftar hadir dan foto dokumentasi kegiatan telah diunggah ke Google Drive.', NULL, NULL, 'https://drive.google.com/drive/folders/test-accreditation-evidence', 1, '2026-11-04 16:41:38', 1, '2026-11-04 16:41:38', 1, '2026-11-04 16:41:39', '2026-11-04 16:41:38', '2026-11-04 16:41:39'),
 (3, 1447, 3, 'Bukti Akreditasi CodeIgniter4 - 174159', 2026, 'Kriteria 9 - Luaran dan Capaian Tridharma', 'all', 'terverifikasi', 'Dokumen lengkap dan telah diverifikasi valid untuk Instrumen Kriteria 9.', 'Berkas daftar hadir dan foto dokumentasi kegiatan telah diunggah ke Google Drive.', NULL, NULL, 'https://drive.google.com/drive/folders/test-accreditation-evidence', 1, '2026-11-04 16:42:00', 1, '2026-11-04 16:42:00', 1, '2026-11-04 16:42:01', '2026-11-04 16:42:00', '2026-11-04 16:42:01'),
 (5, 11, 31, 'Bukti PkM Event EVT-911', 2026, 'Kriteria 8 - Pengabdian kepada Masyarakat (PkM)', 'all', 'menunggu_kelengkapan', 'Tolong dilengkapi bukti presensi dan dokumentasi PkM.', NULL, NULL, NULL, NULL, 1, '2026-11-04 17:02:59', NULL, NULL, NULL, NULL, '2026-11-04 17:02:59', '2026-11-04 17:02:59'),
-(6, 1307, 22, 'WDC - SMK Ma\'arif NU 2 Karanglewas', 2026, 'Kriteria 2 - Tata Pamong, Tata Kelola, dan Kerjasama', 'all', 'menunggu_kelengkapan', '', NULL, NULL, NULL, NULL, 1, '2026-11-04 20:24:11', NULL, NULL, NULL, NULL, '2026-11-04 20:24:11', '2026-11-04 20:24:11'),
+(6, 1307, 22, 'WDC - SMK Ma\'arif NU 2 Karanglewas', 2026, 'Kriteria 2 - Tata Pamong, Tata Kelola, dan Kerjasama', 'all', 'menunggu_kelengkapan', '', 'Harap lengkapi bukti lampiran', NULL, NULL, '', 1, '2026-11-04 20:24:11', 1, '2026-11-05 05:43:46', NULL, NULL, '2026-11-04 20:24:11', '2026-11-05 05:43:46'),
 (7, 1444, 30, 'Open Table', 2026, 'Kriteria 2 - Tata Pamong, Tata Kelola, dan Kerjasama', 'all', 'menunggu_kelengkapan', '', NULL, NULL, NULL, NULL, 1, '2026-11-04 20:32:50', NULL, NULL, 1, '2026-11-04 20:33:52', '2026-11-04 20:32:50', '2026-11-04 20:33:52');
 
 -- --------------------------------------------------------
@@ -116,7 +116,29 @@ INSERT INTO `auth_login_attempts` (`id`, `email`, `ip_address`, `user_agent`, `s
 (31, 'admin@eventhub.test', '127.0.0.1', '', 1, '2026-11-04 22:26:45'),
 (32, 'admin@eventhub.test', '127.0.0.1', '', 1, '2026-11-04 22:26:47'),
 (33, 'admin@eventhub.test', '127.0.0.1', '', 1, '2026-11-04 22:31:17'),
-(34, 'admin@eventhub.test', '127.0.0.1', '', 1, '2026-11-04 22:31:18');
+(34, 'admin@eventhub.test', '127.0.0.1', '', 1, '2026-11-04 22:31:18'),
+(35, 'admin', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0', 1, '2026-11-05 02:15:51'),
+(36, 'admin', '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:159.0) Gecko/20100101 Firefox/159.0', 1, '2026-11-05 04:46:25'),
+(37, 'admin', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 0, '2026-11-05 06:15:59'),
+(38, 'admin', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:16:15'),
+(39, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:16:48'),
+(40, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:17:02'),
+(41, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:17:11'),
+(42, 'ricki', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 0, '2026-11-05 06:17:22'),
+(43, 'deni@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:17:37'),
+(44, 'deni@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:17:50'),
+(45, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:18:00'),
+(46, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:19:06'),
+(47, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:19:27'),
+(48, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:19:45'),
+(49, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:21:05'),
+(50, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:21:06'),
+(51, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:30:15'),
+(52, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 06:30:31'),
+(53, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 0, '2026-11-05 07:27:08'),
+(54, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 0, '2026-11-05 07:27:26'),
+(55, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 07:28:18'),
+(56, 'admin@eventhub.test', '127.0.0.1', 'Mozilla/5.0 (Windows NT; Windows NT 10.0; id-ID) WindowsPowerShell/5.1.26100.6899', 1, '2026-11-05 07:28:45');
 
 -- --------------------------------------------------------
 
@@ -853,7 +875,7 @@ INSERT INTO `crm_users` (`id`, `username`, `password_hash`, `full_name`, `role`,
 (5, 'admin', '$2y$10$DMX.pDH2kBDwBkZea3A1peOVi/l18GEeKjiOuC6sDeRXN56XtorE6', 'Admin CRM', 'Admin', 'Active', NULL, NULL, '2026-10-29 13:18:33', '2026-05-11 06:18:44', '2026-11-04 16:22:49', NULL),
 (6, 'ifur', '$2y$10$JmpDCju.DL.pS/6YaE6dR.ls4/KAmwa07C6ryMYHxeN8FboIbMsBi', 'sYAIFUR', 'Agent', 'Active', NULL, NULL, '2026-05-11 21:08:52', '2026-05-11 21:07:38', '2026-05-11 21:08:52', NULL),
 (8, 'rendi', '$2y$10$ZZvjF/mNhFoUzYFNBpSNQeMVn/jY.pmRQDkmtdzXNHCHFjNngxCeK', 'rendi', 'Agent', 'Active', 2, 15, '2026-05-12 04:21:15', '2026-05-12 04:20:08', '2026-05-12 04:21:15', NULL),
-(9, 'eventhub_1', '$2y$10$zpgh3KVVBcdy36ah55Z2EucXvOnG2.SP.xKtOZ07i.ZPbTqyHnCEu', 'Syaifur Rahmatullah', 'Admin', 'Active', NULL, 1, '2026-11-04 15:43:16', '2026-05-12 04:33:49', '2026-11-04 15:43:16', NULL),
+(9, 'eventhub_1', '$2y$10$zpgh3KVVBcdy36ah55Z2EucXvOnG2.SP.xKtOZ07i.ZPbTqyHnCEu', 'Syaifur Rahmatullah', 'Admin', 'Active', NULL, 1, '2026-11-05 06:33:04', '2026-05-12 04:33:49', '2026-11-05 06:33:04', NULL),
 (11, 'eventhub_15', '$2y$10$ZzQH3CJag6GMLIGo6O76CeQdU03ZyxNuSw0QKZhgXYDpuSDbvhi4y', 'Ricki Sastra', 'Admin', 'Active', 2, 15, '2026-10-30 20:07:37', '2026-05-12 04:40:04', '2026-10-30 20:07:37', NULL),
 (12, 'syaifurrahmatullah', '$2y$10$dM6mSflWjnTXFUT2xVIavO62Aoy3jj1FzzIAOCdCy6w2.wbs1J/jC', 'Syafur', 'Admin', 'Active', NULL, NULL, '2026-06-04 08:46:49', '2026-06-04 08:46:23', '2026-06-04 08:46:49', NULL),
 (13, 'fifi', '$2y$10$SaOhBf0iQigucIfPvhFwyeYiISuTxh7JZiFTRii.UjB2ZRJNbabna', 'Fifi', 'Agent', 'Active', NULL, NULL, NULL, '2026-11-04 16:22:48', '2026-11-04 16:22:48', NULL);
@@ -2402,7 +2424,7 @@ INSERT INTO `events` (`id`, `code`, `title`, `category`, `campus_id`, `event_dat
 (1444, 'EVT-3832', 'Open Table', 'Open Booth (Mall)', 30, '2026-05-21', '2026-05-22', '09:00:00', 'Antam Office Park', 'selesai', 1, 0, 0.00, NULL, NULL, 100, 'Antam Office Park', 1, '2026-06-08 17:08:48', NULL, NULL, NULL, NULL, NULL, NULL, 'menunggu_pengajuan', NULL, NULL, NULL, NULL, '2026-06-08 17:33:35', '2026-11-04 20:32:19', NULL),
 (1445, 'EVT-3833', 'Seminar Nasional Data Driven Campus', 'Akademik', 32, '2026-06-10', NULL, '09:00:00', 'Auditorium Utama', 'diajukan', 1, 120, 12500000.00, NULL, NULL, 40, 'Kegiatan akademik untuk membahas pemanfaatan data dalam perencanaan program kampus.', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-06-24 07:26:02', '2026-06-24 07:27:05', '2026-06-24 07:27:05'),
 (1446, 'EVT-3834', 'Seminar Nasional Data Driven Campus', 'Akademik', 6, '2026-06-10', NULL, '09:00:00', 'Auditorium Utama', 'selesai', 1, 120, 12500000.00, NULL, NULL, 100, 'Kegiatan akademik untuk membahas pemanfaatan data dalam perencanaan program kampus.', 1, '2026-07-13 14:49:28', NULL, NULL, NULL, NULL, NULL, NULL, 'menunggu_pengajuan', NULL, NULL, NULL, NULL, '2026-07-10 04:36:41', '2026-10-29 15:18:31', NULL),
-(1447, 'EVT-3835', 'Seminar Nasional Data Driven Campus', 'Akademik', 3, '2026-06-10', NULL, '09:00:00', 'Auditorium Utama', 'selesai', 1, 120, 2000.00, '[{\"category\":\"Konsumsi\",\"item\":\"Snack\",\"qty\":2,\"unit\":\"15000\",\"price\":1000,\"total\":2000,\"notes\":\"\"}]', '[]', 100, 'Kegiatan akademik untuk membahas pemanfaatan data dalam perencanaan program kampus.', 1, '2026-07-13 14:10:46', NULL, NULL, NULL, NULL, NULL, NULL, 'menunggu_pengajuan', NULL, NULL, NULL, NULL, '2026-07-11 11:50:09', '2026-11-04 20:27:06', NULL),
+(1447, 'EVT-3835', 'Seminar Nasional Data Driven Campus', 'Akademik', 3, '2026-06-10', NULL, '09:00:00', 'Auditorium Utama', 'selesai', 1, 120, 2000.00, '[{\"category\":\"Konsumsi\",\"item\":\"Snack\",\"qty\":2,\"unit\":\"15000\",\"price\":1000,\"total\":2000,\"notes\":\"\"}]', '[]', 100, 'Kegiatan akademik untuk membahas pemanfaatan data dalam perencanaan program kampus.', 1, '2026-07-13 14:10:46', NULL, NULL, NULL, NULL, NULL, NULL, 'menunggu_pengajuan', NULL, NULL, NULL, NULL, '2026-07-11 11:50:09', '2026-11-05 06:22:53', NULL),
 (1448, 'EVT-3836', 'Seminar Nasional Data Driven Campus', 'Akademik', 14, '2026-06-10', NULL, '09:00:00', 'Auditorium Utama', 'ditolak', 1, 120, 150000.00, '[{\"category\":\"Konsumsi\",\"item\":\"Snack\",\"qty\":15,\"unit\":\"PCS\",\"price\":10000,\"total\":150000,\"notes\":\"\"}]', '[{\"position\":\"Stering Commitee\",\"name\":\"Syaifur\",\"division\":\"Markom\",\"phone\":\"\",\"notes\":\"\"}]', 40, 'Kegiatan akademik untuk membahas pemanfaatan data dalam perencanaan program kampus.', NULL, NULL, 'Data event perlu direvisi sebelum disetujui.', 'Tolong revisi RAB', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-07-13 07:34:02', '2026-07-13 14:04:00', '2026-07-13 14:08:52');
 
 -- --------------------------------------------------------
@@ -87239,6 +87261,39 @@ CREATE TABLE `sessions` (
 -- --------------------------------------------------------
 
 --
+-- Struktur dari tabel `shared_documents`
+--
+
+CREATE TABLE `shared_documents` (
+  `id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `category` varchar(100) NOT NULL DEFAULT 'Lainnya',
+  `description` text DEFAULT NULL,
+  `file_path` varchar(255) NOT NULL,
+  `file_name` varchar(255) NOT NULL,
+  `file_size` bigint(20) NOT NULL DEFAULT 0,
+  `file_extension` varchar(20) NOT NULL DEFAULT '',
+  `mime_type` varchar(100) DEFAULT NULL,
+  `download_count` int(11) NOT NULL DEFAULT 0,
+  `status` enum('active','archived') NOT NULL DEFAULT 'active',
+  `uploaded_by` int(11) DEFAULT NULL,
+  `uploader_name` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data untuk tabel `shared_documents`
+--
+
+INSERT INTO `shared_documents` (`id`, `title`, `category`, `description`, `file_path`, `file_name`, `file_size`, `file_extension`, `mime_type`, `download_count`, `status`, `uploaded_by`, `uploader_name`, `created_at`, `updated_at`) VALUES
+(1, 'Buku Panduan Operasional Event & Sosialisasi Kampus 2026', 'Panduan & SOP', 'Petunjuk teknis pelaksanaan event sosialisasi, seminar, dan workshop kampus seluruh Indonesia.', 'uploads/shared_documents/panduan-operasional-event-kampus-2026.pdf', 'Buku-Panduan-Operasional-Event-2026.pdf', 1934885, 'pdf', 'application/pdf', 22, 'active', 1, 'Admin Sistem', '2026-11-05 13:07:12', '2026-11-05 07:28:46'),
+(2, 'Format Standar Proposal Kegiatan Kampus UBSI 2026', 'Template & Format', 'Template baku dokumen pengajuan proposal kegiatan resmi untuk seluruh PIC Markom & Kepala Kampus.', 'uploads/shared_documents/format-proposal-kegiatan-kampus-2026.docx', 'Format-Proposal-Kegiatan-UBSI-2026.docx', 37569, 'docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 35, 'active', 1, 'Admin Sistem', '2026-11-05 13:07:12', '2026-11-05 13:07:12'),
+(3, 'Format Laporan Pertanggungjawaban (LPJ) & Keuangan Event', 'Template & Format', 'Format baku laporan realisasi kegiatan dan rekapitulasi penggunaan anggaran event.', 'uploads/shared_documents/format-lpj-dan-laporan-keuangan-event.docx', 'Format-LPJ-Keuangan-Event-UBSI.docx', 121479, 'docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 24, 'active', 1, 'Admin Sistem', '2026-11-05 13:07:12', '2026-11-05 13:07:12');
+
+-- --------------------------------------------------------
+
+--
 -- Struktur dari tabel `system_settings`
 --
 
@@ -87290,8 +87345,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `username`, `email`, `password_hash`, `role`, `campus_id`, `access_permissions`, `status`, `last_login_at`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 'Syaifur Rahmatullah', 'admin', 'admin@eventhub.test', '$2y$10$Kk5CkFcJnvp.PiLwHuq18eNRMMmyPgre7zAjwzikhTY8zDpnVO4Ni', 'Admin Sistem', NULL, '[\"dashboard\",\"events\",\"calendar\",\"approvals\",\"documents\",\"reports\",\"analytics\",\"notifications\",\"users\",\"one-campus\"]', 'Aktif', '2026-11-04 22:31:18', '2026-05-03 15:09:29', '2026-11-04 22:31:18', NULL),
-(2, 'Deni Gunawan', 'deni', 'deni@eventhub.test', '$2y$10$Kk5CkFcJnvp.PiLwHuq18eNRMMmyPgre7zAjwzikhTY8zDpnVO4Ni', 'Event Creator', NULL, '[\"dashboard\",\"events\",\"calendar\",\"documents\",\"reports\",\"notifications\"]', 'Aktif', '2026-10-29 08:29:43', '2026-05-03 15:09:29', '2026-10-29 08:29:43', NULL),
+(1, 'Syaifur Rahmatullah', 'admin', 'admin@eventhub.test', '$2y$10$Kk5CkFcJnvp.PiLwHuq18eNRMMmyPgre7zAjwzikhTY8zDpnVO4Ni', 'Admin Sistem', NULL, '[\"dashboard\",\"events\",\"calendar\",\"approvals\",\"documents\",\"reports\",\"analytics\",\"notifications\",\"users\",\"one-campus\"]', 'Aktif', '2026-11-05 07:28:45', '2026-05-03 15:09:29', '2026-11-05 07:28:45', NULL),
+(2, 'Deni Gunawan', 'deni', 'deni@eventhub.test', '$2y$10$Kk5CkFcJnvp.PiLwHuq18eNRMMmyPgre7zAjwzikhTY8zDpnVO4Ni', 'Event Creator', NULL, '[\"dashboard\",\"events\",\"calendar\",\"documents\",\"reports\",\"notifications\"]', 'Aktif', '2026-11-05 06:17:50', '2026-05-03 15:09:29', '2026-11-05 06:17:50', NULL),
 (3, 'Naba Aji', 'nba', 'nba@eventhub.test', '$2y$10$Kk5CkFcJnvp.PiLwHuq18eNRMMmyPgre7zAjwzikhTY8zDpnVO4Ni', 'Pimpinan', NULL, '[\"dashboard\",\"calendar\",\"approvals\",\"reports\",\"analytics\",\"notifications\"]', 'Aktif', '2026-05-03 17:25:32', '2026-05-03 15:09:29', '2026-05-03 17:25:32', NULL),
 (4, 'Rossa', 'rossa', 'rossa@eventhub.test', '$2y$10$Kk5CkFcJnvp.PiLwHuq18eNRMMmyPgre7zAjwzikhTY8zDpnVO4Ni', 'Marketing Akademik', NULL, '[\"dashboard\",\"events\",\"calendar\",\"documents\",\"reports\",\"analytics\",\"notifications\"]', 'Aktif', NULL, '2026-05-03 15:09:29', '2026-05-11 20:37:02', NULL),
 (15, 'Ricki Sastra', 'ricki', 'ricki.rkt@bsi.ac.id', '$2y$10$u.HzpR5TE/X7/i9jXHeY0eGhB6oMtQseSdulsIUb8PcfnLcuwKl6e', 'Kepala Kampus', 2, '[\"dashboard\",\"crm\",\"events\",\"documents\",\"reports\",\"one-campus\",\"analytics\"]', 'Aktif', '2026-05-12 04:53:48', '2026-05-03 19:29:32', '2026-11-04 16:22:46', NULL),
@@ -87602,6 +87657,15 @@ ALTER TABLE `sessions`
   ADD KEY `sessions_last_activity_index` (`last_activity`);
 
 --
+-- Indeks untuk tabel `shared_documents`
+--
+ALTER TABLE `shared_documents`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_category` (`category`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
 -- Indeks untuk tabel `system_settings`
 --
 ALTER TABLE `system_settings`
@@ -87630,7 +87694,7 @@ ALTER TABLE `accreditation_documents`
 -- AUTO_INCREMENT untuk tabel `auth_login_attempts`
 --
 ALTER TABLE `auth_login_attempts`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=57;
 
 --
 -- AUTO_INCREMENT untuk tabel `calendar_integrations`
@@ -87678,7 +87742,7 @@ ALTER TABLE `crm_upload_batches`
 -- AUTO_INCREMENT untuk tabel `crm_users`
 --
 ALTER TABLE `crm_users`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT untuk tabel `document_templates`
@@ -87774,7 +87838,7 @@ ALTER TABLE `national_schools`
 -- AUTO_INCREMENT untuk tabel `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT untuk tabel `one_campus_banner_reports`
@@ -87828,7 +87892,13 @@ ALTER TABLE `reports`
 -- AUTO_INCREMENT untuk tabel `roles`
 --
 ALTER TABLE `roles`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT untuk tabel `shared_documents`
+--
+ALTER TABLE `shared_documents`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT untuk tabel `system_settings`
