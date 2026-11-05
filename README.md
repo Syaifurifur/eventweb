@@ -447,3 +447,22 @@ Kredensial Default Login:
   - State kosong (*empty state*) yang informatif dan elegan ketika tidak ada notifikasi.
 - **100% Dual-Engine Parity**:
   - Diimplementasikan secara identik pada CodeIgniter 4 dan Laravel, termasuk dukungan mailer `LegacyMailer` yang mendukung HTML dan `setAltMessage`.
+
+### 12. Tombol Lihat Data Sekolah & Fitur Salin Tiap Field (One Campus Sixty School)
+- **Tombol "Lihat Data" Interaktif**:
+  - Tersedia tombol cepat **"Lihat Data"** (dengan ikon mata `solar:eye-outline`) pada kolom aksi tabel Sixty School (`/one-campus/schools`) dan bilah atas halaman edit sekolah (`/one-campus/schools/{id}/edit`).
+  - Membuka dialog modal responsif **"Detail Data Sekolah"** tanpa reload (*0-latency instant popup*) dengan tema visual modern dan dukungan penuh Dark Mode.
+- **Rincian Data Lengkap Terstruktur**:
+  - **Identitas Sekolah**: Nama Sekolah, NPSN, Kota/Kabupaten, Jenis Satuan Pendidikan (SKL: SMA/SMK/MA/Lainnya), Status Sekolah (Negeri/Swasta), Nama Kepala Sekolah, No. Telepon Sekolah, Email Resmi Sekolah.
+  - **Kontak PIC & Guru**: Nama Guru/PIC, Jabatan/Posisi, No. HP/WhatsApp PIC (dilengkapi tombol jalan pintas WhatsApp chat), Email Kontak PIC.
+  - **Program PMB & Beasiswa**: Kampus Pengusul (dengan kode kampus & kode UBSI), Periode PMB (Klaster), Status Kerjasama, Status Beasiswa Juara Sekolah (BJS), Capaian Mahasiswa PMB, Tautan/Berkas Dokumen MoU (Google Drive & PDF lokal), serta Catatan Tambahan.
+  - **Metadata Sistem**: Nama penginput dan waktu pendaftaran resmi (WIB).
+- **Fitur Salin Cerdas per Tiap Field (Copy to Clipboard)**:
+  - Setiap field dilengkapi **icon tombol salin mandiri** (`solar:copy-outline`).
+  - Ketika diklik, teks field seketika tersalin ke clipboard pengguna.
+  - Memberikan umpan balik visual (*micro-interaction feedback*): icon berganti menjadi centang hijau (`solar:check-circle-bold`), label berubah menjadi `"Tersalin!"`, serta notifikasi toast halus muncul di bagian bawah dialog.
+  - Mekanisme salin menggunakan `navigator.clipboard` modern dengan fail-safe fallback elemen `textarea` untuk kompatibilitas di seluruh peramban.
+- **Tombol "Salin Semua Data"**:
+  - Tombol master di header modal untuk menyalin rangkuman seluruh informasi sekolah dalam satu blok teks terformat rapi dan siap dibagikan ke WhatsApp/Email.
+- **100% Strict Dual-Engine Parity**:
+  - Diimplementasikan secara identik pada CodeIgniter 4 (`app/Views/pages/one_campus.php`, `app/Views/pages/one_campus_school_edit.php`) dan Laravel Blade (`laravel/resources/views/pages/one_campus.blade.php`, `laravel/resources/views/pages/one_campus_school_edit.blade.php`).

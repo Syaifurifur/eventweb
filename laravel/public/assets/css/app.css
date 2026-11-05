@@ -6613,3 +6613,209 @@ html.dark .notification-item.is-unread {
     background: rgba(14, 165, 233, 0.08);
     border-left-color: #38bdf8;
 }
+
+/* Sixty School Detail Modal & Copy Icon Styling */
+.school-detail-dialog {
+    max-width: 880px;
+    width: 95%;
+    border: none;
+    border-radius: 16px;
+    padding: 0;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+    background: var(--surface, #ffffff);
+    color: var(--text-main, #1e293b);
+}
+
+.school-detail-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+}
+
+html.dark .school-detail-dialog {
+    background: #1e293b;
+    color: #f1f5f9;
+    border: 1px solid #334155;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+}
+
+.school-detail-header {
+    padding: 18px 24px;
+    background: var(--surface-soft, #f8fafc);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+html.dark .school-detail-header {
+    background: #0f172a;
+    border-bottom-color: #334155;
+}
+
+.school-detail-body {
+    padding: 22px 24px;
+    max-height: 72vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.school-detail-section {
+    background: var(--surface-soft, #f8fafc);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+html.dark .school-detail-section {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: #334155;
+}
+
+.school-detail-section-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #0284c7;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+html.dark .school-detail-section-title {
+    color: #38bdf8;
+}
+
+.school-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+.school-detail-item {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    transition: all 0.15s ease;
+}
+
+html.dark .school-detail-item {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: #334155;
+}
+
+.school-detail-item:hover {
+    border-color: #7dd3fc;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.08);
+}
+
+html.dark .school-detail-item:hover {
+    border-color: #0284c7;
+}
+
+.school-detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.school-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.school-item-label {
+    font-size: 0.72rem;
+    color: var(--text-muted, #64748b);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 2px;
+    display: block;
+}
+
+html.dark .school-item-label {
+    color: #94a3b8;
+}
+
+.school-item-val {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-main, #0f172a);
+    word-break: break-word;
+    display: block;
+}
+
+html.dark .school-item-val {
+    color: #f1f5f9;
+}
+
+.school-copy-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 9px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #cbd5e1);
+    background: var(--surface-soft, #f1f5f9);
+    color: #0284c7;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+html.dark .school-copy-btn {
+    background: #334155;
+    border-color: #475569;
+    color: #38bdf8;
+}
+
+.school-copy-btn:hover {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+    color: #0369a1;
+}
+
+html.dark .school-copy-btn:hover {
+    background: #0284c7;
+    border-color: #38bdf8;
+    color: #ffffff;
+}
+
+.school-copy-btn.copied {
+    background: #ecfdf5 !important;
+    border-color: #10b981 !important;
+    color: #059669 !important;
+}
+
+html.dark .school-copy-btn.copied {
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: #10b981 !important;
+    color: #34d399 !important;
+}
+
+.school-detail-footer {
+    padding: 14px 24px;
+    background: var(--surface-soft, #f8fafc);
+    border-top: 1px solid var(--border-color, #e2e8f0);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+html.dark .school-detail-footer {
+    background: #0f172a;
+    border-top-color: #334155;
+}

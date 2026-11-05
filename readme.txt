@@ -727,3 +727,33 @@ D. Paritas Dual Engine (CodeIgniter 4 & Laravel):
    - CI4: app/Controllers/EventSuite.php, app/Views/layouts/dashboard.php, app/Views/pages/notifications.php.
    - Laravel: laravel/app/Controllers/EventSuite.php, laravel/resources/views/layouts/dashboard.blade.php, laravel/resources/views/components/navbar.blade.php, laravel/resources/views/pages/notifications.blade.php, laravel/app/Support/LegacyMailer.php.
 ================================================================================
+
+================================================================================
+12. TOMBOL LIHAT DATA SEKOLAH & FITUR SALIN TIAP FIELD (SIXTY SCHOOL)
+================================================================================
+A. Tombol 'Lihat Data' & Dialog Modal Detail:
+   - Tersedia tombol 'Lihat Data' (icon mata solar:eye-outline) di kolom aksi tabel Sixty School (/one-campus/schools) dan di panel edit (/one-campus/schools/{id}/edit).
+   - Membuka dialog modal responsif 'Detail Data Sekolah' secara instan (0-latency) tanpa me-refresh halaman.
+   - Menampilkan seluruh atribut sekolah secara terstruktur dalam 4 seksi visual:
+     1. Data Identitas Sekolah (Nama Sekolah, NPSN, Kota/Kabupaten, Jenis SKL, Status Sekolah, Kepala Sekolah, No Telp Sekolah, Email Sekolah).
+     2. Kontak PIC & Guru (Nama Guru/PIC, Posisi/Jabatan, No HP/WA dengan tombol shortcut chat WhatsApp, Email PIC).
+     3. Program PMB & Beasiswa BJS (Kampus Pengusul & Kode Kampus, Periode PMB, Status Kerjasama, Status BJS, Capaian Mahasiswa, Tautan Dokumen MoU Drive & Berkas PDF, Catatan).
+     4. Metadata Sistem (Penginput & Waktu Pendaftaran).
+
+B. Fitur Salin Cerdas per Tiap Field (Copy to Clipboard):
+   - Setiap baris field dilengkapi icon tombol salin mandiri (solar:copy-outline).
+   - Mengklik icon salin langsung menyalin nilai teks field tersebut ke clipboard.
+   - Memberikan feedback visual instan: tombol berubah hijau dengan centang (solar:check-circle-bold) bertuliskan 'Tersalin!' selama 1.8 detik.
+   - Muncul floating toast konfirmasi di bagian bawah dialog (contoh: '✓ NPSN berhasil disalin ke clipboard!').
+   - Dilengkapi fallback clipboard aman (textarea element) jika browser membatasi navigator.clipboard.
+
+C. Tombol 'Salin Semua Data':
+   - Tersedia tombol master 'Salin Semua Data' pada header dialog modal.
+   - Mengkompilasi dan menyalin seluruh field sekolah ke dalam satu format teks terstruktur yang rapi, siap untuk dibagikan via WhatsApp, email, atau catatan.
+
+D. Dukungan Penuh Tema & Dual Engine:
+   - Dukungan penuh Dark Mode dan Light Mode dengan kontras tinggi.
+   - 100% Paritas antara CodeIgniter 4 dan Laravel:
+     * CI4: app/Views/pages/one_campus.php, app/Views/pages/one_campus_school_edit.php, public/assets/css/app.css.
+     * Laravel: laravel/resources/views/pages/one_campus.blade.php, laravel/resources/views/pages/one_campus_school_edit.blade.php, laravel/public/assets/css/app.css.
+================================================================================

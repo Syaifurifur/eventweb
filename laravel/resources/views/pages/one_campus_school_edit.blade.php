@@ -9,6 +9,38 @@ $currentPmb = $school['pmb_period'] ?? 'September 2026 - September 2027';
 $backUrl = site_url('one-campus/schools?pmb_period=' . urlencode($currentPmb));
 $hasMouFile = ! empty($school['mou_file']);
 $hasDriveLink = ! empty($school['mou_drive_link']);
+
+$schoolDataForModal = [
+    'id' => (int) ($school['id'] ?? 0),
+    'school_name' => (string) ($school['school_name'] ?? ''),
+    'npsn' => (string) ($school['npsn'] ?? ''),
+    'city' => (string) ($school['city'] ?? ''),
+    'school_type' => (string) ($school['school_type'] ?? 'SMA'),
+    'school_status' => (string) ($school['school_status'] ?? 'Negeri'),
+    'headmaster_name' => (string) ($school['headmaster_name'] ?? ''),
+    'school_phone' => (string) ($school['school_phone'] ?? ''),
+    'school_email' => (string) ($school['school_email'] ?? ''),
+    'contact_name' => (string) ($school['contact_name'] ?? ($school['teacher_name'] ?? '')),
+    'position' => (string) ($school['position'] ?? 'Kontak Sekolah'),
+    'contact_phone' => (string) ($school['contact_phone'] ?? ($school['phone'] ?? '')),
+    'contact_email' => (string) ($school['contact_email'] ?? ''),
+    'campus_name' => (string) ($school['campus_name'] ?? 'Semua Kampus'),
+    'campus_code' => (string) ($school['campus_kode_kampus'] ?? ($school['campus_code'] ?? '')),
+    'campus_ubsi' => (string) ($school['campus_kode_ubsi'] ?? ($school['kode_ubsi'] ?? '')),
+    'pmb_period' => (string) ($school['pmb_period'] ?? 'September 2026 - September 2027'),
+    'status' => (string) ($school['status'] ?? 'Aktif'),
+    'bjs_status' => (string) ($school['bjs_status'] ?? 'Belum Aktif'),
+    'bjs_verifier_name' => (string) ($school['bjs_verifier_name'] ?? ''),
+    'bjs_verified_at' => (string) ($school['bjs_verified_at'] ?? ''),
+    'pmb_count' => (int) ($school['pmb_count'] ?? 0),
+    'mou_file' => (string) ($school['mou_file'] ?? ''),
+    'mou_drive_link' => (string) ($school['mou_drive_link'] ?? ''),
+    'mou_url' => ! empty($school['mou_file']) ? site_url('one-campus/schools/' . $school['id'] . '/mou') : '',
+    'edit_url' => site_url('one-campus/schools/' . $school['id'] . '/edit'),
+    'notes' => (string) ($school['notes'] ?? ''),
+    'creator_name' => (string) ($school['creator_name'] ?? 'Admin'),
+    'created_at' => ! empty($school['created_at']) ? date('d M Y, H:i', strtotime($school['created_at'])) . ' WIB' : '-',
+];
 ?>
 
 <div class="toolbar" style="margin-bottom: 20px;">
@@ -16,7 +48,15 @@ $hasDriveLink = ! empty($school['mou_drive_link']);
         <span class="eyebrow">One Campus Sixty School &bull; Edit Data Sekolah Mitra</span>
         <h2>Edit Data Sekolah Penerima BJS</h2>
     </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button type="button" class="ghost-button compact-button btn-view-school"
+                data-school='<?= esc(json_encode($schoolDataForModal, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), 'attr') ?>'
+                onclick="openSchoolDetailModal(this)"
+                style="display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: #0284c7; border-color: #7dd3fc; background: rgba(2,132,199,0.06);"
+                title="Lihat Data Lengkap &amp; Salin Tiap Field">
+            <iconify-icon icon="solar:eye-outline" class="text-base"></iconify-icon>
+            Lihat Data Sekolah &amp; Salin
+        </button>
         <a class="ghost-button compact-button" href="<?= $backUrl ?>">
             &larr; Kembali ke Rekap Sekolah
         </a>
@@ -547,6 +587,571 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
+
+<!-- Dialog Modal Detail Data Sekolah & Fitur Salin Tiap Field -->
+<dialog id="dialog-school-detail" class="school-detail-dialog">
+    <div class="school-detail-header">
+        <div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: #e0f2fe; color: #0284c7;">
+                    <iconify-icon icon="solar:buildings-3-bold" style="font-size: 1.25rem;"></iconify-icon>
+                </span>
+                <div>
+                    <h3 id="schoolDetailName" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main, #0f172a);">Detail Data Sekolah</h3>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+                        <span id="schoolDetailNpsnBadge" style="font-family: monospace; font-size: 0.76rem; background: var(--badge-bg, #e2e8f0); color: var(--text-main, #334155); padding: 1px 7px; border-radius: 4px; font-weight: 700;">NPSN: -</span>
+                        <span id="schoolDetailTypeBadge" style="font-size: 0.76rem; background: #e0f2fe; color: #0369a1; padding: 1px 7px; border-radius: 4px; font-weight: 600;">SMA (Negeri)</span>
+                        <span id="schoolDetailBjsBadge" class="status status-selesai" style="font-size: 0.74rem;">✓ BJS Aktif</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" id="btnCopyAllSchoolData" onclick="copyAllSchoolData()" class="primary-button compact-button" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem; background: #0284c7; border-color: #0284c7; color: #ffffff; font-weight: 700; padding: 6px 12px;" title="Salin seluruh informasi lengkap sekolah ini dalam satu teks rapi">
+                <iconify-icon icon="solar:copy-outline" style="font-size: 1rem;"></iconify-icon>
+                <span>Salin Semua Data</span>
+            </button>
+            <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-school-detail').close()" style="font-size: 1.1rem; padding: 4px 10px; border-radius: 8px;" title="Tutup Dialog">✕</button>
+        </div>
+    </div>
+
+    <div class="school-detail-body">
+        <!-- Section 1: Identitas Satuan Pendidikan -->
+        <div class="school-detail-section">
+            <div class="school-detail-section-title">
+                <iconify-icon icon="solar:diploma-verified-outline" style="font-size: 1.1rem;"></iconify-icon>
+                Data Identitas Sekolah
+            </div>
+            <div class="school-detail-grid">
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Nama Sekolah</span>
+                        <span class="school-item-val" id="dt_school_name">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_school_name" onclick="copyFieldById('dt_school_name', 'Nama Sekolah', this)" title="Salin Nama Sekolah">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">NPSN</span>
+                        <span class="school-item-val" id="dt_npsn" style="font-family: monospace;">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_npsn" onclick="copyFieldById('dt_npsn', 'NPSN', this)" title="Salin NPSN">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Kota / Kabupaten</span>
+                        <span class="school-item-val" id="dt_city">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_city" onclick="copyFieldById('dt_city', 'Kota / Kabupaten', this)" title="Salin Kota/Kabupaten">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Jenis Satuan (SKL)</span>
+                        <span class="school-item-val" id="dt_school_type">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_school_type" onclick="copyFieldById('dt_school_type', 'Jenis Satuan Pendidikan', this)" title="Salin Jenis Sekolah">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Status Sekolah</span>
+                        <span class="school-item-val" id="dt_school_status">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_school_status" onclick="copyFieldById('dt_school_status', 'Status Sekolah', this)" title="Salin Status Sekolah">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Nama Kepala Sekolah</span>
+                        <span class="school-item-val" id="dt_headmaster_name">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_headmaster_name" onclick="copyFieldById('dt_headmaster_name', 'Nama Kepala Sekolah', this)" title="Salin Nama Kepala Sekolah">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">No. Telepon Sekolah</span>
+                        <span class="school-item-val" id="dt_school_phone">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_school_phone" onclick="copyFieldById('dt_school_phone', 'No. Telepon Sekolah', this)" title="Salin No. Telepon Sekolah">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Email Resmi Sekolah</span>
+                        <span class="school-item-val" id="dt_school_email">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_school_email" onclick="copyFieldById('dt_school_email', 'Email Resmi Sekolah', this)" title="Salin Email Resmi Sekolah">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Kontak PIC & Guru Sekolah -->
+        <div class="school-detail-section">
+            <div class="school-detail-section-title">
+                <iconify-icon icon="solar:user-hand-up-outline" style="font-size: 1.1rem;"></iconify-icon>
+                Kontak PIC &amp; Guru Sekolah
+            </div>
+            <div class="school-detail-grid">
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Nama Guru / Kontak PIC</span>
+                        <span class="school-item-val" id="dt_contact_name">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_contact_name" onclick="copyFieldById('dt_contact_name', 'Nama Kontak PIC', this)" title="Salin Nama PIC">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Jabatan / Posisi</span>
+                        <span class="school-item-val" id="dt_position">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_position" onclick="copyFieldById('dt_position', 'Jabatan / Posisi', this)" title="Salin Jabatan">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">No. HP / WhatsApp PIC</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="school-item-val" id="dt_contact_phone">-</span>
+                            <a id="schoolDetailWaBtn" href="#" target="_blank" rel="noopener noreferrer" class="ghost-button compact-button" style="display: none; padding: 1px 6px; font-size: 0.72rem; color: #059669; border-color: #a7f3d0;" title="Chat WhatsApp">
+                                💬 WA
+                            </a>
+                        </div>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_contact_phone" onclick="copyFieldById('dt_contact_phone', 'No. HP / WhatsApp PIC', this)" title="Salin No. HP PIC">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Email Kontak PIC</span>
+                        <span class="school-item-val" id="dt_contact_email">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_contact_email" onclick="copyFieldById('dt_contact_email', 'Email Kontak PIC', this)" title="Salin Email PIC">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Program PMB & Beasiswa BJS -->
+        <div class="school-detail-section">
+            <div class="school-detail-section-title">
+                <iconify-icon icon="solar:case-round-minimalistic-outline" style="font-size: 1.1rem;"></iconify-icon>
+                Detail Kampus, Program PMB &amp; Beasiswa (BJS)
+            </div>
+            <div class="school-detail-grid">
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Kampus Pengusul</span>
+                        <span class="school-item-val" id="dt_campus">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_campus" onclick="copyFieldById('dt_campus', 'Kampus Pengusul', this)" title="Salin Kampus">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Tahun / Periode PMB</span>
+                        <span class="school-item-val" id="dt_pmb_period">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_pmb_period" onclick="copyFieldById('dt_pmb_period', 'Periode PMB', this)" title="Salin Periode PMB">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Status Kerjasama</span>
+                        <span class="school-item-val" id="dt_status">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_status" onclick="copyFieldById('dt_status', 'Status Kerjasama', this)" title="Salin Status Kerjasama">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Status Beasiswa (BJS)</span>
+                        <span class="school-item-val" id="dt_bjs_status">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_bjs_status" onclick="copyFieldById('dt_bjs_status', 'Status Beasiswa BJS', this)" title="Salin Status BJS">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Perolehan Mahasiswa PMB</span>
+                        <span class="school-item-val" id="dt_pmb_count">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_pmb_count" onclick="copyFieldById('dt_pmb_count', 'Perolehan Mahasiswa PMB', this)" title="Salin Perolehan PMB">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item full-width">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Dokumen MoU (Berkas / Google Drive)</span>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span class="school-item-val" id="dt_mou_text" style="font-size: 0.82rem; word-break: break-all;">-</span>
+                            <a id="schoolDetailPdfLink" href="#" target="_blank" class="ghost-button compact-button" style="display: none; color: #ef4444; border-color: #fca5a5; font-size: 0.74rem;">
+                                📄 Buka PDF Lokal
+                            </a>
+                            <a id="schoolDetailDriveLink" href="#" target="_blank" rel="noopener noreferrer" class="ghost-button compact-button" style="display: none; color: #0284c7; border-color: #7dd3fc; font-size: 0.74rem;">
+                                ☁ Buka di Google Drive &nearr;
+                            </a>
+                        </div>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_mou" onclick="copyFieldById('dt_mou_text', 'Dokumen MoU', this)" title="Salin Tautan Dokumen MoU">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+
+                <div class="school-detail-item full-width">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Catatan Tambahan</span>
+                        <span class="school-item-val" id="dt_notes" style="font-size: 0.84rem; white-space: pre-wrap;">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_notes" onclick="copyFieldById('dt_notes', 'Catatan Tambahan', this)" title="Salin Catatan">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                        <span>Salin</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Metadata Sistem -->
+        <div class="school-detail-section" style="padding: 12px 16px;">
+            <div class="school-detail-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="school-detail-item" style="padding: 8px 10px;">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Diinput Oleh</span>
+                        <span class="school-item-val" id="dt_creator_name" style="font-size: 0.82rem;">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_creator" onclick="copyFieldById('dt_creator_name', 'Penginput', this)" title="Salin Nama Penginput">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                    </button>
+                </div>
+
+                <div class="school-detail-item" style="padding: 8px 10px;">
+                    <div class="school-item-content">
+                        <span class="school-item-label">Waktu Pendaftaran</span>
+                        <span class="school-item-val" id="dt_created_at" style="font-size: 0.82rem;">-</span>
+                    </div>
+                    <button type="button" class="school-copy-btn" id="cp_created_at" onclick="copyFieldById('dt_created_at', 'Waktu Pendaftaran', this)" title="Salin Waktu">
+                        <iconify-icon icon="solar:copy-outline"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="school-detail-footer">
+        <div>
+            <span id="schoolCopyToast" style="display: none; align-items: center; gap: 5px; color: #10b981; font-weight: 700; font-size: 0.84rem;">
+                <iconify-icon icon="solar:check-circle-bold"></iconify-icon>
+                <span id="schoolCopyToastMsg">Tersalin ke clipboard!</span>
+            </span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="ghost-button" onclick="document.getElementById('dialog-school-detail').close()">Tutup</button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+function openSchoolDetailModal(btn) {
+    const raw = btn.getAttribute('data-school');
+    if (!raw) return;
+    let s;
+    try {
+        s = JSON.parse(raw);
+    } catch (e) {
+        console.error('Failed to parse school data', e);
+        return;
+    }
+
+    const dialog = document.getElementById('dialog-school-detail');
+    if (!dialog) return;
+
+    // Header info
+    document.getElementById('schoolDetailName').textContent = s.school_name || 'Detail Sekolah';
+    document.getElementById('schoolDetailNpsnBadge').textContent = s.npsn ? ('NPSN: ' + s.npsn) : 'Tanpa NPSN';
+    document.getElementById('schoolDetailTypeBadge').textContent = (s.school_type || 'SMA') + ' (' + (s.school_status || 'Negeri') + ')';
+
+    const bjsBadge = document.getElementById('schoolDetailBjsBadge');
+    if (s.bjs_status === 'Aktif') {
+        bjsBadge.textContent = '✓ BJS Aktif';
+        bjsBadge.className = 'status status-selesai';
+    } else {
+        bjsBadge.textContent = '⏳ BJS Belum Aktif';
+        bjsBadge.className = 'status status-menunggu';
+    }
+
+    function setVal(id, val, explicitCopy) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = (val !== null && val !== undefined && String(val).trim() !== '') ? val : '-';
+        if (explicitCopy !== undefined) {
+            el.setAttribute('data-raw-copy', explicitCopy);
+        } else {
+            el.removeAttribute('data-raw-copy');
+        }
+    }
+
+    // Populate all fields
+    setVal('dt_school_name', s.school_name);
+    setVal('dt_npsn', s.npsn);
+    setVal('dt_city', s.city);
+    setVal('dt_school_type', s.school_type);
+    setVal('dt_school_status', s.school_status);
+    setVal('dt_headmaster_name', s.headmaster_name);
+    setVal('dt_school_phone', s.school_phone);
+    setVal('dt_school_email', s.school_email);
+
+    setVal('dt_contact_name', s.contact_name);
+    setVal('dt_position', s.position);
+    setVal('dt_contact_phone', s.contact_phone);
+    setVal('dt_contact_email', s.contact_email);
+
+    const campusDisplay = (s.campus_code ? `[${s.campus_code}] ` : '') + (s.campus_name || '-') + (s.campus_ubsi ? ` (${s.campus_ubsi})` : '');
+    setVal('dt_campus', campusDisplay, s.campus_name);
+    setVal('dt_pmb_period', s.pmb_period);
+    setVal('dt_status', s.status);
+    setVal('dt_bjs_status', s.bjs_status + (s.bjs_verifier_name ? ` (diverifikasi oleh ${s.bjs_verifier_name} pada ${s.bjs_verified_at || '-'})` : ''), s.bjs_status);
+    setVal('dt_pmb_count', (s.pmb_count || 0) + ' Mahasiswa', String(s.pmb_count || 0));
+
+    // MoU
+    let mouDisplay = '-';
+    let mouCopy = '';
+    if (s.mou_drive_link) {
+        mouDisplay = s.mou_drive_link;
+        mouCopy = s.mou_drive_link;
+    } else if (s.mou_url) {
+        mouDisplay = 'Berkas PDF Tersedia (' + (s.mou_file || 'MOU.pdf') + ')';
+        mouCopy = s.mou_url;
+    }
+    setVal('dt_mou_text', mouDisplay, mouCopy);
+
+    const driveLinkBtn = document.getElementById('schoolDetailDriveLink');
+    if (driveLinkBtn) {
+        if (s.mou_drive_link) {
+            driveLinkBtn.href = s.mou_drive_link;
+            driveLinkBtn.style.display = 'inline-flex';
+        } else {
+            driveLinkBtn.style.display = 'none';
+        }
+    }
+
+    const pdfLinkBtn = document.getElementById('schoolDetailPdfLink');
+    if (pdfLinkBtn) {
+        if (s.mou_url) {
+            pdfLinkBtn.href = s.mou_url;
+            pdfLinkBtn.style.display = 'inline-flex';
+        } else {
+            pdfLinkBtn.style.display = 'none';
+        }
+    }
+
+    setVal('dt_notes', s.notes);
+    setVal('dt_creator_name', s.creator_name);
+    setVal('dt_created_at', s.created_at);
+
+    // WhatsApp quick chat button
+    const waBtn = document.getElementById('schoolDetailWaBtn');
+    if (waBtn) {
+        if (s.contact_phone) {
+            let cleanPhone = s.contact_phone.replace(/[^0-9]/g, '');
+            if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.substring(1);
+            if (cleanPhone.length >= 8) {
+                waBtn.href = 'https://wa.me/' + cleanPhone;
+                waBtn.style.display = 'inline-flex';
+            } else {
+                waBtn.style.display = 'none';
+            }
+        } else {
+            waBtn.style.display = 'none';
+        }
+    }
+
+    // Store current school data for "Copy All"
+    window.currentViewingSchoolData = s;
+
+    dialog.showModal();
+}
+
+function copyFieldById(elId, fieldName, btn) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const text = el.getAttribute('data-raw-copy') || el.textContent.trim();
+    if (!text || text === '-') {
+        showCopyNotification('Field ' + fieldName + ' kosong (tidak ada data).', 'warning');
+        return;
+    }
+
+    copyTextToClipboard(text, () => {
+        const originalHtml = btn.innerHTML;
+        btn.classList.add('copied');
+        btn.innerHTML = `<iconify-icon icon="solar:check-circle-bold"></iconify-icon> <span>Tersalin!</span>`;
+        showCopyNotification(`✓ ${fieldName} berhasil disalin ke clipboard!`, 'success');
+
+        setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = originalHtml;
+        }, 1800);
+    });
+}
+
+function copyAllSchoolData() {
+    const s = window.currentViewingSchoolData;
+    if (!s) return;
+
+    const lines = [
+        'DETAIL DATA SEKOLAH - ONE CAMPUS SIXTY SCHOOL',
+        '==============================================',
+        'Nama Sekolah       : ' + (s.school_name || '-'),
+        'NPSN               : ' + (s.npsn || '-'),
+        'Kota / Kabupaten   : ' + (s.city || '-'),
+        'Bentuk / Status    : ' + (s.school_type || 'SMA') + ' (' + (s.school_status || 'Negeri') + ')',
+        'Nama Kepala Sekolah: ' + (s.headmaster_name || '-'),
+        'No. Telp Sekolah   : ' + (s.school_phone || '-'),
+        'Email Resmi Sekolah: ' + (s.school_email || '-'),
+        '----------------------------------------------',
+        'Nama PIC / Guru BK : ' + (s.contact_name || '-'),
+        'Jabatan / Posisi   : ' + (s.position || 'Kontak Sekolah'),
+        'No. HP / WA PIC    : ' + (s.contact_phone || '-'),
+        'Email Kontak PIC   : ' + (s.contact_email || '-'),
+        '----------------------------------------------',
+        'Kampus Pengusul    : ' + (s.campus_name || '-') + (s.campus_code ? ' [' + s.campus_code + ']' : ''),
+        'Periode PMB        : ' + (s.pmb_period || '-'),
+        'Status Kerjasama   : ' + (s.status || 'Aktif'),
+        'Status Beasiswa BJS: ' + (s.bjs_status || 'Belum Aktif'),
+        'Perolehan Mhs PMB  : ' + (s.pmb_count || 0) + ' Mahasiswa',
+        'Dokumen MoU        : ' + (s.mou_drive_link || (s.mou_file ? 'Berkas Lokal' : '-')),
+        'Catatan            : ' + (s.notes || '-'),
+        '==============================================',
+        'Sumber: EventHub UBSI • Disalin pada ' + new Date().toLocaleString('id-ID'),
+    ];
+
+    const allText = lines.join('\n');
+    copyTextToClipboard(allText, () => {
+        const btn = document.getElementById('btnCopyAllSchoolData');
+        const orig = btn.innerHTML;
+        btn.style.background = '#059669';
+        btn.style.borderColor = '#059669';
+        btn.innerHTML = `<iconify-icon icon="solar:check-circle-bold"></iconify-icon> <span>Semua Data Tersalin!</span>`;
+        showCopyNotification('✓ Seluruh data sekolah berhasil disalin ke clipboard!', 'success');
+
+        setTimeout(() => {
+            btn.style.background = '';
+            btn.style.borderColor = '';
+            btn.innerHTML = orig;
+        }, 2000);
+    });
+}
+
+function copyTextToClipboard(text, onSuccess) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+            fallbackCopy(text, onSuccess);
+        });
+    } else {
+        fallbackCopy(text, onSuccess);
+    }
+}
+
+function fallbackCopy(text, onSuccess) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+        document.execCommand('copy');
+        if (onSuccess) onSuccess();
+    } catch (err) {
+        console.error('Fallback copy failed', err);
+    }
+    document.body.removeChild(ta);
+}
+
+function showCopyNotification(msg, type) {
+    const toast = document.getElementById('schoolCopyToast');
+    const toastMsg = document.getElementById('schoolCopyToastMsg');
+    if (!toast || !toastMsg) return;
+
+    toastMsg.textContent = msg;
+    toast.style.color = type === 'warning' ? '#f59e0b' : '#10b981';
+    toast.style.display = 'inline-flex';
+
+    if (window._copyToastTimer) clearTimeout(window._copyToastTimer);
+    window._copyToastTimer = setTimeout(() => {
+        toast.style.display = 'none';
+    }, 2800);
+}
+
+// Global exposure & event delegation
+window.openSchoolDetailModal = openSchoolDetailModal;
+window.copyFieldById = copyFieldById;
+window.copyAllSchoolData = copyAllSchoolData;
+
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-view-school');
+    if (btn) {
+        e.preventDefault();
+        openSchoolDetailModal(btn);
+    }
+});
+</script>
+
 
 <style>
 html.dark .school-autocomplete-dropdown {
