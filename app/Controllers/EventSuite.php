@@ -495,13 +495,52 @@ class EventSuite extends BaseController
             $userCampusFullName = 'UBSI KAMPUS YOGYAKARTA';
         }
 
-        return $this->render('pages/crm_report', [
+        $requestedCampusParam = trim((string) $this->request->getGet('campus'));
+        $realtimePayload = (new \App\Services\CrmRealtimeReportService())->getReportData(
+            $requestedCampusParam,
+            $canViewAllCrmCampuses,
+            $userCampusFullName
+        );
+
+        return $this->render('pages/crm_report', array_merge([
             'title' => 'Laporan & Rekomendasi Hasil CRM',
             'active' => 'crm-report',
             'canViewAllCrmCampuses' => $canViewAllCrmCampuses,
             'userCampusFullName' => $userCampusFullName,
-            'requestedCampusParam' => trim((string) $this->request->getGet('campus')),
-        ]);
+            'requestedCampusParam' => $requestedCampusParam,
+        ], $realtimePayload));
+    }
+
+    public function crmRealtimeReportData(): \Illuminate\Http\JsonResponse
+    {
+        $roleName = (string) session('user.role');
+        $normalizedRole = strtolower($this->normalizedRoleName($roleName));
+        $canViewAllCrmCampuses = in_array($normalizedRole, ['admin sistem', 'super admin', 'admin', 'dmer'], true)
+            || $this->isGlobalMarkomCampus();
+
+        $userCampusId = (int) session('user.campus_id');
+        if ($userCampusId <= 0 && (int) session('crmUser.campus_id') > 0) {
+            $userCampusId = (int) session('crmUser.campus_id');
+        }
+        $userCampusFullName = '';
+        if ($userCampusId > 0) {
+            $campusRow = (new CampusModel())->find($userCampusId);
+            if ($campusRow && ! empty($campusRow['name'])) {
+                $userCampusFullName = strtoupper(trim((string) $campusRow['name']));
+            }
+        }
+        if ($userCampusFullName === '') {
+            $userCampusFullName = 'UBSI KAMPUS YOGYAKARTA';
+        }
+
+        $requestedCampusParam = trim((string) $this->request->getGet('campus'));
+        $realtimePayload = (new \App\Services\CrmRealtimeReportService())->getReportData(
+            $requestedCampusParam,
+            $canViewAllCrmCampuses,
+            $userCampusFullName
+        );
+
+        return response()->json($realtimePayload);
     }
 
     public function taskManager(): string

@@ -472,3 +472,34 @@ Kredensial Default Login:
 - **100% Strict Dual-Engine Parity**:
   - **CodeIgniter 4**: `app/Models/SharedDocumentModel.php`, `app/Controllers/EventSuite.php`, `app/Views/pages/shared_documents.php`, `app/Config/Routes.php`, `app/Views/layouts/dashboard.php`.
   - **Laravel**: `laravel/app/Models/SharedDocumentModel.php`, `laravel/app/Controllers/EventSuite.php`, `laravel/resources/views/pages/shared_documents.blade.php`, `laravel/routes/web.php`, `laravel/resources/views/components/sidebar.blade.php`.
+
+
+### 14. Migrasi Penuh Full Laravel (100% Single-Engine Architecture)
+- **Konsolidasi Penuh Codebase**:
+  - Menghentikan pemeliharaan ganda dual-engine (CodeIgniter 4 + Laravel) dan mentransisikan 100% arsitektur proyek ke **Laravel 12**.
+  - Seluruh struktur inti Laravel kini berada di direktori root (`app/`, `bootstrap/`, `config/`, `database/`, `public/`, `resources/`, `routes/`, `storage/`).
+  - Berkas unggahan dipindahkan dari `writable/uploads/` ke `storage/uploads/` dengan symlink publik `public/storage`.
+  - Riwayat arsitektur CI4 tersimpan aman di branch `backup-ci4-dual-engine`.
+
+### 15. Laporan CRM Real-Time: Progres Kampus, Detail Event Ber-Leads, & Grafik Tanggapan Respon
+- **Pemantauan Progres Hasil CRM 35 Kampus Secara Detail**:
+  - Mengintegrasikan data prospek langsung dari database aktif MySQL (`crm_leads`, `events`, `campuses`, `crm_lead_logs`, `crm_users`) yang digabungkan secara dinamis dengan benchmark 20 kampus regional (total 35 kampus, 8.794+ prospek, 46 event aktif).
+  - Metrik operasional lengkap per kampus: Total Leads, Belum Di-assign (SLA Alert), Fresh di Agent, Status Respon (Closing, Minat, Ragu-ragu, Menolak, Tidak Merespon), serta persentase konversi Closing PMB.
+- **Rincian Event Apa Saja yang Telah Ditambahkan Leads**:
+  - Tabel terstruktur interaktif daftar event ber-leads di setiap kampus pelaksana.
+  - Memuat: Kode Event (`EVT-...`), Nama Kegiatan, Kategori Event, Tanggal & Lokasi Pelaksanaan, Jumlah Leads yang Dikumpulkan, dan Distribusi Status Follow-up Respon Calon Mahasiswa (Closing, Minat, Ragu-ragu, Menolak, Tidak Merespon, Fresh).
+  - Dilengkapi perhitungan otomatis tingkat konversi event (%) serta rekomendasi tindak lanjut event berbasis hasil interaksi.
+- **Grafik Tanggapan Hasil Respon Per Kampus (Real-Time Vector SVG)**:
+  - Menggunakan engine grafik bawaan anti-black canvas (`public/assets/js/lib/svg-chart-engine.js`) yang kompatibel sempurna di semua browser modern dan desktop (termasuk Firefox & Safari).
+  - **Chart 1 (Donut Chart)**: Visualisasi proporsi tanggapan calon mahasiswa di kampus terpilih (Closing PMB, Minat/Tertarik, Ragu-ragu/Pertimbangan, Menolak, Tidak Merespon, Fresh Belum Dihubungi).
+  - **Chart 2 (Horizontal Stacked Bar Chart)**: Komparasi performa dan respon calon mahasiswa antar-event yang telah dilaksanakan di kampus tersebut.
+  - **Chart 3 (Macro Comparative Bar Chart)**: Komparasi volume dan persentase respon lintas seluruh kampus di Indonesia untuk level Admin Pusat.
+- **Sinkronisasi & Pembaruan Data Real-Time**:
+  - Indikator status `🟢 Real-Time Sync Aktif` dengan penunjuk timestamp WIB presisi (`H:i:s WIB`).
+  - Tombol interaktif **"🔄 Refresh Real-Time"** untuk memperbarui data seketika melalui endpoint AJAX `/laporan-crm/realtime-data` tanpa memuat ulang (reload) halaman browser.
+  - Fitur latar belakang auto-polling berkala setiap 30 detik untuk menjamin akurasi data saat tim CRM memperbarui progres prospek di CRM Workspace.
+- **Live Activity Feed Log Follow-Up Terkini**:
+  - Panel log interaksi real-time yang menampilkan rekaman follow-up terbaru oleh tim CRM di kampus terhadap calon mahasiswa (dari tabel `crm_lead_logs`).
+- **Skema Tata Kelola Hak Akses Terisolasi**:
+  - **Admin Pusat**: Memiliki kontrol penuh lintas kampus, agregasi funnel nasional, filter klaster kinerja kampus, dan ekspor lembar kerja nasional (CSV).
+  - **Tim CRM Kampus**: Akses terfokus dan terisolasi khusus data kampus internal untuk menjaga privasi data (UU PDP) serta fokus eksekusi follow-up harian.

@@ -811,3 +811,40 @@ B. Langkah Migrasi yang Diselesaikan:
    4. Backup Aman:
       - Git branch 'backup-ci4-dual-engine' dibuat sebagai cadangan riwayat arsitektur CI4 terdahulu jika sewaktu-waktu dibutuhkan.
 ================================================================================
+
+================================================================================
+15. LAPORAN CRM REAL-TIME: PROGRES KAMPUS, DETAIL EVENT BER-LEADS & GRAFIK RESPON
+================================================================================
+A. Ringkasan Fitur:
+   - Modul Laporan CRM ('/laporan-crm' & '/crm-report') ditingkatkan untuk menyajikan detail komprehensif progres hasil CRM per kampus se-Indonesia, inventarisasi event ber-leads, distribusi hasil follow-up respon calon mahasiswa, serta grafik tanggapan hasil respon yang dapat dipantau secara real-time.
+
+B. Komponen & Fungsionalitas Utama:
+   1. Progres Hasil CRM Tiap Kampus Secara Detail:
+      - Menghubungkan database MySQL aktif ('crm_leads', 'events', 'campuses', 'crm_lead_logs', 'crm_users') secara dinamis dengan benchmark 20 kampus regional (mencakup 35 kampus, 8.794+ prospek, 46 event ber-leads).
+      - Menampilkan metrik lengkap: Total leads, Belum diassign (SLA alert), Fresh di agent, Status respon (Closing, Minat, Ragu-ragu, Menolak, Tidak Merespon), dan Closing Rate (%).
+   2. Detail Event Apa Saja yang Telah Ditambahkan Leads:
+      - Tabel interaktif daftar event ber-leads di kampus pelaksana terkait.
+      - Menampilkan: Kode Event ('EVT-...'), Judul Kegiatan, Kategori, Tanggal & Lokasi, Total Leads Terkumpul, serta Breakdown Respon (Closing, Minat, Ragu, Menolak, Tidak Respon, Fresh).
+      - Perhitungan otomatis persentase konversi event (%) dan rekomendasi tindak lanjut event.
+   3. Grafik Tanggapan Hasil Respon Per Kampus (Real-Time SVG Vector):
+      - Menggunakan SVG Chart Engine bawaan ('public/assets/js/lib/svg-chart-engine.js') yang bebas dari isu black canvas Firefox/Chrome.
+      - Chart 1: Donut Chart distribusi tanggapan prospek (Closing PMB, Minat, Ragu-ragu, Menolak, Tidak Respon, Fresh).
+      - Chart 2: Horizontal Stacked Bar Chart komparasi perolehan respon per event di kampus terkait.
+      - Chart 3: Bar Chart agregasi volume & persentase respon makro se-Indonesia (khusus Admin Pusat).
+   4. Live Polling & Refresh Real-Time:
+      - Indikator badge 'Real-Time Sync Aktif' dengan penunjuk jam WIB live.
+      - Tombol 'Refresh Real-Time' memicu request AJAX ke endpoint '/laporan-crm/realtime-data' secara asinkron tanpa reload browser.
+      - Auto-sync otomatis setiap 30 detik di background.
+   5. Live Activity Feed Log Follow-Up:
+      - Riwayat interaksi follow-up terbaru oleh tim CRM terhadap siswa langsung dari 'crm_lead_logs'.
+   6. Skema Hak Akses & Isolasi Data:
+      - Admin Pusat: Memantau 35 kampus, ringkasan makro nasional, filter klaster darurat SLA, dan ekspor CSV nasional.
+      - Kampus Pelaksana: Akses terisolasi khusus kampus sendiri demi menjaga privasi calon mahasiswa (UU PDP).
+
+C. File & Modul yang Terlibat:
+   - Backend Service: 'app/Services/CrmRealtimeReportService.php'
+   - Controller: 'app/Controllers/EventSuite.php' ('crmRecommendationReport' & 'crmRealtimeReportData')
+   - Route: 'routes/web.php' ('/laporan-crm', '/crm-report', '/laporan-crm/realtime-data')
+   - Blade View: 'resources/views/pages/crm_report.blade.php'
+   - Chart Engine: 'public/assets/js/lib/svg-chart-engine.js'
+================================================================================
