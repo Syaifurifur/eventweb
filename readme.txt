@@ -851,3 +851,41 @@ C. File & Modul yang Terlibat:
    - Blade View: 'resources/views/pages/crm_report.blade.php'
    - Chart Engine: 'public/assets/js/lib/svg-chart-engine.js'
 ================================================================================
+
+================================================================================
+16. KLASTERISASI & HAPUS KLASTER ONE CAMPUS FIVE OJT & FIVE SPANDUK
+================================================================================
+A. Ringkasan Fitur:
+   - Menambahkan fungsionalitas klasterisasi periode penuh pada Program One Campus Five OJT dan One Campus Five Spanduk, dilengkapi fasilitas pembuatan klaster baru, penentuan klaster default aktif berjalan, serta fitur hapus klaster yang tidak lagi digunakan.
+   - Mengintegrasikan filter klaster berjalan ke dalam seluruh fungsi ekspor dan unduhan laporan XLSX di modul One Campus.
+
+B. Rincian Komponen & Implementasi:
+   1. Klasterisasi One Campus Five OJT:
+      - Model: 'app/Models/OneCampusOjtReportModel.php' ('ojt_period').
+      - Default aktif berjalan: 'Juli 2026 - Desember 2026' (Semester Ganjil 2026/2027).
+      - Rute:
+        * 'POST one-campus/ojt-clusters' (Tambah klaster baru).
+        * 'POST one-campus/ojt-clusters/set-default' (Set klaster aktif berjalan).
+        * 'POST one-campus/ojt-clusters/delete' (Hapus klaster OJT).
+      - Modal Superadmin: '#dialog-add-ojt-cluster'.
+      - Dropdown klaster pada form tambah OJT.
+   2. Klasterisasi One Campus Five Spanduk:
+      - Kolom database baru: 'banner_period' pada tabel 'one_campus_banner_reports'.
+      - Model: 'app/Models/OneCampusBannerReportModel.php' (ditambahkan 'banner_period').
+      - Default aktif berjalan: 'Tahun 2026'.
+      - Rute:
+        * 'POST one-campus/banner-clusters' (Tambah klaster baru).
+        * 'POST one-campus/banner-clusters/set-default' (Set klaster aktif berjalan).
+        * 'POST one-campus/banner-clusters/delete' (Hapus klaster Spanduk).
+      - Modal Superadmin: '#dialog-add-banner-cluster'.
+      - Dropdown klaster pada form tambah Spanduk dan kolom tabel 'Klaster Spanduk'.
+   3. Fitur Hapus Klaster Sixty School (PMB):
+      - Rute: 'POST one-campus/pmb-clusters/delete' (Hapus klaster PMB).
+      - Tombol 'Hapus Klaster' pada bar klaster PMB dan modal '#dialog-add-pmb-cluster'.
+   4. Unduh Laporan Mengikuti Klaster Berjalan:
+      - Ekspor XLSX Five OJT: '/one-campus/ojt/export?ojt_period=...'
+      - Ekspor XLSX Sixty School: '/one-campus/schools/export?pmb_period=...'
+      - Ekspor XLSX Five Spanduk: '/one-campus/banners/export?banner_period=...'
+      - Bila parameter query tidak dicantumkan, sistem secara otomatis mengunduh data berdasarkan klaster default yang sedang aktif berjalan.
+      - Berkas XLSX mencantumkan kolom klaster dan nama berkas memuat slug klaster yang diunduh.
+================================================================================

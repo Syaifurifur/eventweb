@@ -507,3 +507,24 @@ Kredensial Default Login:
 - **Skema Tata Kelola Hak Akses Terisolasi**:
   - **Admin Pusat**: Memiliki kontrol penuh lintas kampus, agregasi funnel nasional, filter klaster kinerja kampus, dan ekspor lembar kerja nasional (CSV).
   - **Tim CRM Kampus**: Akses terfokus dan terisolasi khusus data kampus internal untuk menjaga privasi data (UU PDP) serta fokus eksekusi follow-up harian.
+
+
+### 16. Fitur Klasterisasi & Hapus Klaster untuk Program One Campus Five OJT & Five Spanduk serta Ekspor Laporan Dinamis
+- **Fungsi Klasterisasi Penuh untuk One Campus Five OJT**:
+  - Menyediakan pengelompokan berbasis periode OJT (Semester Ganjil, Semester Genap, atau rentang bulan/tahun kustom).
+  - Pilihan klaster default aktif berjalan (`Juli 2026 - Desember 2026 (Semester Ganjil 2026/2027)`).
+  - Modal interaktif Superadmin untuk membuat klaster OJT baru (`dialog-add-ojt-cluster`), menetapkan klaster default aktif berjalan, serta **fitur menghapus klaster OJT** (`one-campus/ojt-clusters/delete`).
+  - Dropdown pemilihan klaster OJT pada form input data OJT baru.
+  - Filter klaster OJT pada tabel rekap dengan badge jumlah peserta per periode.
+- **Fungsi Klasterisasi Penuh untuk One Campus Five Spanduk**:
+  - Kolom basis data baru `banner_period` pada tabel `one_campus_banner_reports`.
+  - Pengelompokan periode spanduk berdasarkan tahun atau tema kampanye promosi (`Tahun 2026 (Periode Berjalan)`, `Tahun 2025`, `Tahun 2024`, dll).
+  - Modal interaktif Superadmin untuk membuat klaster Spanduk baru (`dialog-add-banner-cluster`), menetapkan klaster default aktif berjalan, serta **fitur menghapus klaster Spanduk** (`one-campus/banner-clusters/delete`).
+  - Dropdown pemilihan klaster pada form input data spanduk baru.
+  - Filter klaster Spanduk pada tabel rekap dengan badge jumlah titik spanduk per periode.
+- **Fitur Hapus Klaster untuk Sixty School (PMB Clusters)**:
+  - Tombol **"🗑️ Hapus Klaster"** disematkan pada bar klaster PMB dan modal kelola klaster PMB (`one-campus/pmb-clusters/delete`) untuk menghapus klaster PMB yang tidak lagi digunakan.
+- **Unduh / Download Laporan One Campus Mengikuti Klaster Aktif Berjalan**:
+  - Seluruh tombol ekspor laporan One Campus (Five OJT, Sixty School, Five Spanduk) secara otomatis mengikuti klaster yang sedang aktif berjalan atau yang sedang dipilih oleh pengguna.
+  - Filter query dinamis (`?ojt_period=...`, `?banner_period=...`, `?pmb_period=...`) disematkan pada link unduh.
+  - File XLSX yang diunduh menyertakan kolom identitas klaster dan nama berkas yang mencantumkan slug periode klaster yang sedang diunduh.

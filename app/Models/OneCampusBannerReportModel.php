@@ -14,6 +14,7 @@ class OneCampusBannerReportModel extends Model
         'location',
         'installed_at',
         'theme',
+        'banner_period',
         'drive_photo_link',
         'created_by',
     ];
