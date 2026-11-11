@@ -853,22 +853,17 @@ C. File & Modul yang Terlibat:
 ================================================================================
 
 ================================================================================
-16. KLASTERISASI & HAPUS KLASTER ONE CAMPUS FIVE OJT & FIVE SPANDUK
+16. KLASTERISASI & HAPUS KLASTER ONE CAMPUS FIVE SPANDUK & SIXTY SCHOOL
 ================================================================================
 A. Ringkasan Fitur:
-   - Menambahkan fungsionalitas klasterisasi periode penuh pada Program One Campus Five OJT dan One Campus Five Spanduk, dilengkapi fasilitas pembuatan klaster baru, penentuan klaster default aktif berjalan, serta fitur hapus klaster yang tidak lagi digunakan.
-   - Mengintegrasikan filter klaster berjalan ke dalam seluruh fungsi ekspor dan unduhan laporan XLSX di modul One Campus.
+   - Menambahkan fungsionalitas klasterisasi periode penuh pada Program One Campus Five Spanduk (dan menyempurnakan Sixty School), dilengkapi fasilitas pembuatan klaster baru, penentuan klaster default aktif berjalan, serta fitur hapus klaster yang tidak lagi digunakan.
+   - Untuk Program One Campus Five OJT tetap menggunakan periode bawaan langsung ('ojt_start_month' - 'ojt_end_month' -> 'ojt_period') tanpa sistem klasterisasi.
+   - Mengintegrasikan filter klaster berjalan ke dalam fungsi ekspor dan unduhan laporan XLSX Five Spanduk dan Sixty School di modul One Campus.
 
 B. Rincian Komponen & Implementasi:
-   1. Klasterisasi One Campus Five OJT:
-      - Model: 'app/Models/OneCampusOjtReportModel.php' ('ojt_period').
-      - Default aktif berjalan: 'Juli 2026 - Desember 2026' (Semester Ganjil 2026/2027).
-      - Rute:
-        * 'POST one-campus/ojt-clusters' (Tambah klaster baru).
-        * 'POST one-campus/ojt-clusters/set-default' (Set klaster aktif berjalan).
-        * 'POST one-campus/ojt-clusters/delete' (Hapus klaster OJT).
-      - Modal Superadmin: '#dialog-add-ojt-cluster'.
-      - Dropdown klaster pada form tambah OJT.
+   1. One Campus Five OJT:
+      - Tetap menggunakan rentang tanggal & periode OJT bawaan ('ojt_start_month', 'ojt_end_month', 'ojt_period').
+      - Ekspor XLSX langsung memproses data OJT per kampus terpilih ('/one-campus/ojt/export').
    2. Klasterisasi One Campus Five Spanduk:
       - Kolom database baru: 'banner_period' pada tabel 'one_campus_banner_reports'.
       - Model: 'app/Models/OneCampusBannerReportModel.php' (ditambahkan 'banner_period').
@@ -883,7 +878,6 @@ B. Rincian Komponen & Implementasi:
       - Rute: 'POST one-campus/pmb-clusters/delete' (Hapus klaster PMB).
       - Tombol 'Hapus Klaster' pada bar klaster PMB dan modal '#dialog-add-pmb-cluster'.
    4. Unduh Laporan Mengikuti Klaster Berjalan:
-      - Ekspor XLSX Five OJT: '/one-campus/ojt/export?ojt_period=...'
       - Ekspor XLSX Sixty School: '/one-campus/schools/export?pmb_period=...'
       - Ekspor XLSX Five Spanduk: '/one-campus/banners/export?banner_period=...'
       - Bila parameter query tidak dicantumkan, sistem secara otomatis mengunduh data berdasarkan klaster default yang sedang aktif berjalan.

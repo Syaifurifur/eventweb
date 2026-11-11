@@ -4088,34 +4088,6 @@ class EventSuite extends BaseController
             $selectedPmbPeriod = $defaultPmbPeriod;
         }
 
-        // --- OJT Cluster Management ---
-        $defaultOjtPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_ojt_period', 'Juli 2026 - Desember 2026');
-        $availableOjtPeriods = $this->getAvailableOjtPeriods();
-        if (! isset($availableOjtPeriods[$defaultOjtPeriod])) {
-            $availableOjtPeriods = [$defaultOjtPeriod => $defaultOjtPeriod] + $availableOjtPeriods;
-        }
-
-        $selectedOjtPeriod = trim((string) ($this->request->getGet('ojt_period') ?? ''));
-        if ($selectedOjtPeriod === '') {
-            $selectedOjtPeriod = $defaultOjtPeriod;
-        }
-
-        $campusOjtReports = $this->filterOneCampusReportsByCampus($ojtReports, $selectedCampusId);
-        $ojtPeriodCounts = [];
-        foreach ($availableOjtPeriods as $oKey => $oLabel) {
-            $ojtPeriodCounts[$oKey] = count(array_filter($campusOjtReports, fn (array $o): bool => ($o['ojt_period'] ?? 'Juli 2026 - Desember 2026') === $oKey));
-        }
-        $ojtPeriodCounts['all'] = count($campusOjtReports);
-
-        if ($selectedOjtPeriod !== 'all') {
-            $filteredOjtReports = array_values(array_filter(
-                $campusOjtReports,
-                fn (array $o): bool => ($o['ojt_period'] ?? 'Juli 2026 - Desember 2026') === $selectedOjtPeriod
-            ));
-        } else {
-            $filteredOjtReports = $campusOjtReports;
-        }
-
         // --- Banner / Spanduk Cluster Management ---
         $defaultBannerPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_banner_period', 'Tahun 2026');
         $availableBannerPeriods = $this->getAvailableBannerPeriods();
@@ -4215,12 +4187,7 @@ class EventSuite extends BaseController
             'availablePmbPeriods' => $availablePmbPeriods,
             'pmbPeriodCounts' => $pmbPeriodCounts,
             'gdriveSettings' => $gdriveSettings,
-            'defaultOjtPeriod' => $defaultOjtPeriod,
-            'selectedOjtPeriod' => $selectedOjtPeriod,
-            'availableOjtPeriods' => $availableOjtPeriods,
-            'ojtPeriodCounts' => $ojtPeriodCounts,
-            'ojtReports' => $filteredOjtReports,
-            'allCampusOjtReports' => $campusOjtReports,
+            'ojtReports' => $this->filterOneCampusReportsByCampus($ojtReports, $selectedCampusId),
 
             'defaultBannerPeriod' => $defaultBannerPeriod,
             'selectedBannerPeriod' => $selectedBannerPeriod,
@@ -4257,27 +4224,14 @@ class EventSuite extends BaseController
             $selectedCampusId = $campusScope > 0 ? $campusScope : null;
         }
 
-        $allReports = (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
-        $ojtReports = $this->filterOneCampusReportsByCampus($allReports, $selectedCampusId);
-
-        // Klaster aktif berjalan fallback
-        $defaultOjtPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_ojt_period', 'Juli 2026 - Desember 2026');
-        $selectedOjtPeriod = trim((string) ($this->request->getGet('ojt_period') ?? ''));
-        if ($selectedOjtPeriod === '') {
-            $selectedOjtPeriod = $defaultOjtPeriod;
-        }
-
-        if ($selectedOjtPeriod !== '' && $selectedOjtPeriod !== 'all') {
-            $ojtReports = array_values(array_filter(
-                $ojtReports,
-                fn (array $o): bool => ($o['ojt_period'] ?? 'Juli 2026 - Desember 2026') === $selectedOjtPeriod
-            ));
-        }
+        $ojtReports = $this->filterOneCampusReportsByCampus(
+            (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll(),
+            $selectedCampusId
+        );
 
         $rows = [[
             'No',
             'Kampus',
-            'Klaster OJT',
             'Nama Siswa / Peserta',
             'Asal Sekolah',
             'Jurusan',
@@ -4293,7 +4247,6 @@ class EventSuite extends BaseController
             $rows[] = [
                 (string) ($idx + 1),
                 (string) ($item['campus_name'] ?? 'Tanpa kampus'),
-                (string) ($item['ojt_period'] ?? $selectedOjtPeriod),
                 (string) ($item['student_name'] ?? '-'),
                 (string) ($item['origin_school'] ?? '-'),
                 (string) ($item['major'] ?? '-'),
@@ -4306,8 +4259,7 @@ class EventSuite extends BaseController
             ];
         }
 
-                $slugPeriod = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', $selectedOjtPeriod));
-        $filename = 'laporan-one-campus-five-ojt-' . ($selectedOjtPeriod !== 'all' ? $slugPeriod . '-' : '') . date('Ymd-His') . '.xlsx';
+        $filename = 'laporan-one-campus-five-ojt-' . date('Ymd-His') . '.xlsx';
 
         return $this->response
             ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -5027,134 +4979,6 @@ class EventSuite extends BaseController
 
         return redirect()->to(site_url('one-campus/schools'))
             ->with('success', 'Klaster PMB "' . $period . '" berhasil dihapus.');
-    }
-
-    /* =========================================================================
-     * KLASTERISASI PROGRAM ONE CAMPUS FIVE OJT
-     * ========================================================================= */
-    public function getAvailableOjtPeriods(): array
-    {
-        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_ojt_period', 'Juli 2026 - Desember 2026');
-
-        $basePeriods = [
-            'Juli 2026 - Desember 2026' => 'Juli 2026 - Desember 2026 (Semester Ganjil 2026/2027)',
-            'Januari 2026 - Juni 2026' => 'Januari 2026 - Juni 2026 (Semester Genap 2025/2026)',
-            'Juli 2025 - Desember 2025' => 'Juli 2025 - Desember 2025 (Semester Ganjil 2025/2026)',
-            'Januari 2025 - Juni 2025' => 'Januari 2025 - Juni 2025 (Semester Genap 2024/2025)',
-        ];
-
-        if (! isset($basePeriods[$defaultPeriod])) {
-            $basePeriods = [$defaultPeriod => $defaultPeriod] + $basePeriods;
-        }
-
-        $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_ojt_periods', '');
-        if ($customJson !== '') {
-            $customs = json_decode($customJson, true);
-            if (is_array($customs)) {
-                foreach ($customs as $cKey => $cLabel) {
-                    if (is_string($cKey) && trim($cKey) !== '') {
-                        $basePeriods[$cKey] = trim(preg_replace('/\s*\((?:Berjalan|Terbaru|Default)[^\)]*\)/i', '', (string) $cLabel));
-                    }
-                }
-            }
-        }
-
-        $periods = [];
-        foreach ($basePeriods as $pKey => $pName) {
-            $cleanName = trim(preg_replace('/\s*\((?:Berjalan|Terbaru|Default)[^\)]*\)/i', '', (string) $pName));
-            if ($pKey === $defaultPeriod) {
-                $periods[$pKey] = $cleanName . ' (Berjalan)';
-            } else {
-                $periods[$pKey] = $cleanName;
-            }
-        }
-
-        return $periods;
-    }
-
-    public function storeOneCampusOjtCluster()
-    {
-        $userRole = (string) session('user.role');
-        if ($userRole !== 'Admin Sistem' && $userRole !== 'Super Admin') {
-            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Hanya Super Admin / Admin Sistem yang berhak membuat klasterisasi OJT baru.');
-        }
-
-        $periodName = trim((string) $this->request->getPost('ojt_period_name'));
-        $startMonth = trim((string) $this->request->getPost('start_month')) ?: 'Juli';
-        $startYear = (int) $this->request->getPost('start_year');
-        $endMonth = trim((string) $this->request->getPost('end_month')) ?: 'Desember';
-        $endYear = (int) $this->request->getPost('end_year');
-
-        if ($periodName === '' && $startYear > 2000 && $endYear >= $startYear) {
-            $periodName = "{$startMonth} {$startYear} - {$endMonth} {$endYear}";
-        }
-
-        if ($periodName === '') {
-            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Nama atau rentang bulan/tahun klaster OJT baru wajib diisi.');
-        }
-
-        $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_ojt_periods', '');
-        $customs = $customJson !== '' ? json_decode($customJson, true) : [];
-        if (!is_array($customs)) $customs = [];
-
-        $customs[$periodName] = $periodName . ' (Terbaru)';
-        \App\Models\SystemSettingModel::setSetting('one_campus_custom_ojt_periods', json_encode($customs));
-
-        $setAsDefault = (bool) $this->request->getPost('set_as_default');
-        if ($setAsDefault) {
-            \App\Models\SystemSettingModel::setSetting('one_campus_default_ojt_period', $periodName, 'Klaster OJT default Five OJT');
-        }
-
-        return redirect()->to(site_url('one-campus/ojt?ojt_period=' . urlencode($periodName)))
-            ->with('success', 'Klasterisasi OJT baru "' . $periodName . '" berhasil dibuat' . ($setAsDefault ? ' dan dijadikan klaster default aktif berjalan!' : '!'));
-    }
-
-    public function setDefaultOneCampusOjtCluster()
-    {
-        $userRole = (string) session('user.role');
-        if ($userRole !== 'Admin Sistem' && $userRole !== 'Super Admin') {
-            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Hanya Super Admin / Admin Sistem yang berhak mengubah klaster default.');
-        }
-
-        $period = trim((string) $this->request->getPost('ojt_period'));
-        if ($period === '' || $period === 'all') {
-            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Pilih klaster OJT yang valid untuk dijadikan default.');
-        }
-
-        \App\Models\SystemSettingModel::setSetting('one_campus_default_ojt_period', $period, 'Klaster OJT default Five OJT');
-
-        return redirect()->to(site_url('one-campus/ojt?ojt_period=' . urlencode($period)))
-            ->with('success', 'Klaster "' . $period . '" berhasil disetel sebagai klaster default Five OJT (waktu berjalan).');
-    }
-
-    public function deleteOneCampusOjtCluster()
-    {
-        $userRole = (string) session('user.role');
-        if ($userRole !== 'Admin Sistem' && $userRole !== 'Super Admin') {
-            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Hanya Super Admin / Admin Sistem yang berhak menghapus klaster.');
-        }
-
-        $period = trim((string) $this->request->getPost('ojt_period'));
-        if ($period === '' || $period === 'all') {
-            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Pilih klaster OJT yang valid untuk dihapus.');
-        }
-
-        $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_ojt_periods', '');
-        $customs = $customJson !== '' ? json_decode($customJson, true) : [];
-        if (!is_array($customs)) $customs = [];
-
-        if (isset($customs[$period])) {
-            unset($customs[$period]);
-            \App\Models\SystemSettingModel::setSetting('one_campus_custom_ojt_periods', json_encode($customs));
-        }
-
-        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_ojt_period', 'Juli 2026 - Desember 2026');
-        if ($defaultPeriod === $period) {
-            \App\Models\SystemSettingModel::setSetting('one_campus_default_ojt_period', 'Juli 2026 - Desember 2026', 'Klaster OJT default Five OJT');
-        }
-
-        return redirect()->to(site_url('one-campus/ojt'))
-            ->with('success', 'Klaster OJT "' . $period . '" berhasil dihapus.');
     }
 
     /* =========================================================================
@@ -5905,7 +5729,7 @@ class EventSuite extends BaseController
             'origin_school' => $this->request->getPost('origin_school'),
             'major' => $this->request->getPost('major'),
             'phone' => $this->request->getPost('phone'),
-            'ojt_period' => trim((string) $this->request->getPost('ojt_period_cluster')) ?: $period['label'],
+            'ojt_period' => $period['label'],
             'ojt_start_month' => $period['start'],
             'ojt_end_month' => $period['end'],
             'notes' => $this->request->getPost('notes'),
@@ -5950,7 +5774,7 @@ class EventSuite extends BaseController
             'origin_school' => $this->request->getPost('origin_school'),
             'major' => $this->request->getPost('major'),
             'phone' => $this->request->getPost('phone'),
-            'ojt_period' => trim((string) $this->request->getPost('ojt_period_cluster')) ?: $period['label'],
+            'ojt_period' => $period['label'],
             'ojt_start_month' => $period['start'],
             'ojt_end_month' => $period['end'],
             'notes' => $this->request->getPost('notes'),

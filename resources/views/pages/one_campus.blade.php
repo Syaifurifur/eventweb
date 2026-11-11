@@ -19,17 +19,12 @@ $availablePmbPeriods = $availablePmbPeriods ?? [
     'September 2027 - September 2028' => 'September 2027 - September 2028 (Mendatang)',
 ];
 $pmbPeriodCounts = $pmbPeriodCounts ?? [];
-$defaultOjtPeriod = $defaultOjtPeriod ?? 'Juli 2026 - Desember 2026';
-$selectedOjtPeriod = $selectedOjtPeriod ?? $defaultOjtPeriod;
-$availableOjtPeriods = $availableOjtPeriods ?? [$defaultOjtPeriod => $defaultOjtPeriod];
-$ojtPeriodCounts = $ojtPeriodCounts ?? [];
 
 $defaultBannerPeriod = $defaultBannerPeriod ?? 'Tahun 2026';
 $selectedBannerPeriod = $selectedBannerPeriod ?? $defaultBannerPeriod;
 $availableBannerPeriods = $availableBannerPeriods ?? [$defaultBannerPeriod => $defaultBannerPeriod];
 $bannerPeriodCounts = $bannerPeriodCounts ?? [];
 
-$ojtExportQuery = $campusQuery . ($selectedOjtPeriod !== '' ? (($campusQuery !== '' ? '&' : '?') . 'ojt_period=' . urlencode($selectedOjtPeriod)) : '');
 $bannerExportQuery = $campusQuery . ($selectedBannerPeriod !== '' ? (($campusQuery !== '' ? '&' : '?') . 'banner_period=' . urlencode($selectedBannerPeriod)) : '');
 $schoolExportQuery = $campusQuery . ($selectedPmbPeriod !== '' ? (($campusQuery !== '' ? '&' : '?') . 'pmb_period=' . urlencode($selectedPmbPeriod)) : '');
 
@@ -99,8 +94,8 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
 
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
             <?php if ($showOjt): ?>
-                <a class="ghost-button compact-button" href="<?= site_url('one-campus/ojt/export') . $ojtExportQuery ?>" title="Download laporan OJT mengikuti klaster aktif (<?= esc($selectedOjtPeriod === 'all' ? 'Semua Klaster' : $selectedOjtPeriod) ?>)">
-                    Download XLSX Five OJT (<?= esc($selectedOjtPeriod === 'all' ? 'Semua' : $selectedOjtPeriod) ?>)
+                <a class="ghost-button compact-button" href="<?= site_url('one-campus/ojt/export') . $campusQuery ?>">
+                    Download XLSX Five OJT
                 </a>
             <?php endif; ?>
             <?php if ($showSchool): ?>
@@ -152,68 +147,9 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             <h2>Laporan Rekap &amp; CRUD: One Campus Five OJT</h2>
         </div>
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-            <a class="primary-button compact-button" href="<?= site_url('one-campus/ojt/export') . $ojtExportQuery ?>" title="Download laporan OJT mengikuti klaster aktif (<?= esc($selectedOjtPeriod === 'all' ? 'Semua Klaster' : $selectedOjtPeriod) ?>)">
-                Download Hasil XLSX (Five OJT - <?= esc($selectedOjtPeriod === 'all' ? 'Semua Klaster' : $selectedOjtPeriod) ?>)
+            <a class="primary-button compact-button" href="<?= site_url('one-campus/ojt/export') . $campusQuery ?>">
+                Download Hasil XLSX (Five OJT)
             </a>
-        </div>
-    </div>
-
-    <!-- Klasterisasi Berdasarkan Periode OJT (Sedang Berjalan & Sebelumnya) -->
-    <div class="ojt-cluster-container" style="background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;">
-        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-                <span style="font-size: 0.86rem; font-weight: 700; color: var(--text-main, #1e293b); margin-right: 6px;">
-                    Klaster Periode OJT:
-                </span>
-                <?php foreach ($availableOjtPeriods as $oKey => $oLabel): ?>
-                    <?php $isActive = ($selectedOjtPeriod === $oKey); ?>
-                    <a href="<?= site_url('one-campus/ojt?ojt_period=' . urlencode($oKey) . ($selectedOneCampusId ? '&campus_id=' . urlencode((string) $selectedOneCampusId) : '')) ?>"
-                       class="<?= $isActive ? 'primary-button compact-button' : 'ghost-button compact-button' ?>"
-                       style="<?= $isActive ? 'background: #0284c7; border-color: #0284c7; color: #ffffff; font-weight: 700;' : '' ?>">
-                        <?= esc($oLabel) ?>
-                        <span style="display: inline-block; padding: 1px 7px; margin-left: 6px; border-radius: 999px; font-size: 0.76rem; background: <?= $isActive ? 'rgba(255,255,255,0.28)' : 'var(--border-color, #cbd5e1)' ?>; color: <?= $isActive ? '#ffffff' : 'inherit' ?>;">
-                            <?= esc((string) ($ojtPeriodCounts[$oKey] ?? 0)) ?>
-                        </span>
-                    </a>
-                <?php endforeach; ?>
-                <?php $isAllOjt = ($selectedOjtPeriod === 'all'); ?>
-                <a href="<?= site_url('one-campus/ojt?ojt_period=all' . ($selectedOneCampusId ? '&campus_id=' . urlencode((string) $selectedOneCampusId) : '')) ?>"
-                   class="<?= $isAllOjt ? 'primary-button compact-button' : 'ghost-button compact-button' ?>"
-                   style="<?= $isAllOjt ? 'background: #0284c7; border-color: #0284c7; color: #ffffff; font-weight: 700;' : '' ?>">
-                    Semua Periode OJT
-                    <span style="display: inline-block; padding: 1px 7px; margin-left: 6px; border-radius: 999px; font-size: 0.76rem; background: <?= $isAllOjt ? 'rgba(255,255,255,0.28)' : 'var(--border-color, #cbd5e1)' ?>; color: <?= $isAllOjt ? '#ffffff' : 'inherit' ?>;">
-                        <?= esc((string) ($ojtPeriodCounts['all'] ?? 0)) ?>
-                    </span>
-                </a>
-
-                <?php if (session('user.role') === 'Admin Sistem' || session('user.role') === 'Super Admin'): ?>
-                    <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-add-ojt-cluster').showModal()" style="border-color: #f59e0b; color: #b45309; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.1);" title="Khusus Superadmin: Tambah / Hapus Klasterisasi OJT">
-                        &#10010; Buat Klasterisasi OJT (Superadmin)
-                    </button>
-                <?php endif; ?>
-            </div>
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-                <span class="status status-aktif" style="font-size: 0.8rem; background: rgba(2, 132, 199, 0.12); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.35); padding: 4px 10px; border-radius: 999px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                    ✓ Klaster OJT Berjalan (Default): <?= esc($defaultOjtPeriod) ?>
-                </span>
-                <?php $isSuper = (session('user.role') === 'Admin Sistem' || session('user.role') === 'Super Admin'); ?>
-                <?php if ($isSuper && $selectedOjtPeriod !== 'all' && $selectedOjtPeriod !== $defaultOjtPeriod): ?>
-                    <form action="<?= site_url('one-campus/ojt-clusters/set-default') ?>" method="post" style="display: inline-block;">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="ojt_period" value="<?= esc($selectedOjtPeriod, 'attr') ?>">
-                        <button type="submit" class="ghost-button compact-button" style="border-color: #f59e0b; color: #b45309; background: #fffbeb; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Jadikan klaster '<?= esc($selectedOjtPeriod, 'attr') ?>' sebagai default / waktu OJT berjalan">
-                            ⭐ Jadikan Default (Waktu Berjalan)
-                        </button>
-                    </form>
-                    <form action="<?= site_url('one-campus/ojt-clusters/delete') ?>" method="post" style="display: inline-block;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus klaster OJT \'<?= esc($selectedOjtPeriod, 'js') ?>\'?')">
-                        <?= csrf_field() ?>
-                        <input type="hidden" name="ojt_period" value="<?= esc($selectedOjtPeriod, 'attr') ?>">
-                        <button type="submit" class="ghost-button compact-button" style="border-color: #ef4444; color: #ef4444; background: #fef2f2; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Hapus klaster '<?= esc($selectedOjtPeriod, 'attr') ?>'">
-                            🗑️ Hapus Klaster
-                        </button>
-                    </form>
-                <?php endif; ?>
-            </div>
         </div>
     </div>
 
@@ -233,14 +169,6 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                     <option value="">Pilih kampus</option>
                     <?php foreach ($campuses as $campus): ?>
                         <option value="<?= esc($campus['id']) ?>" <?= (string) ($selectedOneCampusId ?? '') === (string) $campus['id'] ? 'selected' : '' ?>><?= esc($campus['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <label>
-                Klaster Periode OJT Target
-                <select class="control" name="ojt_period_cluster">
-                    <?php foreach ($availableOjtPeriods as $oKey => $oLabel): ?>
-                        <option value="<?= esc($oKey) ?>" <?= ($selectedOjtPeriod === $oKey || ($selectedOjtPeriod === 'all' && $oKey === $defaultOjtPeriod)) ? 'selected' : '' ?>><?= esc($oLabel) ?></option>
                     <?php endforeach; ?>
                 </select>
             </label>
@@ -1275,114 +1203,6 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                 <option value="">Pilih klaster PMB yang ingin dihapus...</option>
                 <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
                     <option value="<?= esc($pKey, 'attr') ?>"><?= esc($pLabel) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="ghost-button compact-button" style="border-color: #ef4444; color: #ef4444; background: #fef2f2; font-weight: 700;">
-                Hapus
-            </button>
-        </form>
-    </div>
-</dialog>
-
-<!-- ==================== MODAL: TAMBAH & KELOLA KLASTER OJT ==================== -->
-<dialog id="dialog-add-ojt-cluster" class="panel" style="max-width: 520px; width: 92%; border-radius: 12px; border: 1px solid var(--border-color, #cbd5e1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 20px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color, #e2e8f0);">
-        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #0284c7; display: flex; align-items: center; gap: 6px;">
-            <span>🎓</span> Kelola Klasterisasi One Campus Five OJT
-        </h3>
-        <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-add-ojt-cluster').close()">✕</button>
-    </div>
-    <form action="<?= site_url('one-campus/ojt-clusters') ?>" method="post">
-        <?= csrf_field() ?>
-        <p style="font-size: 0.82rem; color: var(--text-muted, #64748b); margin-top: 0; margin-bottom: 14px;">
-            Khusus Superadmin: Tambahkan klaster periode OJT baru (Semester Ganjil / Genap) atau rentang bulan kustom.
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-            <label>
-                <span style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Bulan & Tahun Mulai</span>
-                <div style="display: flex; gap: 4px;">
-                    <select class="control" name="start_month" style="flex: 1;">
-                        <option value="Januari">Januari</option>
-                        <option value="Februari">Februari</option>
-                        <option value="Maret">Maret</option>
-                        <option value="April">April</option>
-                        <option value="Mei">Mei</option>
-                        <option value="Juni">Juni</option>
-                        <option value="Juli" selected>Juli</option>
-                        <option value="Agustus">Agustus</option>
-                        <option value="September">September</option>
-                        <option value="Oktober">Oktober</option>
-                        <option value="November">November</option>
-                        <option value="Desember">Desember</option>
-                    </select>
-                    <input class="control" type="number" name="start_year" min="2020" max="2040" value="<?= date('Y') ?>" style="width: 80px;" required>
-                </div>
-            </label>
-            <label>
-                <span style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Bulan & Tahun Selesai</span>
-                <div style="display: flex; gap: 4px;">
-                    <select class="control" name="end_month" style="flex: 1;">
-                        <option value="Januari">Januari</option>
-                        <option value="Februari">Februari</option>
-                        <option value="Maret">Maret</option>
-                        <option value="April">April</option>
-                        <option value="Mei">Mei</option>
-                        <option value="Juni">Juni</option>
-                        <option value="Juli">Juli</option>
-                        <option value="Agustus">Agustus</option>
-                        <option value="September">September</option>
-                        <option value="Oktober">Oktober</option>
-                        <option value="November">November</option>
-                        <option value="Desember" selected>Desember</option>
-                    </select>
-                    <input class="control" type="number" name="end_year" min="2020" max="2040" value="<?= date('Y') ?>" style="width: 80px;" required>
-                </div>
-            </label>
-        </div>
-        <label style="display: block; margin-bottom: 14px;">
-            <span style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">Nama Klaster OJT (Custom / Opsional)</span>
-            <input class="control" type="text" name="ojt_period_name" placeholder="Contoh: Juli 2027 - Desember 2027 (Semester Ganjil 2027/2028)">
-            <span style="font-size: 0.74rem; color: var(--text-muted, #64748b); margin-top: 3px; display: block;">Kosongkan untuk otomatis menggunakan format bulan awal dan bulan akhir.</span>
-        </label>
-        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer;">
-            <input type="checkbox" name="set_as_default" value="1" checked>
-            <span style="font-size: 0.82rem; font-weight: 600; color: var(--ink, #1e293b);">Langsung jadikan sebagai Klaster Default (Waktu OJT Berjalan)</span>
-        </label>
-        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-            <button type="button" class="ghost-button" onclick="document.getElementById('dialog-add-ojt-cluster').close()">Batal</button>
-            <button type="submit" class="primary-button" style="background: #0284c7; border-color: #0284c7; color: #ffffff; font-weight: 700;">Simpan Klaster OJT Baru</button>
-        </div>
-    </form>
-
-    <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--line, #e2e8f0);">
-        <span style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--ink, #1e293b); margin-bottom: 6px;">
-            ⭐ Tetapkan Klaster Default / Waktu OJT Berjalan:
-        </span>
-        <form action="<?= site_url('one-campus/ojt-clusters/set-default') ?>" method="post" style="display: flex; gap: 8px; align-items: center;">
-            <?= csrf_field() ?>
-            <select name="ojt_period" class="control" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
-                <?php foreach ($availableOjtPeriods as $oKey => $oLabel): ?>
-                    <option value="<?= esc($oKey, 'attr') ?>" <?= (($defaultOjtPeriod ?? 'Juli 2026 - Desember 2026') === $oKey) ? 'selected' : '' ?>>
-                        <?= esc($oLabel) ?><?= (($defaultOjtPeriod ?? 'Juli 2026 - Desember 2026') === $oKey) ? ' (Default Berjalan Saat Ini)' : '' ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <button type="submit" class="primary-button compact-button" style="background: #0284c7; border-color: #0284c7; color: #ffffff; font-weight: 700;">
-                Setel Waktu Berjalan
-            </button>
-        </form>
-    </div>
-
-    <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line, #e2e8f0);">
-        <span style="display: block; font-size: 0.82rem; font-weight: 700; color: #ef4444; margin-bottom: 6px;">
-            🗑️ Hapus Klaster OJT:
-        </span>
-        <form action="<?= site_url('one-campus/ojt-clusters/delete') ?>" method="post" style="display: flex; gap: 8px; align-items: center;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus klaster OJT yang dipilih?')">
-            <?= csrf_field() ?>
-            <select name="ojt_period" class="control" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;" required>
-                <option value="">Pilih klaster OJT yang ingin dihapus...</option>
-                <?php foreach ($availableOjtPeriods as $oKey => $oLabel): ?>
-                    <option value="<?= esc($oKey, 'attr') ?>"><?= esc($oLabel) ?></option>
                 <?php endforeach; ?>
             </select>
             <button type="submit" class="ghost-button compact-button" style="border-color: #ef4444; color: #ef4444; background: #fef2f2; font-weight: 700;">

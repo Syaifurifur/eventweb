@@ -164,9 +164,6 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('one-campus/pmb-clusters', [EventSuite::class, 'storeOneCampusPmbCluster'])->middleware('access:one-campus');
     Route::post('one-campus/pmb-clusters/set-default', [EventSuite::class, 'setDefaultOneCampusPmbCluster'])->middleware('access:one-campus');
     Route::post('one-campus/pmb-clusters/delete', [EventSuite::class, 'deleteOneCampusPmbCluster'])->middleware('access:one-campus');
-    Route::post('one-campus/ojt-clusters', [EventSuite::class, 'storeOneCampusOjtCluster'])->middleware('access:one-campus');
-    Route::post('one-campus/ojt-clusters/set-default', [EventSuite::class, 'setDefaultOneCampusOjtCluster'])->middleware('access:one-campus');
-    Route::post('one-campus/ojt-clusters/delete', [EventSuite::class, 'deleteOneCampusOjtCluster'])->middleware('access:one-campus');
     Route::post('one-campus/banner-clusters', [EventSuite::class, 'storeOneCampusBannerCluster'])->middleware('access:one-campus');
     Route::post('one-campus/banner-clusters/set-default', [EventSuite::class, 'setDefaultOneCampusBannerCluster'])->middleware('access:one-campus');
     Route::post('one-campus/banner-clusters/delete', [EventSuite::class, 'deleteOneCampusBannerCluster'])->middleware('access:one-campus');
