@@ -8704,8 +8704,11 @@ class EventSuite extends BaseController
             'xl/_rels/workbook.xml.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' . implode('', $workbookRels) . '</Relationships>',
         ], $sheetEntries);
 
-        $tempBase = defined('WRITEPATH') ? (WRITEPATH . 'cache') : sys_get_temp_dir();
-        $path = tempnam($tempBase, 'event-template-multi-');
+        $tempBase = defined('WRITEPATH') && is_dir(WRITEPATH . 'cache') ? (WRITEPATH . 'cache') : sys_get_temp_dir();
+        $path = @tempnam($tempBase, 'event-template-multi-');
+        if ($path === false) {
+            $path = @tempnam(sys_get_temp_dir(), 'event-template-multi-');
+        }
         if ($path === false) {
             return '';
         }
@@ -8759,7 +8762,11 @@ class EventSuite extends BaseController
             'xl/worksheets/sheet1.xml' => $sheetXml,
         ];
 
-        $path = tempnam(WRITEPATH . 'cache', 'event-template-');
+        $tempDir = defined('WRITEPATH') && is_dir(WRITEPATH . 'cache') ? (WRITEPATH . 'cache') : sys_get_temp_dir();
+        $path = @tempnam($tempDir, 'event-template-');
+        if ($path === false) {
+            $path = @tempnam(sys_get_temp_dir(), 'event-template-');
+        }
         if ($path === false) {
             return '';
         }

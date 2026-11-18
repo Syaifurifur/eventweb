@@ -25,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
         if (! defined('WRITEPATH')) {
             define('WRITEPATH', storage_path() . DIRECTORY_SEPARATOR);
         }
+        if (! is_dir(storage_path('cache'))) {
+            @mkdir(storage_path('cache'), 0775, true);
+        }
         if (! defined('ENVIRONMENT')) {
             define('ENVIRONMENT', app()->environment());
         }
