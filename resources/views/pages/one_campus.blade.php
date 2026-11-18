@@ -242,60 +242,9 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                         <td><?= esc($row['ojt_period']) ?></td>
                         <td><?= esc($row['notes'] ?? '-') ?></td>
                         <td>
-                            <details class="row-drawer">
-                                <summary class="ghost-button compact-button">Kelola</summary>
-                                <div class="row-edit-panel">
-                                    <form id="<?= esc($ojtFormId) ?>" action="<?= site_url('one-campus/ojt/' . $row['id'] . '/update') ?>" method="post" class="form-grid compact-edit-grid">
-                                        <?= csrf_field() ?>
-                                        <label>
-                                            Kampus
-                                            <select class="control table-control" name="campus_id">
-                                                <option value="">Pilih kampus</option>
-                                                <?php foreach ($campuses as $campus): ?>
-                                                    <option value="<?= esc((string) $campus['id']) ?>" <?= (string) ($row['campus_id'] ?? '') === (string) $campus['id'] ? 'selected' : '' ?>>
-                                                        <?= esc($campus['name']) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </label>
-                                        <label>
-                                            Nama Anak OJT
-                                            <input class="control table-control" type="text" name="student_name" value="<?= esc($row['student_name'], 'attr') ?>" required>
-                                        </label>
-                                        <label>
-                                            Asal Sekolah/Kampus
-                                            <input class="control table-control" type="text" name="origin_school" value="<?= esc($row['origin_school'], 'attr') ?>" required>
-                                        </label>
-                                        <label>
-                                            Jurusan
-                                            <input class="control table-control" type="text" name="major" value="<?= esc($row['major'] ?? '', 'attr') ?>">
-                                        </label>
-                                        <label>
-                                            No Handphone
-                                            <input class="control table-control" type="text" name="phone" value="<?= esc($row['phone'] ?? '', 'attr') ?>">
-                                        </label>
-                                        <label>
-                                            Bulan Awal OJT
-                                            <input class="control table-control" type="date" name="ojt_start_month" value="<?= esc($dateValue($row['ojt_start_month'] ?? ''), 'attr') ?>" required>
-                                        </label>
-                                        <label>
-                                            Bulan Akhir OJT
-                                            <input class="control table-control" type="date" name="ojt_end_month" value="<?= esc($dateValue($row['ojt_end_month'] ?? ''), 'attr') ?>" required>
-                                        </label>
-                                        <label class="span-2">
-                                            Keterangan
-                                            <textarea class="control table-control" name="notes" rows="3"><?= esc($row['notes'] ?? '') ?></textarea>
-                                        </label>
-                                    </form>
-                                    <div class="button-row">
-                                        <button class="primary-button compact-button" form="<?= esc($ojtFormId) ?>" type="submit">Simpan OJT</button>
-                                        <form action="<?= site_url('one-campus/ojt/' . $row['id'] . '/delete') ?>" method="post" class="inline-form">
-                                            <?= csrf_field() ?>
-                                            <button class="danger-button compact-button" type="submit">Hapus OJT</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </details>
+                            <a class="ghost-button compact-button" href="<?= site_url('one-campus/ojt/' . $row['id'] . '/edit') ?>">
+                                &#9998; Kelola
+                            </a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

@@ -175,6 +175,7 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('one-campus/banners/{id}/update', [EventSuite::class, 'updateOneCampusBanner'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/banners/{id}/delete', [EventSuite::class, 'deleteOneCampusBanner'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/ojt', [EventSuite::class, 'storeOneCampusOjt'])->middleware('access:one-campus');
+    Route::get('one-campus/ojt/{id}/edit', [EventSuite::class, 'editOneCampusOjt'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/ojt/{id}/update', [EventSuite::class, 'updateOneCampusOjt'])->middleware('access:one-campus')->whereNumber('id');
     Route::post('one-campus/ojt/{id}/delete', [EventSuite::class, 'deleteOneCampusOjt'])->middleware('access:one-campus')->whereNumber('id');
 

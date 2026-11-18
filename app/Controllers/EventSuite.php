@@ -5845,6 +5845,25 @@ class EventSuite extends BaseController
         return redirect()->to(site_url('one-campus/ojt'))->with('success', 'Laporan One Campus Five OJT berhasil disimpan.');
     }
 
+    public function editOneCampusOjt(int $id)
+    {
+        $model = new OneCampusOjtReportModel();
+        $ojt = $model->find($id);
+        if (! $ojt || ! $this->canManageOneCampusReport($ojt)) {
+            return redirect()->to(site_url('one-campus/ojt'))->with('error', 'Data OJT tidak ditemukan atau tidak bisa diakses.');
+        }
+
+        $campuses = (new CampusModel())->orderBy('name', 'ASC')->findAll();
+        $visibleCampuses = $this->visibleOneCampusCampuses($campuses);
+
+        return $this->render('pages/one_campus_ojt_edit', [
+            'title' => 'Kelola Data One Campus Five OJT',
+            'active' => 'one-campus-ojt',
+            'ojt' => $ojt,
+            'campuses' => $visibleCampuses,
+        ]);
+    }
+
     public function updateOneCampusOjt(int $id)
     {
         $model = new OneCampusOjtReportModel();
