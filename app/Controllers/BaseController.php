@@ -28,7 +28,10 @@ abstract class BaseController extends Controller
             $converted = [];
             foreach (explode('|', $ruleSet) as $rule) {
                 if ($rule === 'permit_empty') { $converted[] = 'nullable'; continue; }
-                if ($rule === 'valid_date') { $converted[] = 'date'; continue; }
+                if (preg_match('/^valid_date(?:\[(.*)])?$/', $rule, $match)) {
+                    $converted[] = ! empty($match[1]) ? ('date_format:' . $match[1]) : 'date';
+                    continue;
+                }
                 if ($rule === 'valid_email') { $converted[] = 'email'; continue; }
                 if ($rule === 'is_natural') { array_push($converted, 'integer', 'min:0'); continue; }
                 if ($rule === 'is_natural_no_zero') { array_push($converted, 'integer', 'min:1'); continue; }
