@@ -28,5 +28,8 @@ class AppServiceProvider extends ServiceProvider
         if (! defined('ENVIRONMENT')) {
             define('ENVIRONMENT', app()->environment());
         }
+        if (str_starts_with((string) config('app.url'), 'https://') || app()->environment('production') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
     }
 }
