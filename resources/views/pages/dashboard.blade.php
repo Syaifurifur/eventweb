@@ -388,36 +388,74 @@ $totalCampusesCount = count($dmerCampusesData);
         color: #f8fafc !important;
     }
 
-    /* Top Badges in Header */
+    /* Top Badges & Strategy Pills in Dark Mode */
     html.dark .dmer-dashboard-wrap .bg-blue-50,
-    [data-theme="dark"] .dmer-dashboard-wrap .bg-blue-50 {
-        background-color: rgba(59, 130, 246, 0.15) !important;
+    html.dark .dmer-dashboard-wrap .bg-blue-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-blue-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-blue-100 {
+        background-color: rgba(59, 130, 246, 0.22) !important;
         color: #93c5fd !important;
-        border-color: rgba(59, 130, 246, 0.3) !important;
+        border-color: rgba(59, 130, 246, 0.4) !important;
     }
     html.dark .dmer-dashboard-wrap .bg-emerald-50,
-    [data-theme="dark"] .dmer-dashboard-wrap .bg-emerald-50 {
-        background-color: rgba(16, 185, 129, 0.15) !important;
+    html.dark .dmer-dashboard-wrap .bg-emerald-100,
+    html.dark .dmer-dashboard-wrap .bg-green-50,
+    html.dark .dmer-dashboard-wrap .bg-green-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-emerald-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-emerald-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-green-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-green-100 {
+        background-color: rgba(16, 185, 129, 0.22) !important;
         color: #6ee7b7 !important;
-        border-color: rgba(16, 185, 129, 0.3) !important;
+        border-color: rgba(16, 185, 129, 0.4) !important;
     }
     html.dark .dmer-dashboard-wrap .bg-indigo-50,
-    [data-theme="dark"] .dmer-dashboard-wrap .bg-indigo-50 {
-        background-color: rgba(99, 102, 241, 0.15) !important;
+    html.dark .dmer-dashboard-wrap .bg-indigo-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-indigo-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-indigo-100 {
+        background-color: rgba(99, 102, 241, 0.22) !important;
         color: #a5b4fc !important;
-        border-color: rgba(99, 102, 241, 0.3) !important;
+        border-color: rgba(99, 102, 241, 0.4) !important;
+    }
+    html.dark .dmer-dashboard-wrap .bg-purple-50,
+    html.dark .dmer-dashboard-wrap .bg-purple-100,
+    html.dark .dmer-dashboard-wrap .bg-violet-50,
+    html.dark .dmer-dashboard-wrap .bg-violet-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-purple-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-purple-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-violet-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-violet-100 {
+        background-color: rgba(168, 85, 247, 0.22) !important;
+        color: #d8b4fe !important;
+        border-color: rgba(168, 85, 247, 0.4) !important;
     }
     html.dark .dmer-dashboard-wrap .bg-amber-50,
-    [data-theme="dark"] .dmer-dashboard-wrap .bg-amber-50 {
-        background-color: rgba(245, 158, 11, 0.15) !important;
+    html.dark .dmer-dashboard-wrap .bg-amber-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-amber-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-amber-100 {
+        background-color: rgba(245, 158, 11, 0.22) !important;
         color: #fcd34d !important;
-        border-color: rgba(245, 158, 11, 0.3) !important;
+        border-color: rgba(245, 158, 11, 0.4) !important;
     }
     html.dark .dmer-dashboard-wrap .bg-teal-50,
-    [data-theme="dark"] .dmer-dashboard-wrap .bg-teal-50 {
-        background-color: rgba(20, 184, 166, 0.15) !important;
+    html.dark .dmer-dashboard-wrap .bg-teal-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-teal-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-teal-100 {
+        background-color: rgba(20, 184, 166, 0.22) !important;
         color: #5eead4 !important;
-        border-color: rgba(20, 184, 166, 0.3) !important;
+        border-color: rgba(20, 184, 166, 0.4) !important;
+    }
+    html.dark .dmer-dashboard-wrap .bg-rose-50,
+    html.dark .dmer-dashboard-wrap .bg-rose-100,
+    html.dark .dmer-dashboard-wrap .bg-red-50,
+    html.dark .dmer-dashboard-wrap .bg-red-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-rose-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-rose-100,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-red-50,
+    [data-theme="dark"] .dmer-dashboard-wrap .bg-red-100 {
+        background-color: rgba(244, 63, 94, 0.22) !important;
+        color: #fda4af !important;
+        border-color: rgba(244, 63, 94, 0.4) !important;
     }
 
     /* Benchmark targets */

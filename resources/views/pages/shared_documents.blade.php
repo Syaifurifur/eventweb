@@ -169,6 +169,10 @@ $getFileTheme = static function (string $ext): array {
     white-space: nowrap;
     text-decoration: none;
 }
+.sd-hero-btn-upload span,
+.sd-hero-btn-upload iconify-icon {
+    color: #1d4ed8 !important;
+}
 .sd-hero-btn-upload:hover {
     background: #eff6ff !important;
     color: #1e40af !important;

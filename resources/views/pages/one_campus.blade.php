@@ -1,4 +1,4 @@
-eb<?php
+<?php
 $campuses = $campuses ?? [];
 $schoolReports = $schoolReports ?? [];
 $bannerReports = $bannerReports ?? [];
@@ -11,12 +11,12 @@ if (! in_array($selectedProgram, ['ojt', 'school', 'banner', 'all'], true)) {
 }
 
 $campusQuery = $selectedOneCampusId ? ('?campus_id=' . urlencode((string) $selectedOneCampusId)) : '';
-$selectedPmbPeriod = $selectedPmbPeriod ?? 'September 2026 - September 2027';
+$defaultPmbPeriod = $defaultPmbPeriod ?? 'Agustus 2026 - September 2027';
+$selectedPmbPeriod = $selectedPmbPeriod ?? $defaultPmbPeriod;
 $availablePmbPeriods = $availablePmbPeriods ?? [
-    'September 2026 - September 2027' => 'September 2026 - September 2027 (Berjalan)',
+    $defaultPmbPeriod => $defaultPmbPeriod . ' (Berjalan)',
     'September 2025 - September 2026' => 'September 2025 - September 2026',
     'September 2024 - September 2025' => 'September 2024 - September 2025',
-    'September 2027 - September 2028' => 'September 2027 - September 2028 (Mendatang)',
 ];
 $pmbPeriodCounts = $pmbPeriodCounts ?? [];
 
@@ -145,11 +145,6 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
         <div>
             <span class="eyebrow">Sub Menu 1 &bull; Target Minimal 5 Peserta OJT / Kampus</span>
             <h2>Laporan Rekap &amp; CRUD: One Campus Five OJT</h2>
-        </div>
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-            <a class="primary-button compact-button" href="<?= site_url('one-campus/ojt/export') . $campusQuery ?>">
-                Download Hasil XLSX (Five OJT)
-            </a>
         </div>
     </div>
 
@@ -326,14 +321,10 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                 Klasterisasi Sekolah Mitra PMB, Pendataan Beasiswa Jalur Undangan (BJS), dan Arsip Media MOU ke Google Drive Admin.
             </p>
         </div>
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-            <a class="primary-button compact-button" href="<?= site_url('one-campus/schools/export') . $schoolExportQuery ?>">
-                Download Hasil XLSX (Sixty School)
-            </a>
-        </div>
     </div>
 
-    <!-- Panel Pengaturan Google Drive Admin Akun MOU & Upload Otomatis -->
+    <!-- Panel Pengaturan Google Drive Admin Akun MOU & Upload Otomatis (Khusus Admin & Superadmin) -->
+    <?php if (in_array((string) session('user.role'), ['Admin Sistem', 'Super Admin'], true)): ?>
     <details class="panel management-drawer one-campus-drawer" style="margin-bottom: 16px; border-left: 4px solid #0d9488;">
         <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
             <div>
@@ -433,6 +424,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             </p>
         </div>
     </details>
+    <?php endif; ?>
 
     <!-- Klasterisasi Berdasarkan Tahun PMB (Sedang Berjalan & Sebelumnya) -->
     <div class="pmb-cluster-container" style="background: var(--card-bg, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;">
@@ -470,10 +462,10 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             </div>
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
                 <span class="status status-aktif" style="font-size: 0.8rem; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 999px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                    ✓ Waktu PMB Berjalan (Default): <?= esc($defaultPmbPeriod ?? 'September 2026 - September 2027') ?>
+                    ✓ Waktu PMB Berjalan (Default): <?= esc($defaultPmbPeriod ?? 'Agustus 2026 - September 2027') ?>
                 </span>
                 <?php $isSuper = (session('user.role') === 'Admin Sistem' || session('user.role') === 'Super Admin'); ?>
-                <?php if ($isSuper && $selectedPmbPeriod !== 'all' && $selectedPmbPeriod !== ($defaultPmbPeriod ?? 'September 2026 - September 2027')): ?>
+                <?php if ($isSuper && $selectedPmbPeriod !== 'all' && $selectedPmbPeriod !== ($defaultPmbPeriod ?? 'Agustus 2026 - September 2027')): ?>
                     <form action="<?= site_url('one-campus/pmb-clusters/set-default') ?>" method="post" style="display: inline-block;">
                         <?= csrf_field() ?>
                         <input type="hidden" name="pmb_period" value="<?= esc($selectedPmbPeriod, 'attr') ?>">
@@ -600,8 +592,8 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                         <span style="display: block; font-size: 0.84rem; font-weight: 600; margin-bottom: 4px;">Tahun PMB</span>
                         <select class="control" name="pmb_period">
                             <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
-                                <option value="<?= esc($pKey) ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === 'September 2026 - September 2027')) ? 'selected' : '' ?>>
-                                    <?= esc($pKey) ?><?= $pKey === 'September 2026 - September 2027' ? ' (Default Berjalan)' : '' ?>
+                                <option value="<?= esc($pKey) ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === ($defaultPmbPeriod ?? 'Agustus 2026 - September 2027'))) ? 'selected' : '' ?>>
+                                    <?= esc($pKey) ?><?= $pKey === ($defaultPmbPeriod ?? 'Agustus 2026 - September 2027') ? ' (Default Berjalan)' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -768,7 +760,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                         'campus_name' => (string) ($row['campus_name'] ?? 'Semua Kampus'),
                         'campus_code' => (string) ($row['campus_kode_kampus'] ?? ($row['campus_code'] ?? '')),
                         'campus_ubsi' => (string) ($row['campus_kode_ubsi'] ?? ($row['kode_ubsi'] ?? '')),
-                        'pmb_period' => (string) ($row['pmb_period'] ?? 'September 2026 - September 2027'),
+                        'pmb_period' => (string) ($row['pmb_period'] ?? ($defaultPmbPeriod ?? 'Agustus 2026 - September 2027')),
                         'status' => (string) ($row['status'] ?? 'Aktif'),
                         'bjs_status' => (string) ($row['bjs_status'] ?? 'Belum Aktif'),
                         'bjs_verifier_name' => (string) ($row['bjs_verifier_name'] ?? ''),
@@ -823,7 +815,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                         </td>
                         <td>
                             <span class="status status-aktif" style="font-size: 0.78rem; white-space: nowrap;">
-                                <?= esc($row['pmb_period'] ?? 'September 2026 - September 2027') ?>
+                                <?= esc($row['pmb_period'] ?? ($defaultPmbPeriod ?? 'Agustus 2026 - September 2027')) ?>
                             </span>
                         </td>
                         <td>
@@ -935,11 +927,6 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
         <div>
             <span class="eyebrow">Sub Menu 3 &bull; Target Minimal 5 Titik Spanduk / Kampus</span>
             <h2>Laporan Rekap &amp; CRUD: One Campus Five Spanduk</h2>
-        </div>
-        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-            <a class="primary-button compact-button" href="<?= site_url('one-campus/banners/export') . $bannerExportQuery ?>" title="Download laporan Spanduk mengikuti klaster aktif (<?= esc($selectedBannerPeriod === 'all' ? 'Semua Klaster' : $selectedBannerPeriod) ?>)">
-                Download Hasil XLSX (Five Spanduk - <?= esc($selectedBannerPeriod === 'all' ? 'Semua Klaster' : $selectedBannerPeriod) ?>)
-            </a>
         </div>
     </div>
 
@@ -1182,8 +1169,8 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             <?= csrf_field() ?>
             <select name="pmb_period" class="control" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
                 <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
-                    <option value="<?= esc($pKey, 'attr') ?>" <?= (($defaultPmbPeriod ?? 'September 2026 - September 2027') === $pKey) ? 'selected' : '' ?>>
-                        <?= esc($pLabel) ?><?= (($defaultPmbPeriod ?? 'September 2026 - September 2027') === $pKey) ? ' (Default Berjalan Saat Ini)' : '' ?>
+                    <option value="<?= esc($pKey, 'attr') ?>" <?= (($defaultPmbPeriod ?? 'Agustus 2026 - September 2027') === $pKey) ? 'selected' : '' ?>>
+                        <?= esc($pLabel) ?><?= (($defaultPmbPeriod ?? 'Agustus 2026 - September 2027') === $pKey) ? ' (Default Berjalan Saat Ini)' : '' ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -1300,7 +1287,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             <span style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Pilih Klaster PMB Target <span style="color: #ef4444;">*</span></span>
             <select class="control" name="pmb_period" required>
                 <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
-                    <option value="<?= esc($pKey) ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === 'September 2026 - September 2027')) ? 'selected' : '' ?>>
+                    <option value="<?= esc($pKey) ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === ($defaultPmbPeriod ?? 'Agustus 2026 - September 2027'))) ? 'selected' : '' ?>>
                         <?= esc($pLabel) ?>
                     </option>
                 <?php endforeach; ?>

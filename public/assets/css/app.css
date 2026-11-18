@@ -5,6 +5,12 @@
     --ink: #111827;
     --muted: #4b5563;
     --line: #ebecef;
+    --card-bg: #ffffff;
+    --text-main: #111827;
+    --text-muted: #4b5563;
+    --border-color: #e2e8f0;
+    --bg-hover: #f8fafc;
+    --badge-bg: #e2e8f0;
     --blue: #487fff;
     --blue-soft: #e4f1ff;
     --green: #16a34a;
@@ -25,6 +31,12 @@ html.dark {
     --ink: #f3f4f6;
     --muted: #9ca3af;
     --line: #374151;
+    --card-bg: #273142;
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --border-color: #374151;
+    --bg-hover: #1f2937;
+    --badge-bg: #374151;
     --blue: #487fff;
     --blue-soft: rgba(72, 127, 255, .2);
     --green: #22c55e;
@@ -390,7 +402,8 @@ textarea {
     padding: 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .analytics-distribution-card {
@@ -555,7 +568,8 @@ textarea {
     padding: 16px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .special-crm-score span,
@@ -634,7 +648,8 @@ textarea {
     padding: 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .dashboard-event-row {
@@ -832,7 +847,8 @@ html.dark .status-Ditolak {
     padding: 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .notification-item.is-unread {
@@ -1095,7 +1111,8 @@ html.dark .status-Ditolak {
     padding: 14px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .checklist-add-notes {
@@ -1460,7 +1477,8 @@ html.dark .checklist-item-row.is-done {
     padding: 16px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .pic-task-card {
@@ -1816,7 +1834,8 @@ html.dark .checklist-item-row.is-done {
     padding: 18px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .crm-report-grid {
@@ -2313,7 +2332,8 @@ html.dark .checklist-item-row.is-done {
     padding: 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .document-admin-form {
@@ -2421,7 +2441,8 @@ html.dark .checklist-item-row.is-done {
     padding: 12px;
     border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fbfdff;
+    background: var(--surface-soft, #fbfdff);
+    color: var(--ink);
 }
 
 .template-meta {
@@ -3912,7 +3933,8 @@ a.calendar-event:focus-visible {
 .crm-board,
 .crm-side-card {
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--surface, #ffffff);
+    color: var(--ink, #111827);
 }
 
 .crm-stat-card {
@@ -3926,7 +3948,7 @@ a.calendar-event:focus-visible {
 .crm-stage-card span,
 .crm-stage-card small {
     display: block;
-    color: #374151;
+    color: var(--muted, #374151);
 }
 
 .crm-stat-card strong {
@@ -3934,6 +3956,7 @@ a.calendar-event:focus-visible {
     margin-top: 4px;
     font-size: 28px;
     font-weight: 500;
+    color: var(--ink, #111827);
 }
 
 .crm-stat-card i {
@@ -7235,4 +7258,114 @@ html.dark .sd-btn-copy:hover {
     background: #1e293b !important;
     color: #60a5fa !important;
     border-color: #3b82f6 !important;
+}
+
+/* ==========================================================================
+   Global Responsive & Mobile Viewport Containment
+   ========================================================================== */
+
+html,
+body.wowdash-body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.wowdash-body .dashboard-main {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+}
+
+@media (min-width: 1200px) {
+    .wowdash-body .dashboard-main {
+        width: auto;
+    }
+}
+
+.wowdash-body .dashboard-main-body,
+.wowdash-body .content,
+.wowdash-body .navbar-header,
+.wowdash-body .d-footer {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.wowdash-body .panel,
+.wowdash-body .metric-card,
+.wowdash-body .document-card,
+.wowdash-body .approval-card,
+.wowdash-body .toolbar {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.wowdash-body .table-wrap,
+.wowdash-body .overflow-x-auto {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+    .wowdash-body .navbar-header {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .wowdash-body .dashboard-main-body {
+        padding: 12px;
+    }
+
+    .wowdash-body .panel {
+        padding: 14px;
+    }
+
+    .wowdash-body .panel-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 10px;
+    }
+
+    .wowdash-body .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .wowdash-body .toolbar-actions,
+    .wowdash-body .toolbar-summary {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .wowdash-body .filter-bar,
+    .wowdash-body .filter-bar form {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        gap: 10px;
+    }
+
+    .wowdash-body .filter-bar .control,
+    .wowdash-body .filter-bar input,
+    .wowdash-body .filter-bar select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .wowdash-body .management-drawer summary {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .wowdash-body dialog {
+        width: calc(100vw - 24px) !important;
+        max-width: 96vw !important;
+        margin: auto;
+    }
 }

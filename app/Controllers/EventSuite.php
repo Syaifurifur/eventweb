@@ -4077,7 +4077,7 @@ class EventSuite extends BaseController
         $bannerReports = (new OneCampusBannerReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
         $ojtReports = (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
 
-        $defaultPmbPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'September 2026 - September 2027');
+        $defaultPmbPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027');
         $availablePmbPeriods = $this->getAvailablePmbPeriods();
         if (! isset($availablePmbPeriods[$defaultPmbPeriod])) {
             $availablePmbPeriods = [$defaultPmbPeriod => $defaultPmbPeriod] + $availablePmbPeriods;
@@ -4122,7 +4122,7 @@ class EventSuite extends BaseController
         // Calculate count for each PMB period
         $pmbPeriodCounts = [];
         foreach ($availablePmbPeriods as $pKey => $pLabel) {
-            $pmbPeriodCounts[$pKey] = count(array_filter($campusSchoolReports, fn (array $s): bool => ($s['pmb_period'] ?? 'September 2026 - September 2027') === $pKey));
+            $pmbPeriodCounts[$pKey] = count(array_filter($campusSchoolReports, fn (array $s): bool => ($s['pmb_period'] ?? $defaultPmbPeriod) === $pKey));
         }
         $pmbPeriodCounts['all'] = count($campusSchoolReports);
 
@@ -4130,7 +4130,7 @@ class EventSuite extends BaseController
         if ($selectedPmbPeriod !== 'all') {
             $filteredSchoolReports = array_values(array_filter(
                 $campusSchoolReports,
-                fn (array $s): bool => ($s['pmb_period'] ?? 'September 2026 - September 2027') === $selectedPmbPeriod
+                fn (array $s): bool => ($s['pmb_period'] ?? $defaultPmbPeriod) === $selectedPmbPeriod
             ));
         } else {
             $filteredSchoolReports = $campusSchoolReports;
@@ -4279,11 +4279,12 @@ class EventSuite extends BaseController
         $allReports = (new OneCampusSchoolReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
         $schoolReports = $this->filterOneCampusReportsByCampus($allReports, $selectedCampusId);
 
+        $defaultPmbPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027');
         $selectedPmbPeriod = trim((string) ($this->request->getGet('pmb_period') ?? ''));
         if ($selectedPmbPeriod !== '' && $selectedPmbPeriod !== 'all') {
             $schoolReports = array_values(array_filter(
                 $schoolReports,
-                fn (array $s): bool => ($s['pmb_period'] ?? 'September 2026 - September 2027') === $selectedPmbPeriod
+                fn (array $s): bool => ($s['pmb_period'] ?? $defaultPmbPeriod) === $selectedPmbPeriod
             ));
         }
 
@@ -4326,7 +4327,7 @@ class EventSuite extends BaseController
             $rows[] = [
                 (string) ($idx + 1),
                 (string) ($item['campus_name'] ?? 'Tanpa kampus'),
-                (string) ($item['pmb_period'] ?? 'September 2026 - September 2027'),
+                (string) ($item['pmb_period'] ?? $defaultPmbPeriod),
                 (string) ($item['npsn'] ?? '-'),
                 (string) ($item['school_name'] ?? '-'),
                 (string) ($item['city'] ?? '-'),
@@ -4421,7 +4422,8 @@ class EventSuite extends BaseController
         $contactName = trim((string) $this->request->getPost('contact_name'));
         $contactPhone = trim((string) $this->request->getPost('contact_phone'));
         $contactEmail = trim((string) $this->request->getPost('contact_email'));
-        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: 'September 2026 - September 2027';
+        $defaultPmbPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027');
+        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: $defaultPmbPeriod;
 
         $rules = [
             'campus_id' => 'permit_empty|is_natural_no_zero',
@@ -4580,6 +4582,7 @@ class EventSuite extends BaseController
             'school' => $school,
             'campuses' => $visibleCampuses,
             'availablePmbPeriods' => $availablePmbPeriods,
+            'defaultPmbPeriod' => \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027'),
             'gdriveSettings' => $gdriveSettings,
             'students' => $students,
         ]);
@@ -4598,7 +4601,8 @@ class EventSuite extends BaseController
         $contactName = trim((string) $this->request->getPost('contact_name'));
         $contactPhone = trim((string) $this->request->getPost('contact_phone'));
         $contactEmail = trim((string) $this->request->getPost('contact_email'));
-        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: ($report['pmb_period'] ?? 'September 2026 - September 2027');
+        $defaultPmbPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027');
+        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: ($report['pmb_period'] ?? $defaultPmbPeriod);
 
         $rules = [
             'campus_id' => 'permit_empty|is_natural_no_zero',
@@ -4739,6 +4743,11 @@ class EventSuite extends BaseController
 
     public function saveOneCampusGdriveSettings()
     {
+        $userRole = (string) session('user.role');
+        if ($userRole !== 'Admin Sistem' && $userRole !== 'Super Admin') {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Hanya Admin Sistem / Super Admin yang berhak mengubah pengaturan Google Drive.');
+        }
+
         $adminEmail = trim((string) $this->request->getPost('gdrive_admin_email'));
         $folderUrl = trim((string) $this->request->getPost('gdrive_mou_folder_url'));
         $folderName = trim((string) $this->request->getPost('gdrive_mou_folder_name'));
@@ -4763,6 +4772,11 @@ class EventSuite extends BaseController
 
     public function testOneCampusGdriveConnection()
     {
+        $userRole = (string) session('user.role');
+        if ($userRole !== 'Admin Sistem' && $userRole !== 'Super Admin') {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Hanya Admin Sistem / Super Admin yang berhak menguji koneksi Google Drive.');
+        }
+
         $result = \App\Libraries\GoogleDriveUploadService::testConnection();
         if ($result['success']) {
             return redirect()->to(site_url('one-campus/schools'))->with('success', $result['message']);
@@ -4852,18 +4866,15 @@ class EventSuite extends BaseController
 
     public function getAvailablePmbPeriods(): array
     {
-        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'September 2026 - September 2027');
+        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027');
 
         // Daftar periode dasar (sedang berjalan dan sebelumnya)
         $basePeriods = [
+            'Agustus 2026 - September 2027' => 'Agustus 2026 - September 2027',
             'September 2026 - September 2027' => 'September 2026 - September 2027',
             'September 2025 - September 2026' => 'September 2025 - September 2026',
             'September 2024 - September 2025' => 'September 2024 - September 2025',
         ];
-
-        if (! isset($basePeriods[$defaultPeriod])) {
-            $basePeriods = [$defaultPeriod => $defaultPeriod] + $basePeriods;
-        }
 
         // Ambil klaster tambahan yang dibuat khusus oleh Superadmin
         $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_pmb_periods', '');
@@ -4876,6 +4887,21 @@ class EventSuite extends BaseController
                     }
                 }
             }
+        }
+
+        // Hapus klaster yang telah dihapus oleh Superadmin
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('one_campus_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted)) {
+            foreach ($deleted as $delPeriod) {
+                if ($delPeriod !== $defaultPeriod) {
+                    unset($basePeriods[$delPeriod]);
+                }
+            }
+        }
+
+        if (! isset($basePeriods[$defaultPeriod])) {
+            $basePeriods = [$defaultPeriod => $defaultPeriod] + $basePeriods;
         }
 
         $periods = [];
@@ -4912,6 +4938,14 @@ class EventSuite extends BaseController
             return redirect()->to(site_url('one-campus/schools'))->with('error', 'Nama atau tahun periode klaster PMB baru wajib diisi.');
         }
 
+        // Jika sebelumnya pernah dihapus, pulihkan dari daftar deleted
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('one_campus_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted) && in_array($periodName, $deleted, true)) {
+            $deleted = array_values(array_filter($deleted, fn ($p) => $p !== $periodName));
+            \App\Models\SystemSettingModel::setSetting('one_campus_deleted_pmb_periods', json_encode($deleted));
+        }
+
         $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_pmb_periods', '');
         $customs = [];
         if ($customJson !== '') {
@@ -4945,6 +4979,14 @@ class EventSuite extends BaseController
             return redirect()->to(site_url('one-campus/schools'))->with('error', 'Pilih klaster PMB yang valid untuk dijadikan default.');
         }
 
+        // Jika klaster ini ada di deleted list, pulihkan
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('one_campus_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted) && in_array($period, $deleted, true)) {
+            $deleted = array_values(array_filter($deleted, fn ($p) => $p !== $period));
+            \App\Models\SystemSettingModel::setSetting('one_campus_deleted_pmb_periods', json_encode($deleted));
+        }
+
         \App\Models\SystemSettingModel::setSetting('one_campus_default_pmb_period', $period, 'Klaster PMB default Sixty School');
 
         return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($period)))
@@ -4963,21 +5005,42 @@ class EventSuite extends BaseController
             return redirect()->to(site_url('one-campus/schools'))->with('error', 'Pilih klaster PMB yang valid untuk dihapus.');
         }
 
+        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027');
+        if ($defaultPeriod === $period) {
+            return redirect()->to(site_url('one-campus/schools'))->with('error', 'Klaster default berjalan aktif tidak dapat dihapus. Silakan setel klaster lain sebagai default terlebih dahulu.');
+        }
+
+        // 1. Hapus dari custom_pmb_periods jika terdaftar
         $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_pmb_periods', '');
         $customs = $customJson !== '' ? json_decode($customJson, true) : [];
-        if (!is_array($customs)) $customs = [];
-
-        if (isset($customs[$period])) {
+        if (is_array($customs) && isset($customs[$period])) {
             unset($customs[$period]);
             \App\Models\SystemSettingModel::setSetting('one_campus_custom_pmb_periods', json_encode($customs));
         }
 
-        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'September 2026 - September 2027');
-        if ($defaultPeriod === $period) {
-            \App\Models\SystemSettingModel::setSetting('one_campus_default_pmb_period', 'September 2026 - September 2027', 'Klaster PMB default Sixty School');
+        // 2. Tambahkan ke daftar deleted_pmb_periods sehingga klaster bawaan/dasar juga benar-benar terhapus
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('one_campus_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (! is_array($deleted)) {
+            $deleted = [];
+        }
+        if (! in_array($period, $deleted, true)) {
+            $deleted[] = $period;
+            \App\Models\SystemSettingModel::setSetting('one_campus_deleted_pmb_periods', json_encode(array_values($deleted)));
         }
 
-        return redirect()->to(site_url('one-campus/schools'))
+        // 3. Pindahkan sekolah dan siswa yang berada di klaster yang dihapus ke klaster default aktif
+        (new OneCampusSchoolReportModel())
+            ->where('pmb_period', $period)
+            ->set(['pmb_period' => $defaultPeriod])
+            ->update();
+
+        (new \App\Models\OneCampusPmbStudentModel())
+            ->where('pmb_period', $period)
+            ->set(['pmb_period' => $defaultPeriod])
+            ->update();
+
+        return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($defaultPeriod)))
             ->with('success', 'Klaster PMB "' . $period . '" berhasil dihapus.');
     }
 
@@ -4994,10 +5057,6 @@ class EventSuite extends BaseController
             'Tahun 2024' => 'Tahun 2024',
         ];
 
-        if (! isset($basePeriods[$defaultPeriod])) {
-            $basePeriods = [$defaultPeriod => $defaultPeriod] + $basePeriods;
-        }
-
         $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_banner_periods', '');
         if ($customJson !== '') {
             $customs = json_decode($customJson, true);
@@ -5008,6 +5067,21 @@ class EventSuite extends BaseController
                     }
                 }
             }
+        }
+
+        // Hapus klaster spanduk yang telah dihapus oleh Superadmin
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('one_campus_deleted_banner_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted)) {
+            foreach ($deleted as $delPeriod) {
+                if ($delPeriod !== $defaultPeriod) {
+                    unset($basePeriods[$delPeriod]);
+                }
+            }
+        }
+
+        if (! isset($basePeriods[$defaultPeriod])) {
+            $basePeriods = [$defaultPeriod => $defaultPeriod] + $basePeriods;
         }
 
         $periods = [];
@@ -5041,6 +5115,14 @@ class EventSuite extends BaseController
             return redirect()->to(site_url('one-campus/banners'))->with('error', 'Nama atau tahun klaster Spanduk baru wajib diisi.');
         }
 
+        // Jika sebelumnya pernah dihapus, pulihkan dari daftar deleted
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('one_campus_deleted_banner_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted) && in_array($periodName, $deleted, true)) {
+            $deleted = array_values(array_filter($deleted, fn ($p) => $p !== $periodName));
+            \App\Models\SystemSettingModel::setSetting('one_campus_deleted_banner_periods', json_encode($deleted));
+        }
+
         $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_banner_periods', '');
         $customs = $customJson !== '' ? json_decode($customJson, true) : [];
         if (!is_array($customs)) $customs = [];
@@ -5069,6 +5151,14 @@ class EventSuite extends BaseController
             return redirect()->to(site_url('one-campus/banners'))->with('error', 'Pilih klaster Spanduk yang valid untuk dijadikan default.');
         }
 
+        // Jika ada di deleted list, pulihkan
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('one_campus_deleted_banner_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted) && in_array($period, $deleted, true)) {
+            $deleted = array_values(array_filter($deleted, fn ($p) => $p !== $period));
+            \App\Models\SystemSettingModel::setSetting('one_campus_deleted_banner_periods', json_encode($deleted));
+        }
+
         \App\Models\SystemSettingModel::setSetting('one_campus_default_banner_period', $period, 'Klaster Spanduk default Five Spanduk');
 
         return redirect()->to(site_url('one-campus/banners?banner_period=' . urlencode($period)))
@@ -5087,21 +5177,37 @@ class EventSuite extends BaseController
             return redirect()->to(site_url('one-campus/banners'))->with('error', 'Pilih klaster Spanduk yang valid untuk dihapus.');
         }
 
+        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_banner_period', 'Tahun 2026');
+        if ($defaultPeriod === $period) {
+            return redirect()->to(site_url('one-campus/banners'))->with('error', 'Klaster default aktif tidak dapat dihapus. Silakan setel klaster lain sebagai default terlebih dahulu.');
+        }
+
+        // 1. Hapus dari custom_banner_periods
         $customJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_banner_periods', '');
         $customs = $customJson !== '' ? json_decode($customJson, true) : [];
-        if (!is_array($customs)) $customs = [];
-
-        if (isset($customs[$period])) {
+        if (is_array($customs) && isset($customs[$period])) {
             unset($customs[$period]);
             \App\Models\SystemSettingModel::setSetting('one_campus_custom_banner_periods', json_encode($customs));
         }
 
-        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_banner_period', 'Tahun 2026');
-        if ($defaultPeriod === $period) {
-            \App\Models\SystemSettingModel::setSetting('one_campus_default_banner_period', 'Tahun 2026', 'Klaster Spanduk default Five Spanduk');
+        // 2. Tambahkan ke deleted_banner_periods
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('one_campus_deleted_banner_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (! is_array($deleted)) {
+            $deleted = [];
+        }
+        if (! in_array($period, $deleted, true)) {
+            $deleted[] = $period;
+            \App\Models\SystemSettingModel::setSetting('one_campus_deleted_banner_periods', json_encode(array_values($deleted)));
         }
 
-        return redirect()->to(site_url('one-campus/banners'))
+        // 3. Pindahkan spanduk ke defaultPeriod
+        (new OneCampusBannerReportModel())
+            ->where('banner_period', $period)
+            ->set(['banner_period' => $defaultPeriod])
+            ->update();
+
+        return redirect()->to(site_url('one-campus/banners?banner_period=' . urlencode($defaultPeriod)))
             ->with('success', 'Klaster Spanduk "' . $period . '" berhasil dihapus.');
     }
 
@@ -5234,7 +5340,7 @@ class EventSuite extends BaseController
 
         $pmbPeriod = trim((string) $this->request->getPost('pmb_period'));
         if ($pmbPeriod === '') {
-            $pmbPeriod = 'September 2026 - September 2027';
+            $pmbPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027');
         }
 
         $defaultCampusId = (int) ($this->request->getPost('campus_id') ?: 0) ?: null;

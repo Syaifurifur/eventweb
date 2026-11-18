@@ -174,15 +174,20 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
             font-size: 12px;
             font-weight: 600;
             text-decoration: none;
-            background: #ffffff;
-            color: #334155;
-            border: 1px solid #cbd5e1;
+            background: var(--surface, #ffffff);
+            color: var(--ink, #334155);
+            border: 1px solid var(--border-color, #cbd5e1);
             transition: all 0.15s ease;
         }
         .crm-quick-pill:hover, .crm-quick-pill.is-active {
             background: #0f172a;
             color: #ffffff;
             border-color: #0f172a;
+        }
+        html.dark .crm-quick-pill:hover, html.dark .crm-quick-pill.is-active {
+            background: #3b82f6;
+            color: #ffffff;
+            border-color: #3b82f6;
         }
         .crm-wa-action-group {
             display: flex;

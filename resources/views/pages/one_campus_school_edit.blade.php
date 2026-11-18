@@ -5,7 +5,8 @@ $availablePmbPeriods = $availablePmbPeriods ?? [];
 $gdriveSettings = $gdriveSettings ?? [];
 
 $schoolId = (int) ($school['id'] ?? 0);
-$currentPmb = $school['pmb_period'] ?? 'September 2026 - September 2027';
+$defaultPmbPeriod = $defaultPmbPeriod ?? 'Agustus 2026 - September 2027';
+$currentPmb = $school['pmb_period'] ?? $defaultPmbPeriod;
 $backUrl = site_url('one-campus/schools?pmb_period=' . urlencode($currentPmb));
 $hasMouFile = ! empty($school['mou_file']);
 $hasDriveLink = ! empty($school['mou_drive_link']);
@@ -27,7 +28,7 @@ $schoolDataForModal = [
     'campus_name' => (string) ($school['campus_name'] ?? 'Semua Kampus'),
     'campus_code' => (string) ($school['campus_kode_kampus'] ?? ($school['campus_code'] ?? '')),
     'campus_ubsi' => (string) ($school['campus_kode_ubsi'] ?? ($school['kode_ubsi'] ?? '')),
-    'pmb_period' => (string) ($school['pmb_period'] ?? 'September 2026 - September 2027'),
+    'pmb_period' => (string) ($school['pmb_period'] ?? $defaultPmbPeriod),
     'status' => (string) ($school['status'] ?? 'Aktif'),
     'bjs_status' => (string) ($school['bjs_status'] ?? 'Belum Aktif'),
     'bjs_verifier_name' => (string) ($school['bjs_verifier_name'] ?? ''),
@@ -222,7 +223,7 @@ $schoolDataForModal = [
                 <select class="control" name="pmb_period">
                     <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
                         <option value="<?= esc($pKey) ?>" <?= $currentPmb === $pKey ? 'selected' : '' ?>>
-                            <?= esc($pKey) ?><?= $pKey === 'September 2026 - September 2027' ? ' (Default Berjalan)' : '' ?>
+                            <?= esc($pKey) ?><?= $pKey === $defaultPmbPeriod ? ' (Default Berjalan)' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>

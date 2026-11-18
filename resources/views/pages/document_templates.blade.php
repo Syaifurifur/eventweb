@@ -471,18 +471,48 @@ $dtIcon = static function (string $name, int $size = 18): string {
 
     /* Dark Mode Overrides for Document Templates */
     html.dark .dt-page {
+        --dt-primary: #60a5fa;
+        --dt-primary-dark: #3b82f6;
         --dt-border: var(--line, #374151);
         --dt-ink: var(--ink, #f3f4f6);
         --dt-muted: var(--muted, #9ca3af);
     }
     html.dark .dt-card,
     html.dark .dt-btn,
+    html.dark .dt-filter-bar,
+    html.dark .dt-explain-card,
     html.dark .dt-explainer-box,
     html.dark .dt-preview-panel,
+    html.dark .dt-modal,
     html.dark .dt-modal-dialog {
         background: var(--surface, #273142);
         color: var(--ink, #f3f4f6);
         border-color: var(--line, #374151);
+    }
+    html.dark .dt-tab.is-active {
+        background: var(--surface, #273142);
+        border-color: var(--line, #374151);
+        border-bottom-color: var(--surface, #273142);
+        color: #60a5fa;
+    }
+    html.dark .dt-tab:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #93c5fd;
+    }
+    html.dark .dt-tab-badge {
+        background: #374151;
+        color: #e5e7eb;
+    }
+    html.dark .dt-tab.is-active .dt-tab-badge {
+        background: rgba(59, 130, 246, 0.25);
+        color: #93c5fd;
+    }
+    html.dark .dt-explain-preview,
+    html.dark .dt-thumb-mini,
+    html.dark .dt-modal-foot {
+        background: #1f2937;
+        border-color: #374151;
+        color: #f3f4f6;
     }
     html.dark .dt-head-left h1,
     html.dark .dt-explainer-title {

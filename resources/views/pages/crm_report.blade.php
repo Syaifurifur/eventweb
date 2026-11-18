@@ -154,6 +154,119 @@ $initialActiveTab = $canViewAllCrmCampuses
       grid-column: span 12 / span 12;
     }
   }
+
+  /* Dark Mode Overrides for Laporan CRM */
+  html.dark .crm-report-wrapper,
+  [data-theme="dark"] .crm-report-wrapper {
+    color: #f3f4f6;
+  }
+  html.dark .crm-report-wrapper .bg-white,
+  [data-theme="dark"] .crm-report-wrapper .bg-white {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+  }
+  html.dark .crm-report-wrapper .bg-slate-50,
+  html.dark .crm-report-wrapper .bg-slate-50\/50,
+  html.dark .crm-report-wrapper .bg-slate-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-slate-50,
+  [data-theme="dark"] .crm-report-wrapper .bg-slate-50\/50,
+  [data-theme="dark"] .crm-report-wrapper .bg-slate-100 {
+    background-color: #111827 !important;
+    color: #e5e7eb !important;
+  }
+  html.dark .crm-report-wrapper .border-slate-200,
+  html.dark .crm-report-wrapper .border-slate-100,
+  html.dark .crm-report-wrapper .border-slate-300,
+  [data-theme="dark"] .crm-report-wrapper .border-slate-200,
+  [data-theme="dark"] .crm-report-wrapper .border-slate-100,
+  [data-theme="dark"] .crm-report-wrapper .border-slate-300 {
+    border-color: #374151 !important;
+  }
+  html.dark .crm-report-wrapper .text-slate-900,
+  html.dark .crm-report-wrapper .text-slate-800,
+  html.dark .crm-report-wrapper .text-slate-700,
+  [data-theme="dark"] .crm-report-wrapper .text-slate-900,
+  [data-theme="dark"] .crm-report-wrapper .text-slate-800,
+  [data-theme="dark"] .crm-report-wrapper .text-slate-700 {
+    color: #f3f4f6 !important;
+  }
+  html.dark .crm-report-wrapper .text-slate-600,
+  html.dark .crm-report-wrapper .text-slate-500,
+  html.dark .crm-report-wrapper .text-slate-400,
+  [data-theme="dark"] .crm-report-wrapper .text-slate-600,
+  [data-theme="dark"] .crm-report-wrapper .text-slate-500,
+  [data-theme="dark"] .crm-report-wrapper .text-slate-400 {
+    color: #9ca3af !important;
+  }
+  html.dark .crm-report-wrapper .bg-rose-50,
+  html.dark .crm-report-wrapper .bg-rose-50\/70,
+  html.dark .crm-report-wrapper .bg-rose-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-rose-50,
+  [data-theme="dark"] .crm-report-wrapper .bg-rose-50\/70,
+  [data-theme="dark"] .crm-report-wrapper .bg-rose-100 {
+    background-color: rgba(244, 63, 94, 0.22) !important;
+    color: #fda4af !important;
+    border-color: rgba(244, 63, 94, 0.4) !important;
+  }
+  html.dark .crm-report-wrapper .bg-amber-50,
+  html.dark .crm-report-wrapper .bg-amber-50\/70,
+  html.dark .crm-report-wrapper .bg-amber-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-amber-50,
+  [data-theme="dark"] .crm-report-wrapper .bg-amber-50\/70,
+  [data-theme="dark"] .crm-report-wrapper .bg-amber-100 {
+    background-color: rgba(245, 158, 11, 0.22) !important;
+    color: #fcd34d !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+  }
+  html.dark .crm-report-wrapper .bg-sky-50,
+  html.dark .crm-report-wrapper .bg-sky-50\/70,
+  html.dark .crm-report-wrapper .bg-sky-100,
+  html.dark .crm-report-wrapper .bg-blue-50,
+  html.dark .crm-report-wrapper .bg-blue-100,
+  html.dark .crm-report-wrapper .bg-indigo-50,
+  html.dark .crm-report-wrapper .bg-indigo-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-sky-50,
+  [data-theme="dark"] .crm-report-wrapper .bg-sky-50\/70,
+  [data-theme="dark"] .crm-report-wrapper .bg-sky-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-blue-50,
+  [data-theme="dark"] .crm-report-wrapper .bg-blue-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-indigo-50,
+  [data-theme="dark"] .crm-report-wrapper .bg-indigo-100 {
+    background-color: rgba(59, 130, 246, 0.22) !important;
+    color: #93c5fd !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+  }
+  html.dark .crm-report-wrapper .bg-emerald-50,
+  html.dark .crm-report-wrapper .bg-emerald-50\/70,
+  html.dark .crm-report-wrapper .bg-emerald-100,
+  html.dark .crm-report-wrapper .bg-green-50,
+  html.dark .crm-report-wrapper .bg-green-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-emerald-50,
+  [data-theme="dark"] .crm-report-wrapper .bg-emerald-50\/70,
+  [data-theme="dark"] .crm-report-wrapper .bg-emerald-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-green-50,
+  [data-theme="dark"] .crm-report-wrapper .bg-green-100 {
+    background-color: rgba(16, 185, 129, 0.22) !important;
+    color: #6ee7b7 !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+  }
+  html.dark .crm-report-wrapper .text-rose-800,
+  html.dark .crm-report-wrapper .text-rose-900\/80 { color: #fda4af !important; }
+  html.dark .crm-report-wrapper .text-amber-900,
+  html.dark .crm-report-wrapper .text-amber-900\/80 { color: #fcd34d !important; }
+  html.dark .crm-report-wrapper .text-sky-900,
+  html.dark .crm-report-wrapper .text-sky-900\/80,
+  html.dark .crm-report-wrapper .text-sky-700 { color: #93c5fd !important; }
+  html.dark .crm-report-wrapper .text-emerald-900,
+  html.dark .crm-report-wrapper .text-emerald-900\/80 { color: #6ee7b7 !important; }
+  html.dark .crm-report-wrapper select,
+  html.dark .crm-report-wrapper input,
+  [data-theme="dark"] .crm-report-wrapper select,
+  [data-theme="dark"] .crm-report-wrapper input {
+    background-color: #111827 !important;
+    color: #f3f4f6 !important;
+    border-color: #374151 !important;
+  }
 </style>
 
 <div class="crm-report-wrapper space-y-6 pb-8">
@@ -227,7 +340,7 @@ $initialActiveTab = $canViewAllCrmCampuses
   <!-- =================================================================== -->
   <section id="view-admin-overview" class="space-y-6">
     <!-- Role Banner -->
-    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 shadow-md border border-indigo-500/30">
+    <div class="bg-slate-900 text-white rounded-2xl p-5 shadow-md border border-indigo-500/30" style="background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #0f172a 100%);">
       <div class="crm-role-banner-row">
         <div class="space-y-1.5">
           <div class="flex flex-wrap items-center gap-2">

@@ -341,16 +341,30 @@ $baseQuery = $documentPagination['query'] ?? [];
     html.dark .dx-btn-accred:hover { background:#4f46e5 !important; }
     html.dark .dx-btn-success { background:#059669 !important; border-color:#047857 !important; color:#ffffff !important; }
     html.dark .dx-btn-success:hover { background:#047857 !important; }
+    html.dark .dx-mode {
+        background: rgba(22, 163, 74, 0.22);
+        color: #86efac;
+        border: 1px solid rgba(22, 163, 74, 0.4);
+    }
     html.dark .dx-mode.is-view {
         background: rgba(148, 163, 184, 0.16);
         color: #cbd5e1;
+        border-color: rgba(148, 163, 184, 0.3);
     }
     html.dark .dx-icon-blue { background: rgba(37, 99, 235, 0.2); color: #93c5fd; }
     html.dark .dx-icon-amber { background: rgba(234, 88, 12, 0.2); color: #fdba74; }
     html.dark .dx-icon-green { background: rgba(22, 163, 74, 0.2); color: #86efac; }
     html.dark .dx-icon-red { background: rgba(225, 29, 72, 0.2); color: #fda4af; }
     html.dark .dx-cat-slate { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+    html.dark .dx-chip-green,
+    html.dark .dx-pill-green { background: rgba(22, 163, 74, 0.22); color: #86efac; }
+    html.dark .dx-chip-amber,
+    html.dark .dx-pill-amber { background: rgba(234, 88, 12, 0.22); color: #fdba74; }
+    html.dark .dx-chip-red,
+    html.dark .dx-pill-red { background: rgba(225, 29, 72, 0.22); color: #fda4af; }
     html.dark .dx-chip-slate { background: rgba(148, 163, 184, 0.16); color: #cbd5e1; }
+    html.dark .dx-badge-accred { background: rgba(79, 70, 229, 0.22); color: #a5b4fc; border-color: rgba(99, 102, 241, 0.4); }
+    html.dark .dx-badge-accred:hover { background: rgba(79, 70, 229, 0.35); }
     html.dark .dx-progress-track { background: #374151; }
     html.dark .dx-alerts {
         background: var(--surface, #273142);
