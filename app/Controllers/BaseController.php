@@ -33,6 +33,7 @@ abstract class BaseController extends Controller
                     continue;
                 }
                 if ($rule === 'valid_email') { $converted[] = 'email'; continue; }
+                if ($rule === 'valid_url' || preg_match('/^valid_url_strict(?:\[.*])?$/', $rule)) { $converted[] = 'url'; continue; }
                 if ($rule === 'is_natural') { array_push($converted, 'integer', 'min:0'); continue; }
                 if ($rule === 'is_natural_no_zero') { array_push($converted, 'integer', 'min:1'); continue; }
                 if (preg_match('/^min_length\[(\d+)]$/', $rule, $match)) { $converted[] = 'min:' . $match[1]; continue; }
