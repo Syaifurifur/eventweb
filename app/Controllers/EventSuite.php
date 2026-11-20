@@ -496,10 +496,15 @@ class EventSuite extends BaseController
         }
 
         $requestedCampusParam = trim((string) $this->request->getGet('campus'));
+        $requestedPmbPeriod = trim((string) ($this->request->getGet('pmb_period') ?? 'all'));
+        if ($requestedPmbPeriod === '') {
+            $requestedPmbPeriod = 'all';
+        }
         $realtimePayload = (new \App\Services\CrmRealtimeReportService())->getReportData(
             $requestedCampusParam,
             $canViewAllCrmCampuses,
-            $userCampusFullName
+            $userCampusFullName,
+            $requestedPmbPeriod
         );
 
         return $this->render('pages/crm_report', array_merge([
@@ -534,10 +539,15 @@ class EventSuite extends BaseController
         }
 
         $requestedCampusParam = trim((string) $this->request->getGet('campus'));
+        $requestedPmbPeriod = trim((string) ($this->request->getGet('pmb_period') ?? 'all'));
+        if ($requestedPmbPeriod === '') {
+            $requestedPmbPeriod = 'all';
+        }
         $realtimePayload = (new \App\Services\CrmRealtimeReportService())->getReportData(
             $requestedCampusParam,
             $canViewAllCrmCampuses,
-            $userCampusFullName
+            $userCampusFullName,
+            $requestedPmbPeriod
         );
 
         return response()->json($realtimePayload);

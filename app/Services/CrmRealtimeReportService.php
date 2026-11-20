@@ -9,17 +9,98 @@ use Throwable;
 class CrmRealtimeReportService
 {
     /**
+     * Get available PMB periods / clusters synchronized with CRM Workspace.
+     *
+     * @return array<string, string>
+     */
+    public function getAvailablePmbPeriods(): array
+    {
+        $periods = [
+            'September 2025 - September 2026' => 'September 2025 - September 2026 (Aktif / Data CRM)',
+            'September 2026 - September 2027' => 'September 2026 - September 2027',
+            'September 2024 - September 2025' => 'September 2024 - September 2025',
+        ];
+
+        $customJson = \App\Models\SystemSettingModel::getSetting('crm_custom_pmb_periods', '');
+        if ($customJson !== '') {
+            $customs = json_decode($customJson, true);
+            if (is_array($customs)) {
+                foreach ($customs as $cKey => $cLabel) {
+                    if (is_string($cKey) && trim($cKey) !== '') {
+                        $periods[$cKey] = (string) $cLabel;
+                    }
+                }
+            }
+        }
+
+        $sharedJson = \App\Models\SystemSettingModel::getSetting('one_campus_custom_pmb_periods', '');
+        if ($sharedJson !== '') {
+            $shared = json_decode($sharedJson, true);
+            if (is_array($shared)) {
+                foreach ($shared as $sKey => $sLabel) {
+                    if (is_string($sKey) && trim($sKey) !== '' && !isset($periods[$sKey])) {
+                        $periods[$sKey] = (string) $sLabel;
+                    }
+                }
+            }
+        }
+
+        return $periods;
+    }
+
+    /**
      * Build comprehensive real-time CRM report payload.
      *
      * @param string|null $requestedCampusParam
      * @param bool $canViewAllCampuses
      * @param string $userCampusFullName
+     * @param string $pmbPeriod
      * @return array
      */
-    public function getReportData(?string $requestedCampusParam = null, bool $canViewAllCampuses = true, string $userCampusFullName = 'UBSI KAMPUS YOGYAKARTA'): array
+    public function getReportData(?string $requestedCampusParam = null, bool $canViewAllCampuses = true, string $userCampusFullName = 'UBSI KAMPUS YOGYAKARTA', string $pmbPeriod = 'all'): array
     {
         $now = new \DateTimeImmutable('now', new \DateTimeZone('Asia/Jakarta'));
         $timestamp = $now->format('d M Y, H:i:s') . ' WIB';
+
+        $pmbPeriod = trim($pmbPeriod);
+        if ($pmbPeriod === '') {
+            $pmbPeriod = 'all';
+        }
+        $defaultPmbPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
+        $availablePmbPeriods = $this->getAvailablePmbPeriods();
+        if (!isset($availablePmbPeriods[$defaultPmbPeriod])) {
+            $availablePmbPeriods = [$defaultPmbPeriod => $defaultPmbPeriod] + $availablePmbPeriods;
+        }
+
+        // Compute live lead counts per PMB period
+        $pmbPeriodCounts = [];
+        $totalAllLivePmb = 0;
+        try {
+            $periodRows = DB::table('crm_leads')
+                ->select('pmb_period', DB::raw('COUNT(*) as total'))
+                ->groupBy('pmb_period')
+                ->get();
+            foreach ($periodRows as $pRow) {
+                $pKey = trim((string) ($pRow->pmb_period ?? ''));
+                if ($pKey === '') {
+                    $pKey = 'September 2025 - September 2026';
+                }
+                if (!isset($availablePmbPeriods[$pKey])) {
+                    $availablePmbPeriods[$pKey] = $pKey;
+                }
+                $pCount = (int) ($pRow->total ?? 0);
+                $pmbPeriodCounts[$pKey] = ($pmbPeriodCounts[$pKey] ?? 0) + $pCount;
+                $totalAllLivePmb += $pCount;
+            }
+        } catch (Throwable $e) {
+            // fallback
+        }
+        foreach ($availablePmbPeriods as $pKey => $pLabel) {
+            if (!isset($pmbPeriodCounts[$pKey])) {
+                $pmbPeriodCounts[$pKey] = 0;
+            }
+        }
+        $pmbPeriodCounts['all'] = $totalAllLivePmb;
 
         // 1. Fetch all campuses registered in database
         $dbCampuses = [];
@@ -39,10 +120,10 @@ class CrmRealtimeReportService
             // fallback
         }
 
-        // 2. Fetch all live leads from database
+        // 2. Fetch all live leads from database (filtered by PMB period if selected)
         $liveLeads = [];
         try {
-            $liveLeads = DB::table('crm_leads as l')
+            $liveLeadsQuery = DB::table('crm_leads as l')
                 ->join('events as e', 'l.event_id', '=', 'e.id')
                 ->leftJoin('campuses as c', 'e.campus_id', '=', 'c.id')
                 ->leftJoin('crm_users as u', 'l.agent_id', '=', 'u.id')
@@ -54,8 +135,21 @@ class CrmRealtimeReportService
                     'e.event_date', 'e.location as event_location', 'e.campus_id',
                     'c.name as campus_name', 'c.campus_code',
                     'u.full_name as agent_name'
-                ])
-                ->get();
+                ]);
+
+            if ($pmbPeriod !== 'all') {
+                if ($pmbPeriod === 'September 2025 - September 2026') {
+                    $liveLeadsQuery->where(function ($q) {
+                        $q->where('l.pmb_period', 'September 2025 - September 2026')
+                            ->orWhereNull('l.pmb_period')
+                            ->orWhere('l.pmb_period', '');
+                    });
+                } else {
+                    $liveLeadsQuery->where('l.pmb_period', $pmbPeriod);
+                }
+            }
+
+            $liveLeads = $liveLeadsQuery->get();
         } catch (Throwable $e) {
             $liveLeads = collect([]);
         }
@@ -63,7 +157,7 @@ class CrmRealtimeReportService
         // 3. Fetch latest follow up logs
         $recentLogs = [];
         try {
-            $logRows = DB::table('crm_lead_logs as lg')
+            $logQuery = DB::table('crm_lead_logs as lg')
                 ->leftJoin('crm_leads as l', 'lg.lead_id', '=', 'l.id')
                 ->leftJoin('events as e', 'l.event_id', '=', 'e.id')
                 ->leftJoin('campuses as c', 'e.campus_id', '=', 'c.id')
@@ -82,7 +176,21 @@ class CrmRealtimeReportService
                     'lg.summary',
                     'u.full_name as agent_name',
                     'lg.created_at',
-                ])
+                ]);
+
+            if ($pmbPeriod !== 'all') {
+                if ($pmbPeriod === 'September 2025 - September 2026') {
+                    $logQuery->where(function ($q) {
+                        $q->where('l.pmb_period', 'September 2025 - September 2026')
+                            ->orWhereNull('l.pmb_period')
+                            ->orWhere('l.pmb_period', '');
+                    });
+                } else {
+                    $logQuery->where('l.pmb_period', $pmbPeriod);
+                }
+            }
+
+            $logRows = $logQuery
                 ->orderByDesc('lg.created_at')
                 ->limit(35)
                 ->get();
@@ -293,8 +401,10 @@ class CrmRealtimeReportService
             }
         }
 
-        // 5. Load base historical benchmark campuses
-        $baseCampuses = $this->getBaseBenchmarkCampuses();
+        // 5. Load base historical benchmark campuses (only applicable to 2025-2026 baseline or All Periods)
+        $baseCampuses = ($pmbPeriod === 'all' || $pmbPeriod === 'September 2025 - September 2026')
+            ? $this->getBaseBenchmarkCampuses()
+            : [];
 
         // 6. Merge live database data into campuses
         $combinedCampuses = [];
@@ -649,6 +759,10 @@ class CrmRealtimeReportService
         return [
             'success' => true,
             'timestamp' => $timestamp,
+            'selectedPmbPeriod' => $pmbPeriod,
+            'defaultPmbPeriod' => $defaultPmbPeriod,
+            'availablePmbPeriods' => $availablePmbPeriods,
+            'pmbPeriodCounts' => $pmbPeriodCounts,
             'macro' => $macro,
             'campuses' => $visibleCampuses,
             'allCampuses' => $combinedCampuses,

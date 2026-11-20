@@ -296,10 +296,13 @@ $initialActiveTab = $canViewAllCrmCampuses
             <span class="px-2.5 py-0.5 text-xs font-medium rounded-full bg-slate-800 text-slate-300 border border-slate-700">
               Diperbarui: <strong id="crmRealtimeTimeText" class="text-white font-mono"><?= esc($crmTimestamp) ?></strong>
             </span>
+            <span id="crmActivePmbBadge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-400/30">
+              🎯 <?= ($selectedPmbPeriod ?? 'all') === 'all' ? 'Semua Periode PMB' : esc($selectedPmbPeriod) ?>
+            </span>
           </div>
           <p class="text-xs text-slate-400 mt-1">
             <?php if ($canViewAllCrmCampuses): ?>
-              Monitoring Real-Time Lintas Kampus: <strong class="text-indigo-300"><?= number_format($macroSummary['totalLeads'] ?? 8794, 0, ',', '.') ?> Total Prospek</strong> • <strong class="text-emerald-300"><?= count($allCrmCampuses) ?> Kampus</strong> • <strong class="text-sky-300"><?= $macroSummary['totalEventsWithLeads'] ?? 46 ?> Event Ber-Leads</strong>
+              Monitoring Real-Time Lintas Kampus: <strong id="headerTotalLeadsCount" class="text-indigo-300"><?= number_format($macroSummary['totalLeads'] ?? 8794, 0, ',', '.') ?> Total Prospek</strong> • <strong class="text-emerald-300"><?= count($allCrmCampuses) ?> Kampus</strong> • <strong id="headerEventsCount" class="text-sky-300"><?= $macroSummary['totalEventsWithLeads'] ?? 46 ?> Event Ber-Leads</strong>
             <?php else: ?>
               Laporan Operasional &amp; Hasil CRM Khusus <strong class="text-emerald-300"><?= esc($matchedCampus['kampus'] ?? $userCampusFullName) ?></strong> (Data kampus lain disembunyikan sesuai hak akses)
             <?php endif; ?>
@@ -308,6 +311,15 @@ $initialActiveTab = $canViewAllCrmCampuses
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
+        <select id="topCrmPmbPeriodFilter" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 text-slate-100 border border-slate-700 focus:border-indigo-400 focus:outline-none" title="Pilih Klaster / Periode PMB">
+          <option value="all" <?= ($selectedPmbPeriod ?? 'all') === 'all' ? 'selected' : '' ?>>🎯 Semua Klaster / Periode PMB</option>
+          <?php foreach (($availablePmbPeriods ?? []) as $pKey => $pLabel): ?>
+            <option value="<?= esc($pKey, 'attr') ?>" <?= ($selectedPmbPeriod ?? 'all') === $pKey ? 'selected' : '' ?>>
+              🎯 <?= esc($pLabel) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+
         <button id="crmRealtimeSyncBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow transition" title="Sinkronkan data dan grafik dengan database secara real-time">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -515,6 +527,14 @@ $initialActiveTab = $canViewAllCrmCampuses
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <input id="adminCrmSearchInput" type="text" placeholder="Cari kampus..." class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none w-44">
+          <select id="adminCrmPmbPeriodFilter" class="rounded-xl border border-indigo-200 px-2.5 py-1.5 text-xs text-indigo-800 bg-indigo-50/70 font-semibold" title="Filter Klaster / Periode PMB (Tahun Ini / Tahun Sebelumnya)">
+            <option value="all" <?= ($selectedPmbPeriod ?? 'all') === 'all' ? 'selected' : '' ?>>🎯 Semua Klaster / Periode PMB (<?= number_format((int) ($pmbPeriodCounts['all'] ?? 0), 0, ',', '.') ?> live)</option>
+            <?php foreach (($availablePmbPeriods ?? []) as $pKey => $pLabel): ?>
+              <option value="<?= esc($pKey, 'attr') ?>" <?= ($selectedPmbPeriod ?? 'all') === $pKey ? 'selected' : '' ?>>
+                🎯 <?= esc($pLabel) ?> (<?= number_format((int) ($pmbPeriodCounts[$pKey] ?? 0), 0, ',', '.') ?> live)
+              </option>
+            <?php endforeach; ?>
+          </select>
           <select id="adminCrmClusterFilter" class="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 bg-slate-50">
             <option value="ALL">Semua Klaster Status</option>
             <option value="NEW_DATA">🆕 Data Baru Masuk (7 Hari)</option>
@@ -1047,7 +1067,8 @@ $initialActiveTab = $canViewAllCrmCampuses
     adminRecCat: 'ALL',
     adminChartMode: 'VOL',
     crmSelectedCampusNo: <?= (int) ($matchedCampus['no'] ?? 1) ?>,
-    crmCampusFilterGroup: 'ALL'
+    crmCampusFilterGroup: 'ALL',
+    selectedPmbPeriod: <?= json_encode($selectedPmbPeriod ?? 'all', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
   };
 
   let crmAdminCampusChartInstance = null;
@@ -2111,7 +2132,8 @@ $initialActiveTab = $canViewAllCrmCampuses
 
     try {
       const campusParam = state.crmSelectedCampusNo || '';
-      const res = await fetch(`<?= site_url('laporan-crm/realtime-data') ?>?campus=${encodeURIComponent(campusParam)}`);
+      const pmbParam = state.selectedPmbPeriod || 'all';
+      const res = await fetch(`<?= site_url('laporan-crm/realtime-data') ?>?campus=${encodeURIComponent(campusParam)}&pmb_period=${encodeURIComponent(pmbParam)}`);
       if (!res.ok) throw new Error('Network error');
       const data = await res.json();
 
@@ -2125,9 +2147,35 @@ $initialActiveTab = $canViewAllCrmCampuses
           timeText.textContent = data.timestamp;
         }
 
+        const activePeriodLabel = (!data.selectedPmbPeriod || data.selectedPmbPeriod === 'all')
+          ? 'Semua Periode PMB'
+          : data.selectedPmbPeriod;
+        const pmbBadge = document.getElementById('crmActivePmbBadge');
+        if (pmbBadge) pmbBadge.textContent = `🎯 ${activePeriodLabel}`;
+
+        if (CRM_MACRO_SUMMARY) {
+          const fmt = (v) => Number(v || 0).toLocaleString('id-ID');
+          const headerTotal = document.getElementById('headerTotalLeadsCount');
+          if (headerTotal) headerTotal.textContent = `${fmt(CRM_MACRO_SUMMARY.totalLeads)} Total Prospek`;
+          const headerEv = document.getElementById('headerEventsCount');
+          if (headerEv) headerEv.textContent = `${fmt(CRM_MACRO_SUMMARY.totalEventsWithLeads)} Event Ber-Leads`;
+          const bannerLeads = document.getElementById('bannerLeadsCount');
+          if (bannerLeads) bannerLeads.textContent = fmt(CRM_MACRO_SUMMARY.totalLeads);
+          const kpiTotal = document.getElementById('kpiMacroTotal');
+          if (kpiTotal) kpiTotal.textContent = fmt(CRM_MACRO_SUMMARY.totalLeads);
+          const kpiUnass = document.getElementById('kpiMacroUnassigned');
+          if (kpiUnass) kpiUnass.textContent = fmt(CRM_MACRO_SUMMARY.totalUnassigned);
+          const kpiFresh = document.getElementById('kpiMacroFresh');
+          if (kpiFresh) kpiFresh.textContent = fmt(CRM_MACRO_SUMMARY.totalFresh);
+          const kpiWarm = document.getElementById('kpiMacroWarm');
+          if (kpiWarm) kpiWarm.textContent = fmt((CRM_MACRO_SUMMARY.totalMinat || 0) + (CRM_MACRO_SUMMARY.totalRagu || 0));
+        }
+
         populateCrmCampusDropdown();
-        if (state.activeTab === 'admin-overview') renderAdminOverview();
-        if (state.activeTab === 'admin-matrix') renderAdminMatrixAndAgents();
+        if (CAN_VIEW_ALL_CRM_CAMPUSES) {
+          renderAdminOverview();
+          renderAdminMatrixAndAgents();
+        }
         renderCrmCampusView();
         renderRecentLogsFeed();
 
@@ -2235,6 +2283,26 @@ $initialActiveTab = $canViewAllCrmCampuses
     document.getElementById('adminCrmSearchInput')?.addEventListener('input', renderAdminMatrixAndAgents);
     document.getElementById('adminCrmClusterFilter')?.addEventListener('change', renderAdminMatrixAndAgents);
     document.getElementById('adminCrmSortSelect')?.addEventListener('change', renderAdminMatrixAndAgents);
+
+    function handlePmbPeriodChange(newPeriod) {
+      state.selectedPmbPeriod = newPeriod || 'all';
+      const topSel = document.getElementById('topCrmPmbPeriodFilter');
+      const matrixSel = document.getElementById('adminCrmPmbPeriodFilter');
+      if (topSel && topSel.value !== state.selectedPmbPeriod) topSel.value = state.selectedPmbPeriod;
+      if (matrixSel && matrixSel.value !== state.selectedPmbPeriod) matrixSel.value = state.selectedPmbPeriod;
+      try {
+        const url = new URL(window.location.href);
+        if (state.selectedPmbPeriod === 'all') {
+          url.searchParams.delete('pmb_period');
+        } else {
+          url.searchParams.set('pmb_period', state.selectedPmbPeriod);
+        }
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {}
+      syncRealtimeCrmData();
+    }
+    document.getElementById('topCrmPmbPeriodFilter')?.addEventListener('change', (e) => handlePmbPeriodChange(e.target.value));
+    document.getElementById('adminCrmPmbPeriodFilter')?.addEventListener('change', (e) => handlePmbPeriodChange(e.target.value));
 
     populateCrmCampusDropdown();
     document.getElementById('crmCampusSelect')?.addEventListener('change', (e) => {
