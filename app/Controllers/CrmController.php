@@ -1742,17 +1742,25 @@ class CrmController extends BaseController
         $headers = [];
         $delimiter = null;
         while (($line = fgetcsv($handle)) !== false) {
-            if ($headers === []) {
+            if ($delimiter === null) {
                 $delimiter = $this->detectCsvDelimiter($line);
-                if ($delimiter !== ',' && count($line) === 1) {
-                    $line = str_getcsv((string) $line[0], $delimiter);
-                }
-                $headers = $this->normalizeHeaders($line);
-                continue;
+            }
+            if ($delimiter !== ',' && count($line) === 1) {
+                $line = str_getcsv((string) $line[0], $delimiter);
             }
 
-            if ($delimiter !== null && $delimiter !== ',' && count($line) === 1) {
-                $line = str_getcsv((string) $line[0], $delimiter);
+            if ($headers === []) {
+                $candidateHeaders = $this->normalizeHeaders($line);
+                if ($this->isLikelyLeadHeaderRow($candidateHeaders)) {
+                    $headers = $candidateHeaders;
+                    continue;
+                }
+                // If first non-empty row is already data without headers, use positional mapping
+                $mappedPositional = $this->mapPositionalLeadRow($line);
+                if ($mappedPositional !== null) {
+                    $rows[] = $mappedPositional;
+                }
+                continue;
             }
 
             $mapped = $this->mapLeadRow($headers, $line);
@@ -1779,23 +1787,48 @@ class CrmController extends BaseController
             return [];
         }
 
+        $namespace = $this->xlsxSpreadsheetNamespace($xml);
+        $sheetRows = [];
+        if ($namespace !== null) {
+            $xml->registerXPathNamespace('xlsx', $namespace);
+            $sheetRows = $xml->xpath('/xlsx:worksheet/xlsx:sheetData/xlsx:row') ?: [];
+        } elseif (isset($xml->sheetData)) {
+            $sheetRows = iterator_to_array($xml->sheetData->row, false);
+        }
+
         $headers = [];
         $rows = [];
-        $rowNumber = 0;
-        foreach ($xml->sheetData->row as $row) {
+        foreach ($sheetRows as $row) {
             $values = [];
-            foreach ($row->c as $cell) {
+            $fallbackIndex = 0;
+            if ($namespace !== null) {
+                $row->registerXPathNamespace('xlsx', $namespace);
+                $cells = $row->xpath('xlsx:c') ?: [];
+            } else {
+                $cells = iterator_to_array($row->c, false);
+            }
+
+            foreach ($cells as $cell) {
                 $value = $this->xlsxCellValue($cell, $sharedStrings);
-                $columnIndex = $this->xlsxColumnIndex((string) $cell['r']);
+                $reference = (string) $cell['r'];
+                $columnIndex = $reference !== '' ? $this->xlsxColumnIndex($reference) : $fallbackIndex;
                 $values[$columnIndex] = trim($value);
+                $fallbackIndex++;
             }
 
             ksort($values);
             $values = $this->denseRowValues($values);
 
-            if ($rowNumber === 0) {
-                $headers = $this->normalizeHeaders($values);
-                $rowNumber++;
+            if ($headers === []) {
+                $candidateHeaders = $this->normalizeHeaders($values);
+                if ($this->isLikelyLeadHeaderRow($candidateHeaders)) {
+                    $headers = $candidateHeaders;
+                    continue;
+                }
+                $mappedPositional = $this->mapPositionalLeadRow($values);
+                if ($mappedPositional !== null) {
+                    $rows[] = $mappedPositional;
+                }
                 continue;
             }
 
@@ -1803,10 +1836,30 @@ class CrmController extends BaseController
             if ($mapped !== null) {
                 $rows[] = $mapped;
             }
-            $rowNumber++;
         }
 
         return $rows;
+    }
+
+    private function xlsxSpreadsheetNamespace(\SimpleXMLElement $xml): ?string
+    {
+        $spreadsheetNamespace = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+        foreach ($xml->getNamespaces(true) as $namespace) {
+            if ($namespace === $spreadsheetNamespace) {
+                return $spreadsheetNamespace;
+            }
+        }
+
+        return null;
+    }
+
+    private function xlsxChildren(\SimpleXMLElement $xml, ?string $namespace = null): \SimpleXMLElement
+    {
+        if ($namespace === null) {
+            $namespace = $this->xlsxSpreadsheetNamespace($xml);
+        }
+
+        return $namespace !== null ? $xml->children($namespace) : $xml->children();
     }
 
     private function xlsxEntryContents(string $path, string $entryName): ?string
@@ -1899,25 +1952,35 @@ class CrmController extends BaseController
     private function xlsxCellValue(\SimpleXMLElement $cell, array $sharedStrings): string
     {
         $type = (string) $cell['t'];
+        $namespace = $this->xlsxSpreadsheetNamespace($cell);
+        $cellChildren = $this->xlsxChildren($cell, $namespace);
 
         if ($type === 's') {
-            return $sharedStrings[(int) ((string) $cell->v)] ?? '';
+            return $sharedStrings[(int) ((string) $cellChildren->v)] ?? '';
         }
 
         if ($type === 'inlineStr') {
-            if (isset($cell->is->t)) {
-                return (string) $cell->is->t;
+            if (! isset($cellChildren->is)) {
+                return '';
+            }
+
+            $inlineString = $this->xlsxChildren($cellChildren->is, $namespace);
+            if (isset($inlineString->t)) {
+                return (string) $inlineString->t;
             }
 
             $text = '';
-            foreach ($cell->is->r as $run) {
-                $text .= (string) $run->t;
+            if (isset($inlineString->r)) {
+                foreach ($inlineString->r as $run) {
+                    $runChildren = $this->xlsxChildren($run, $namespace);
+                    $text .= (string) $runChildren->t;
+                }
             }
 
             return $text;
         }
 
-        return (string) $cell->v;
+        return (string) $cellChildren->v;
     }
 
     private function xlsxColumnIndex(string $cellReference): int
@@ -1958,16 +2021,22 @@ class CrmController extends BaseController
             return [];
         }
 
+        $namespace = $this->xlsxSpreadsheetNamespace($shared);
+        $sharedItems = $this->xlsxChildren($shared, $namespace);
         $strings = [];
-        foreach ($shared->si as $item) {
-            if (isset($item->t)) {
-                $strings[] = trim((string) $item->t);
+        foreach ($sharedItems->si as $item) {
+            $itemChildren = $this->xlsxChildren($item, $namespace);
+            if (isset($itemChildren->t)) {
+                $strings[] = trim((string) $itemChildren->t);
                 continue;
             }
 
             $text = '';
-            foreach ($item->r as $run) {
-                $text .= (string) $run->t;
+            if (isset($itemChildren->r)) {
+                foreach ($itemChildren->r as $run) {
+                    $runChildren = $this->xlsxChildren($run, $namespace);
+                    $text .= (string) $runChildren->t;
+                }
             }
             $strings[] = trim($text);
         }
@@ -2008,35 +2077,100 @@ class CrmController extends BaseController
         return $bestDelimiter;
     }
 
+    private function isLikelyLeadHeaderRow(array $normalizedHeaders): bool
+    {
+        foreach ($normalizedHeaders as $h) {
+            if ($h === '') {
+                continue;
+            }
+            if (preg_match('/(?:^|_)(?:nama|name|siswa|peserta|mahasiswa|camaba|sekolah|school|wa|whatsapp|telp|telepon|telpon|tlp|hp|handphone|phone|mobile|kontak|contact)(?:_|$)/', $h) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function firstNonEmptyValue(array $row, array $keys): string
+    {
+        foreach ($keys as $key) {
+            if (isset($row[$key]) && trim((string) $row[$key]) !== '') {
+                return trim((string) $row[$key]);
+            }
+        }
+
+        return '';
+    }
+
     private function mapLeadRow(array $headers, array $values): ?array
     {
         $row = [];
         foreach ($headers as $index => $header) {
-            $row[$header] = trim((string) ($values[$index] ?? ''));
+            if ($header === '') {
+                continue;
+            }
+            $val = trim((string) ($values[$index] ?? ''));
+            if (! isset($row[$header]) || $row[$header] === '') {
+                $row[$header] = $val;
+            }
         }
 
-        $name = $row['nama_siswa'] ?? $row['nama_lengkap'] ?? $row['nama'] ?? $row['student_name'] ?? $row['name'] ?? '';
-        $school = $row['asal_sekolah'] ?? $row['sekolah_asal'] ?? $row['sekolah'] ?? $row['school_origin'] ?? $row['school'] ?? '';
-        $wa = $row['no_wa']
-            ?? $row['nomor_wa']
-            ?? $row['no_whatsapp']
-            ?? $row['nomor_whatsapp']
-            ?? $row['whatsapp']
-            ?? $row['wa']
-            ?? $row['hp']
-            ?? $row['no_hp']
-            ?? $row['nomor_hp']
-            ?? $row['no_telp']
-            ?? $row['nomor_telp']
-            ?? $row['no_telepon']
-            ?? $row['nomor_telepon']
-            ?? $row['telp']
-            ?? $row['telepon']
-            ?? $row['phone']
-            ?? $row['phone_number']
-            ?? '';
+        $name = $this->firstNonEmptyValue($row, [
+            'nama_siswa', 'nama_lengkap', 'nama_peserta', 'nama_calon_mahasiswa',
+            'nama_camaba', 'nama_mahasiswa', 'nama', 'student_name', 'full_name', 'name', 'siswa', 'peserta',
+        ]);
+        if ($name === '') {
+            foreach ($row as $hKey => $hVal) {
+                if ($hVal !== '' && preg_match('/(?:^|_)(?:nama|student_name|full_name|name)(?:_|$)/', $hKey) === 1 && ! str_contains($hKey, 'sekolah') && ! str_contains($hKey, 'event') && ! str_contains($hKey, 'kampus')) {
+                    $name = $hVal;
+                    break;
+                }
+            }
+        }
 
-        if (trim($name) === '') {
+        $school = $this->firstNonEmptyValue($row, [
+            'asal_sekolah', 'sekolah_asal', 'nama_sekolah', 'sekolah', 'school_origin', 'school_name', 'school', 'instansi', 'sma_smk',
+        ]);
+        if ($school === '') {
+            foreach ($row as $hKey => $hVal) {
+                if ($hVal !== '' && preg_match('/(?:^|_)(?:sekolah|school|instansi|sma|smk|ma)(?:_|$)/', $hKey) === 1) {
+                    $school = $hVal;
+                    break;
+                }
+            }
+        }
+
+        $wa = $this->firstNonEmptyValue($row, [
+            'no_wa', 'nomor_wa', 'no_whatsapp', 'nomor_whatsapp', 'whatsapp', 'wa',
+            'hp', 'no_hp', 'nomor_hp', 'no_handphone', 'nomor_handphone', 'handphone',
+            'no_telp', 'nomor_telp', 'no_telepon', 'nomor_telepon', 'no_telpon', 'nomor_telpon',
+            'telp', 'telepon', 'telpon', 'no_tlp', 'nomor_tlp', 'tlp',
+            'no_hp_wa', 'no_wa_hp', 'no_telp_wa', 'no_telp_hp', 'telp_wa', 'hp_wa',
+            'phone', 'phone_number', 'no_phone', 'mobile', 'no_mobile', 'mobile_phone',
+            'kontak', 'no_kontak', 'nomor_kontak', 'contact', 'contact_number', 'telepon_wa',
+        ]);
+
+        if ($wa === '') {
+            foreach ($row as $hKey => $hVal) {
+                if ($hVal !== '' && preg_match('/(?:^|_)(?:wa|whatsapp|telp|telepon|telpon|tlp|hp|handphone|phone|mobile|kontak|contact|seluler)(?:_|$)/', $hKey) === 1) {
+                    $wa = $hVal;
+                    break;
+                }
+            }
+        }
+
+        // Fallback: scan remaining cell values for a valid Indonesian phone number if header was custom/unrecognized
+        if ($wa === '') {
+            foreach ($values as $rawCell) {
+                $candidate = $this->normalizeWhatsappNumber((string) $rawCell);
+                if (preg_match('/^628\d{7,12}$/', $candidate) === 1) {
+                    $wa = (string) $rawCell;
+                    break;
+                }
+            }
+        }
+
+        if (trim($name) === '' || $this->isLikelyLeadHeaderRow($this->normalizeHeaders([$name]))) {
             return null;
         }
 
@@ -2047,9 +2181,76 @@ class CrmController extends BaseController
         ];
     }
 
+    private function mapPositionalLeadRow(array $values): ?array
+    {
+        $cells = array_values(array_map(static fn ($v): string => trim((string) $v), $values));
+        $nonEmpty = array_values(array_filter($cells, static fn (string $v): bool => $v !== ''));
+        if (count($nonEmpty) < 2) {
+            return null;
+        }
+
+        // Standard template order: [No, Nama Siswa, Asal Sekolah, No WA] or [Nama Siswa, Asal Sekolah, No WA]
+        $offset = (preg_match('/^\d{1,5}$/', $cells[0] ?? '') === 1) ? 1 : 0;
+        $name = $cells[$offset] ?? '';
+        $school = $cells[$offset + 1] ?? '';
+        $wa = $cells[$offset + 2] ?? '';
+
+        if ($wa === '') {
+            foreach ($cells as $cVal) {
+                $candidate = $this->normalizeWhatsappNumber($cVal);
+                if (preg_match('/^628\d{7,12}$/', $candidate) === 1) {
+                    $wa = $cVal;
+                    break;
+                }
+            }
+        }
+
+        if ($name === '' || preg_match('/^\d+$/', $name) === 1) {
+            return null;
+        }
+
+        return [
+            'student_name' => $name,
+            'school_origin' => $school,
+            'whatsapp' => $this->normalizeWhatsappNumber($wa),
+        ];
+    }
+
     private function normalizeWhatsappNumber(string $value): string
     {
-        $number = preg_replace('/\D+/', '', trim($value)) ?? '';
+        $raw = trim($value);
+        if ($raw === '') {
+            return '';
+        }
+
+        // If cell contains multiple numbers separated by '/', ',', ';', or ' atau ', take the first one
+        if (preg_match('/[\/,;]|(?:\s+atau\s+)/i', $raw) === 1) {
+            $parts = preg_split('/[\/,;]|(?:\s+atau\s+)/i', $raw) ?: [$raw];
+            foreach ($parts as $part) {
+                $part = trim((string) $part);
+                if (preg_match('/\d{7,}/', preg_replace('/\D+/', '', $part) ?? '') === 1) {
+                    $raw = $part;
+                    break;
+                }
+            }
+        }
+
+        // Expand Excel scientific notation (e.g. "8.123456789E+10" or "6,28123456789E+12")
+        if (preg_match('/^[+-]?(\d+)(?:[.,](\d+))?[eE][+]?(\d+)$/', $raw, $m) === 1) {
+            $intPart = $m[1];
+            $decPart = $m[2] ?? '';
+            $exp = (int) $m[3];
+            if ($exp >= strlen($decPart)) {
+                $raw = $intPart . $decPart . str_repeat('0', $exp - strlen($decPart));
+            } else {
+                $raw = $intPart . substr($decPart, 0, $exp);
+            }
+        } elseif (preg_match('/^\d+\.0+$/', $raw) === 1) {
+            // Strip trailing ".0" from numeric Excel floats (e.g. "81234567890.0")
+            $raw = preg_replace('/\.0+$/', '', $raw) ?? $raw;
+        }
+
+        $number = preg_replace('/\D+/', '', $raw) ?? '';
 
         if ($number === '') {
             return '';
@@ -2057,6 +2258,11 @@ class CrmController extends BaseController
 
         if (str_starts_with($number, '00')) {
             $number = substr($number, 2);
+        }
+
+        // Handle common typo "+62 0812..." -> "620812..." -> "62812..."
+        if (str_starts_with($number, '6208')) {
+            return '628' . substr($number, 4);
         }
 
         if (str_starts_with($number, '0')) {
