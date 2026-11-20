@@ -8,14 +8,22 @@ class EventHubCrmBridge
 {
     public function signIn(): bool
     {
-        if (session('crmLoggedIn')) {
-            $this->syncExistingEventHubSession();
+        $eventHubUser = session('user');
+        $eventHubLoggedIn = session('isLoggedIn') && is_array($eventHubUser) && (int) ($eventHubUser['id'] ?? 0) > 0;
 
-            return true;
+        if (session('crmLoggedIn')) {
+            $crmSource = (string) session('crmUser.source');
+            $crmRegisteredBy = (int) session('crmUser.registered_by');
+            if ($crmSource === 'eventhub' && $eventHubLoggedIn && $crmRegisteredBy !== (int) $eventHubUser['id']) {
+                // EventHub user changed (e.g., via impersonation); fall through to re-sign in as current EventHub user
+            } else {
+                $this->syncExistingEventHubSession();
+
+                return true;
+            }
         }
 
-        $eventHubUser = session('user');
-        if (! session('isLoggedIn') || ! is_array($eventHubUser) || (int) ($eventHubUser['id'] ?? 0) <= 0) {
+        if (! $eventHubLoggedIn) {
             return false;
         }
 

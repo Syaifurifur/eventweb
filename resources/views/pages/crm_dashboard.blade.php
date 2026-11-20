@@ -702,6 +702,19 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
         }
     </style>
 
+    <?php if (session('impersonator')): ?>
+        <div style="background:linear-gradient(90deg, #4f46e5, #7c3aed); color:#ffffff; padding:10px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; font-size:13px; box-shadow:0 2px 10px rgba(79,70,229,0.28);">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="font-weight:700;">Mode Impersonate Super Admin (CRM):</span>
+                <span>Masuk sebagai <strong><?= esc(session('user.name')) ?></strong> (<?= esc(session('user.role')) ?>)</span>
+                <span style="opacity:0.85; font-size:12px;">&bull; Akun Asli: <strong><?= esc(session('impersonator.name')) ?></strong></span>
+            </div>
+            <a href="<?= site_url('impersonate/leave') ?>" style="display:inline-flex; align-items:center; gap:6px; background:#ffffff; color:#4f46e5; font-weight:700; font-size:12px; padding:5px 12px; border-radius:6px; text-decoration:none;">
+                Keluar dari Mode Impersonate
+            </a>
+        </div>
+    <?php endif; ?>
+
     <header class="crm-topbar">
         <a class="crm-brand" href="<?= site_url('crm') ?>">
             <img class="crm-brand-logo" src="<?= base_url('assets/img/eventhub-mark.png') ?>" alt="EventHub">

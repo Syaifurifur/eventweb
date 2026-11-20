@@ -6357,9 +6357,14 @@ class EventSuite extends BaseController
 
         if (method_exists(session(), 'set')) {
             session()->set($sessionData);
+            session()->remove('crmLoggedIn');
+            session()->remove('crmUser');
         } else {
             session()->put($sessionData);
+            session()->forget(['crmLoggedIn', 'crmUser']);
         }
+
+        (new \App\Libraries\EventHubCrmBridge())->signIn();
 
         return redirect()->to(site_url('dashboard'))->with('success', 'Mode Impersonate Aktif: Anda sedang masuk dan memantau sistem sebagai ' . $targetUser['name'] . ' (' . $targetUser['role'] . ').');
     }
@@ -6382,10 +6387,14 @@ class EventSuite extends BaseController
             session()->set($sessionData);
             session()->remove('impersonator');
             session()->remove('is_impersonating');
+            session()->remove('crmLoggedIn');
+            session()->remove('crmUser');
         } else {
             session()->put($sessionData);
-            session()->forget(['impersonator', 'is_impersonating']);
+            session()->forget(['impersonator', 'is_impersonating', 'crmLoggedIn', 'crmUser']);
         }
+
+        (new \App\Libraries\EventHubCrmBridge())->signIn();
 
         return redirect()->to(site_url('users'))->with('success', 'Telah keluar dari akun ' . $targetUserName . ' dan kembali ke akun Super Admin (' . $impersonator['name'] . ').');
     }
