@@ -2136,6 +2136,18 @@ class CrmController extends BaseController
             }
         }
 
+        // Hapus klaster yang telah dihapus oleh Superadmin
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('crm_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted)) {
+            $defaultPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
+            foreach ($deleted as $delKey) {
+                if (is_string($delKey) && $delKey !== $defaultPeriod && isset($periods[$delKey])) {
+                    unset($periods[$delKey]);
+                }
+            }
+        }
+
         return $periods;
     }
 
@@ -2157,6 +2169,14 @@ class CrmController extends BaseController
 
         if ($periodName === '') {
             return redirect()->to(site_url('crm'))->with('error', 'Nama atau rentang tahun periode klaster PMB baru wajib diisi.');
+        }
+
+        // Pulihkan jika klaster ini sebelumnya ada di daftar terhapus
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('crm_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted) && in_array($periodName, $deleted, true)) {
+            $deleted = array_values(array_diff($deleted, [$periodName]));
+            \App\Models\SystemSettingModel::setSetting('crm_deleted_pmb_periods', json_encode($deleted));
         }
 
         $customJson = \App\Models\SystemSettingModel::getSetting('crm_custom_pmb_periods', '');
@@ -2191,10 +2211,70 @@ class CrmController extends BaseController
             return redirect()->to(site_url('crm'))->with('error', 'Pilih klaster masa PMB yang valid untuk dijadikan default.');
         }
 
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('crm_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted) && in_array($period, $deleted, true)) {
+            $deleted = array_values(array_diff($deleted, [$period]));
+            \App\Models\SystemSettingModel::setSetting('crm_deleted_pmb_periods', json_encode($deleted));
+        }
+
         \App\Models\SystemSettingModel::setSetting('crm_default_pmb_period', $period, 'Klaster Masa PMB default untuk CRM Workspace');
 
         return redirect()->to(site_url('crm?pmb_period=' . urlencode($period)))
             ->with('success', 'Klaster "' . $period . '" berhasil disetel sebagai klaster default aktif CRM.');
+    }
+
+    public function deleteCrmPmbCluster()
+    {
+        if (! $this->isSuperAdmin()) {
+            return redirect()->to(site_url('crm'))->with('error', 'Hanya Super Admin / Admin Sistem yang berhak menghapus klaster PMB.');
+        }
+
+        $period = trim((string) $this->request->getPost('pmb_period'));
+        if ($period === '' || $period === 'all') {
+            return redirect()->to(site_url('crm'))->with('error', 'Pilih klaster masa PMB yang valid untuk dihapus.');
+        }
+
+        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
+        if ($defaultPeriod === $period) {
+            return redirect()->to(site_url('crm?pmb_period=' . urlencode($period)))
+                ->with('error', 'Klaster default berjalan aktif tidak dapat dihapus. Silakan setel klaster lain sebagai default terlebih dahulu.');
+        }
+
+        // 1. Hapus dari crm_custom_pmb_periods jika terdaftar
+        $customJson = \App\Models\SystemSettingModel::getSetting('crm_custom_pmb_periods', '');
+        $customs = $customJson !== '' ? json_decode($customJson, true) : [];
+        if (is_array($customs) && isset($customs[$period])) {
+            unset($customs[$period]);
+            \App\Models\SystemSettingModel::setSetting('crm_custom_pmb_periods', json_encode($customs));
+        }
+
+        // 2. Tambahkan ke daftar crm_deleted_pmb_periods sehingga klaster bawaan/bersama juga terhapus dari daftar CRM
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('crm_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (! is_array($deleted)) {
+            $deleted = [];
+        }
+        if (! in_array($period, $deleted, true)) {
+            $deleted[] = $period;
+            \App\Models\SystemSettingModel::setSetting('crm_deleted_pmb_periods', json_encode(array_values($deleted)));
+        }
+
+        // 3. Pindahkan data leads / batch di klaster yang dihapus ke klaster default aktif agar tidak yatim
+        $db = db_connect();
+        if ($db->tableExists('crm_leads') && $db->fieldExists('pmb_period', 'crm_leads')) {
+            $db->table('crm_leads')
+                ->where('pmb_period', $period)
+                ->update(['pmb_period' => $defaultPeriod]);
+        }
+        if ($db->tableExists('crm_upload_batches') && $db->fieldExists('pmb_period', 'crm_upload_batches')) {
+            $db->table('crm_upload_batches')
+                ->where('pmb_period', $period)
+                ->update(['pmb_period' => $defaultPeriod]);
+        }
+
+        return redirect()->to(site_url('crm?pmb_period=' . urlencode($defaultPeriod)))
+            ->with('success', 'Klaster Masa PMB CRM "' . $period . '" berhasil dihapus (prospek terkait dialihkan ke klaster default "' . $defaultPeriod . '").');
     }
 
     private function requireCrmAdmin(): void

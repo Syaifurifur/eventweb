@@ -45,6 +45,17 @@ class CrmRealtimeReportService
             }
         }
 
+        $deletedJson = \App\Models\SystemSettingModel::getSetting('crm_deleted_pmb_periods', '[]');
+        $deleted = json_decode($deletedJson, true);
+        if (is_array($deleted)) {
+            $defaultPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
+            foreach ($deleted as $delKey) {
+                if (is_string($delKey) && $delKey !== $defaultPeriod && isset($periods[$delKey])) {
+                    unset($periods[$delKey]);
+                }
+            }
+        }
+
         return $periods;
     }
 

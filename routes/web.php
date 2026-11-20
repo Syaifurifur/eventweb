@@ -31,6 +31,7 @@ Route::prefix('crm')->middleware('crm.auth')->group(function (): void {
     Route::get('export-excel', [CrmController::class, 'exportExcel']);
     Route::post('pmb-clusters', [CrmController::class, 'storeCrmPmbCluster']);
     Route::post('pmb-clusters/set-default', [CrmController::class, 'setDefaultCrmPmbCluster']);
+    Route::post('pmb-clusters/delete', [CrmController::class, 'deleteCrmPmbCluster']);
     Route::post('logout', [CrmController::class, 'logout']);
     Route::post('users', [CrmController::class, 'storeUser']);
     Route::post('users/{id}/delete', [CrmController::class, 'deleteUser'])->whereNumber('id');

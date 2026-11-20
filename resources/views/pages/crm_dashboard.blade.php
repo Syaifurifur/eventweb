@@ -824,6 +824,13 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                 ⭐ Jadikan Default
                             </button>
                         </form>
+                        <form action="<?= site_url('crm/pmb-clusters/delete') ?>" method="post" style="display: inline-block;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus klaster PMB \'<?= esc($selectedPmbPeriod, 'js') ?>\'?\n\nProspek di dalam klaster ini akan dialihkan ke klaster default aktif.')">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="pmb_period" value="<?= esc($selectedPmbPeriod, 'attr') ?>">
+                            <button type="submit" class="ghost-button compact-button" style="border-color: #ef4444; color: #dc2626; background: #fef2f2; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Hapus klaster '<?= esc($selectedPmbPeriod, 'attr') ?>'">
+                                🗑️ Hapus Klaster
+                            </button>
+                        </form>
                     <?php endif; ?>
                 </div>
             </div>
@@ -2445,6 +2452,28 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                     Simpan Default
                 </button>
             </form>
+        </div>
+
+        <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line, #e2e8f0);">
+            <span style="display: block; font-size: 0.82rem; font-weight: 700; color: #dc2626; margin-bottom: 6px;">
+                🗑️ Hapus Klaster Masa PMB CRM:
+            </span>
+            <form action="<?= site_url('crm/pmb-clusters/delete') ?>" method="post" style="display: flex; gap: 8px; align-items: center;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus klaster PMB CRM yang dipilih?\n\nData prospek pada klaster tersebut akan dipindahkan ke klaster default aktif.')">
+                <?= csrf_field() ?>
+                <select name="pmb_period" class="control" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;" required>
+                    <option value="">Pilih klaster PMB yang ingin dihapus...</option>
+                    <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
+                        <?php if ($defaultPmbPeriod === $pKey) continue; ?>
+                        <option value="<?= esc($pKey, 'attr') ?>"><?= esc($pKey) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" class="primary-button compact-button" style="background: #dc2626; border-color: #dc2626; color: #ffffff; font-weight: 700;">
+                    Hapus Klaster
+                </button>
+            </form>
+            <span style="display: block; font-size: 0.74rem; color: var(--muted, #64748b); margin-top: 4px;">
+                * Klaster default aktif tidak dapat dihapus sebelum Anda mengganti klaster default ke periode lain.
+            </span>
         </div>
     </dialog>
     <?php endif; ?>
