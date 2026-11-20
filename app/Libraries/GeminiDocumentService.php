@@ -24,7 +24,7 @@ class GeminiDocumentService
         return $this->config->model;
     }
 
-    public function generateDocument(string $documentType, array $event, string $template, array $structure = []): string
+    public function generateDocument(string $documentType, array $event, string $template, array $structure = [], array $templateMeta = []): string
     {
         if (! $this->isConfigured()) {
             throw new RuntimeException('GEMINI_API_KEY belum diisi di file .env.');
@@ -33,14 +33,14 @@ class GeminiDocumentService
         $payload = [
             'system_instruction' => [
                 'parts' => [
-                    ['text' => 'Anda adalah seorang Event Planner Profesional dan Proposal Writer Universitas.'],
+                    ['text' => 'Anda adalah seorang Event Planner Profesional dan Proposal Writer Universitas yang selalu mematuhi struktur template dokumen yang diunggah pengguna.'],
                 ],
             ],
             'contents' => [
                 [
                     'role' => 'user',
                     'parts' => [
-                        ['text' => $this->prompt($documentType, $event, $template, $structure)],
+                        ['text' => $this->prompt($documentType, $event, $template, $structure, $templateMeta)],
                     ],
                 ],
             ],
@@ -86,9 +86,14 @@ class GeminiDocumentService
         return $text;
     }
 
-    private function prompt(string $documentType, array $event, string $template, array $structure = []): string
+    private function prompt(string $documentType, array $event, string $template, array $structure = [], array $templateMeta = []): string
     {
-        $label = 'Proposal';
+        $isReport = strtolower(trim($documentType)) === 'report';
+        $label = $isReport ? 'Laporan Pertanggungjawaban (LPJ)' : 'Proposal Kegiatan';
+        $hasCustomTemplate = (bool) ($templateMeta['has_custom'] ?? false);
+        $templateName = trim((string) ($templateMeta['name'] ?? ''));
+        $templateCategory = trim((string) ($templateMeta['category'] ?? ''));
+        $templateDesc = trim((string) ($templateMeta['description'] ?? ''));
         $description = trim((string) ($event['description'] ?? ''));
         $autoFill = '[Data belum tersedia - buat otomatis secara realistis berdasarkan konteks acara]';
         $structureValue = static function (array $labels) use ($structure): string {
@@ -283,15 +288,55 @@ KETENTUAN OUTPUT:
 - Jika ada data kosong, bantu generate otomatis menggunakan AI berdasarkan konteks acara
 PROMPT;
 
+        if ($hasCustomTemplate) {
+            $metaLines = [];
+            if ($templateName !== '') {
+                $metaLines[] = '- Nama Template: ' . $templateName;
+            }
+            if ($templateCategory !== '') {
+                $metaLines[] = '- Kategori Template: ' . $templateCategory;
+            }
+            if ($templateDesc !== '') {
+                $metaLines[] = '- Keterangan Template: ' . $templateDesc;
+            }
+
+            return implode("\n", [
+                'Anda adalah seorang Event Planner Profesional dan Penulis Dokumen Resmi Universitas.',
+                '',
+                'TUGAS UTAMA:',
+                'Buatlah dokumen ' . $label . ' yang lengkap, formal, profesional, dan siap cetak dengan MENGIKUTI SEPENUHNYA struktur, urutan BAB/subbab, penomoran, bagian pengesahan, serta format dari TEMPLATE YANG DIUPLOAD di bawah ini.',
+                '',
+                'ATURAN WAJIB INTEGRASI TEMPLATE:',
+                '- Jadikan isi TEMPLATE YANG DIUPLOAD sebagai kerangka/blueprint utama dokumen final. Jangan mengganti urutan BAB, judul bagian, atau format pengesahan yang ada di template dengan format lain.',
+                '- Pertahankan seluruh bagian, heading, tabel (susunan acara, anggaran, dll.), dan struktur penomoran sesuai yang tertulis pada template.',
+                '- Ganti dan lengkapi seluruh bagian isi, placeholder (seperti {{...}}, [...], titik-titik, atau teks contoh pada template) menggunakan DATA EVENT dan RINGKASAN KEGIATAN DARI USER.',
+                '- Jika ada data yang belum tersedia di DATA EVENT (misalnya rincian narasumber, panitia, atau rincian anggaran), lengkapi secara otomatis dan realistis sesuai konteks kegiatan tanpa meninggalkan placeholder kosong.',
+                '- Gunakan markdown heading (# untuk judul utama/BAB, ## untuk subbab, ### untuk subbagian) dan tabel markdown yang rapi untuk jadwal/rundown maupun anggaran.',
+                '- Kembalikan hanya isi dokumen final dalam format markdown sederhana, tanpa kalimat pengantar atau penjelasan tambahan di luar dokumen.',
+                '',
+                'INFO TEMPLATE YANG DIPILIH:',
+                $metaLines !== [] ? implode("\n", $metaLines) : '- Menggunakan template unggahan admin.',
+                '',
+                'DATA EVENT:',
+                implode("\n", $dataEventLines),
+                '',
+                'RINGKASAN KEGIATAN DARI USER:',
+                $structureLines !== [] ? implode("\n", $structureLines) : '- Tidak ada ringkasan tambahan. Lengkapi dari data event dan deskripsi acara.',
+                '',
+                'TEMPLATE YANG DIUPLOAD (IKUTI STRUKTUR & FORMAT INI):',
+                $template,
+            ]);
+        }
+
         return implode("\n", [
             $proposalPrompt,
             '',
             'ARAHAN SISTEM APLIKASI:',
             '- Jenis dokumen yang diminta: ' . $label . '.',
-            '- User cukup mengisi Ringkasan kegiatan. Gunakan ringkasan tersebut untuk membuat seluruh struktur proposal secara otomatis.',
+            '- User cukup mengisi Ringkasan kegiatan. Gunakan ringkasan tersebut untuk membuat seluruh struktur dokumen secara otomatis.',
             '- Gunakan DATA EVENT sebagai sumber utama dan Ringkasan kegiatan sebagai penguat detail.',
             '- Untuk data kosong, isi otomatis secara wajar dari konteks event; jangan biarkan placeholder seperti [ISI] atau [tanggal].',
-            '- Gunakan template sebagai referensi gaya dan format tambahan. Jika template bertentangan dengan FORMAT WAJIB, ikuti FORMAT WAJIB.',
+            '- Gunakan template sebagai referensi gaya dan format tambahan.',
             '- Gunakan markdown heading dengan pola: # untuk HALAMAN COVER/KATA PENGANTAR/DAFTAR ISI/BAB/HALAMAN PENGESAHAN, ## untuk subbab, dan ### untuk subbagian kecil.',
             '- Buat tabel markdown yang rapi untuk susunan acara dan anggaran.',
             '- Nominal anggaran harus realistis dan grand total harus sesuai dengan subtotal yang dibuat.',

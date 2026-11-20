@@ -3757,11 +3757,19 @@ class EventSuite extends BaseController
         $isAdminSystem = session('user.role') === 'Admin Sistem';
         $type = $this->normalizeDocumentType($type) ?? 'proposal';
 
+        $documentTemplates = (new DocumentTemplateModel())
+            ->where('doc_type', $type)
+            ->where('status', 'Aktif')
+            ->orderBy('id', 'DESC')
+            ->findAll();
+
         return $this->render('pages/generate_documents', [
             'title' => 'Generate Otomatis',
             'active' => 'generate-documents',
             'events' => $data['events'],
             'proposals' => $data['proposals'],
+            'reports' => $data['reports'] ?? [],
+            'documentTemplates' => $documentTemplates,
             'selectedDocumentType' => $type,
             'documentStructureFields' => $this->documentStructureFields($type),
             'isAdminSystem' => $isAdminSystem,
@@ -3836,7 +3844,9 @@ class EventSuite extends BaseController
         }
 
         $document = $this->ensureDocumentRecord($type, (int) $event['id']);
-        $template = $this->documentTemplateContent($type, $document);
+        $templateId = (int) $this->request->getPost('template_id');
+        $resolvedTemplate = $this->resolveDocumentTemplateForAi($type, $event, $document, $templateId);
+        $template = $resolvedTemplate['content'];
         $service = new GeminiDocumentService();
         $structure = $this->submittedDocumentStructure($type);
         $requiredStructureCount = count($this->documentStructureFields($type));
@@ -3845,7 +3855,7 @@ class EventSuite extends BaseController
         }
 
         try {
-            $content = $service->generateDocument($type, $event, $template, $structure);
+            $content = $service->generateDocument($type, $event, $template, $structure, $resolvedTemplate);
         } catch (\Throwable $exception) {
             $this->documentModel($type)->update($document['id'], [
                 'status' => 'gagal ai',
@@ -3857,12 +3867,15 @@ class EventSuite extends BaseController
         }
 
         $generatedPath = $this->writeGeneratedDocument($type, $code, $content);
+        $templateInfo = ! empty($resolvedTemplate['name'])
+            ? ('Mengikuti template: ' . $resolvedTemplate['name'])
+            : 'Mengikuti struktur standar sistem';
         $this->documentModel($type)->update($document['id'], [
             'content' => $content,
             'generated_path' => $generatedPath,
             'generated_at' => date('Y-m-d H:i:s'),
             'ai_model' => $service->model(),
-            'ai_notes' => 'Dokumen Word dibuat dengan bantuan Gemini API dari struktur isian user.',
+            'ai_notes' => 'Dokumen Word dibuat dengan Gemini API (' . $templateInfo . ').',
             'status' => 'siap review ai',
         ]);
 
@@ -10438,6 +10451,125 @@ class EventSuite extends BaseController
         return $model->find($id);
     }
 
+    private function resolveDocumentTemplateForAi(string $type, array $event, array $document, int $templateId = 0): array
+    {
+        $selectedTpl = null;
+        if ($templateId > 0) {
+            $candidate = (new DocumentTemplateModel())->find($templateId);
+            if ($candidate && ($candidate['doc_type'] ?? '') === $type) {
+                $selectedTpl = $candidate;
+            }
+        }
+
+        // 1. Jika user memilih template dari Menu Template Dokumen
+        if ($selectedTpl) {
+            $extracted = $this->extractUploadedDocumentTemplateRecord($selectedTpl);
+            if ($extracted !== '') {
+                return [
+                    'content' => $extracted,
+                    'has_custom' => true,
+                    'name' => (string) ($selectedTpl['name'] ?? ''),
+                    'category' => (string) ($selectedTpl['event_category'] ?? ''),
+                    'description' => (string) ($selectedTpl['description'] ?? ''),
+                ];
+            }
+        }
+
+        // 2. Jika ada template khusus per-event yang pernah diupload
+        if (! empty($document['template_path'])) {
+            $path = WRITEPATH . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $document['template_path']);
+            if (is_file($path)) {
+                $content = $this->extractTemplateText($path);
+                if ($content !== '') {
+                    return [
+                        'content' => $content,
+                        'has_custom' => true,
+                        'name' => (string) ($document['template_name'] ?? basename($path)),
+                        'category' => (string) ($event['category'] ?? ''),
+                        'description' => '',
+                    ];
+                }
+            }
+        }
+
+        // 3. Cari otomatis template Aktif di Menu Template Dokumen (prioritas kategori event sama, lalu Umum, lalu terbaru)
+        $activeTemplates = (new DocumentTemplateModel())
+            ->where('doc_type', $type)
+            ->where('status', 'Aktif')
+            ->orderBy('id', 'DESC')
+            ->findAll();
+
+        $eventCategory = strtolower(trim((string) ($event['category'] ?? '')));
+        usort($activeTemplates, static function (array $a, array $b) use ($eventCategory): int {
+            $scoreA = 0;
+            $scoreB = 0;
+            $catA = strtolower(trim((string) ($a['event_category'] ?? '')));
+            $catB = strtolower(trim((string) ($b['event_category'] ?? '')));
+            if ($eventCategory !== '' && $catA === $eventCategory) {
+                $scoreA = 2;
+            } elseif ($catA === 'umum') {
+                $scoreA = 1;
+            }
+            if ($eventCategory !== '' && $catB === $eventCategory) {
+                $scoreB = 2;
+            } elseif ($catB === 'umum') {
+                $scoreB = 1;
+            }
+            if ($scoreB !== $scoreA) {
+                return $scoreB <=> $scoreA;
+            }
+
+            return (int) ($b['id'] ?? 0) <=> (int) ($a['id'] ?? 0);
+        });
+
+        foreach ($activeTemplates as $tpl) {
+            $extracted = $this->extractUploadedDocumentTemplateRecord($tpl);
+            if ($extracted !== '') {
+                return [
+                    'content' => $extracted,
+                    'has_custom' => true,
+                    'name' => (string) ($tpl['name'] ?? ''),
+                    'category' => (string) ($tpl['event_category'] ?? ''),
+                    'description' => (string) ($tpl['description'] ?? ''),
+                ];
+            }
+        }
+
+        // 4. Fallback standar default jika belum ada template terupload
+        return [
+            'content' => $this->documentTemplateContent($type, $document),
+            'has_custom' => false,
+            'name' => '',
+            'category' => '',
+            'description' => '',
+        ];
+    }
+
+    private function extractUploadedDocumentTemplateRecord(array $tpl): string
+    {
+        $relPath = trim((string) ($tpl['file_path'] ?? ''));
+        if ($relPath === '') {
+            return '';
+        }
+
+        $normalizedRel = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($relPath, '/\\'));
+        $candidates = [
+            public_path($normalizedRel),
+            WRITEPATH . $normalizedRel,
+        ];
+
+        foreach ($candidates as $fullPath) {
+            if (is_file($fullPath)) {
+                $text = $this->extractTemplateText($fullPath);
+                if ($text !== '') {
+                    return $text;
+                }
+            }
+        }
+
+        return '';
+    }
+
     private function documentTemplateContent(string $type, array $document): string
     {
         if (! empty($document['template_path'])) {
@@ -10463,11 +10595,11 @@ class EventSuite extends BaseController
     {
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-        if ($extension === 'docx') {
+        if (in_array($extension, ['docx', 'dotx'], true)) {
             return $this->extractDocxTemplateText($path);
         }
 
-        $content = file_get_contents($path);
+        $content = @file_get_contents($path);
         if (! is_string($content)) {
             return '';
         }
@@ -10506,16 +10638,16 @@ class EventSuite extends BaseController
             $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
         }
 
-        $text = preg_replace('/[^\x09\x0A\x0D\x20-\x7E]+/', ' ', $content) ?? '';
-        $text = preg_replace('/[ \t]+/', ' ', $text) ?? $text;
-        $text = preg_replace('/\R{3,}/', "\n\n", $text) ?? $text;
+        $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', ' ', $content) ?? '';
+        $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
+        $text = preg_replace('/\R{3,}/u', "\n\n", $text) ?? $text;
         $text = trim($text);
 
-        if (strlen($text) < 40) {
+        if (mb_strlen($text, 'UTF-8') < 40) {
             return '';
         }
 
-        return substr($text, 0, 12000);
+        return mb_substr($text, 0, 12000, 'UTF-8');
     }
 
     private function defaultDocumentTemplate(string $type): string
