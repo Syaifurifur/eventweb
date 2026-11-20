@@ -2723,6 +2723,8 @@ class EventSuite extends BaseController
 
     public function documentTemplates()
     {
+        $this->ensureDefaultDocumentTemplates();
+
         $activeDocType = strtolower(trim((string) ($this->request->getGet('doc_type') ?: $this->request->getGet('type'))));
         if (! in_array($activeDocType, ['proposal', 'report'], true)) {
             $activeDocType = 'proposal';
@@ -3145,6 +3147,41 @@ class EventSuite extends BaseController
             ->setHeader('Content-Disposition', 'attachment; filename="' . $safeName . '"')
             ->setHeader('Cache-Control', 'max-age=0')
             ->setBody($mdContent);
+    }
+
+    private function ensureDefaultDocumentTemplates(): void
+    {
+        try {
+            $model = new DocumentTemplateModel();
+            $hasReport = $model->where('doc_type', 'report')->countAllResults() > 0;
+            if (! $hasReport) {
+                $mdGuide = $this->defaultTemplateMarkdownGuide(
+                    'report',
+                    'TEMPLATE LAPORAN (LPJ) EVENT UBSI',
+                    'Semua',
+                    'Standar resmi Laporan Pertanggungjawaban (LPJ) pelaksanaan kegiatan dan realisasi anggaran kampus UBSI.'
+                );
+                $model->insert([
+                    'name' => 'TEMPLATE LAPORAN (LPJ) EVENT UBSI',
+                    'doc_type' => 'report',
+                    'event_category' => 'Semua',
+                    'description' => 'Standar resmi Laporan Pertanggungjawaban (LPJ) pelaksanaan kegiatan dan realisasi anggaran kampus UBSI.',
+                    'file_path' => null,
+                    'file_format' => 'DOCX',
+                    'thumbnail_path' => 'assets/img/templates/report_sosialisasi.svg',
+                    'structure_json' => json_encode([
+                        'md_path' => null,
+                        'md_name' => 'panduan_ai_report.md',
+                        'md_content' => $mdGuide,
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'status' => 'active',
+                    'created_by' => (int) (session('user.id') ?: 1),
+                ]);
+            }
+        } catch (\Throwable) {
+            // Ignore if table not migrated yet
+        }
     }
 
     private function enrichDocumentTemplates(array $templates): array
@@ -3655,6 +3692,8 @@ class EventSuite extends BaseController
 
     public function aiGenerateDocument()
     {
+        $this->ensureDefaultDocumentTemplates();
+
         $eventIdentifier = trim((string) ($this->request->getGet('event') ?: $this->request->getGet('code') ?: $this->request->getGet('event_id')));
         $type = trim((string) $this->request->getGet('type')) ?: 'proposal';
         if (! in_array($type, ['proposal', 'report'], true)) {
