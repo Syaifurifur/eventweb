@@ -12235,4 +12235,424 @@ class EventSuite extends BaseController
         $locationPart = $city !== '' ? ' (' . $city . ')' : '';
         $message = 'Data sekolah baru Sixty School: ' . $schoolName . $locationPart . ' untuk ' . $pmbPeriod . ' oleh ' . $submitterName . '.';
         if (mb_strlen($message) > 250) {
-... [truncated for diff preview]
+            $message = mb_substr($message, 0, 247) . '...';
+        }
+
+        $recipientIds = [1];
+        if ($currentUserId > 0) {
+            $recipientIds[] = $currentUserId;
+        }
+
+        $adminUsers = (new UserModel())
+            ->whereIn('role', ['Admin Sistem', 'Super Admin', 'DMER', 'Admin'])
+            ->findAll();
+
+        foreach ($adminUsers as $admin) {
+            $recipientIds[] = (int) $admin['id'];
+        }
+
+        $recipientIds = array_values(array_unique(array_filter($recipientIds, fn (int $id): bool => $id > 0)));
+
+        $notificationModel = new NotificationModel();
+        foreach ($recipientIds as $uid) {
+            $notificationModel->insert([
+                'user_id' => $uid,
+                'type' => 'sixty-school',
+                'message' => $message,
+                'read_at' => null,
+            ]);
+        }
+    }
+
+    private function sendOneCampusSchoolNotificationEmail(array $schoolData, string $campusName, string $submitterName, string $submitterEmail): bool
+    {
+        $recipient = 'markom851@bsi.ac.id';
+        $schoolName = (string) ($schoolData['school_name'] ?? '-');
+        $city = (string) ($schoolData['city'] ?? '-');
+        $npsn = (string) ($schoolData['npsn'] ?? '-');
+        $schoolType = (string) ($schoolData['school_type'] ?? '-');
+        $schoolStatus = (string) ($schoolData['school_status'] ?? '-');
+        $pmbPeriod = (string) ($schoolData['pmb_period'] ?? '-');
+        $headmaster = (string) ($schoolData['headmaster_name'] ?? '-');
+        $schoolPhone = (string) ($schoolData['school_phone'] ?? '-');
+        $schoolEmail = (string) ($schoolData['school_email'] ?? '-');
+        $contactName = (string) ($schoolData['contact_name'] ?? '-');
+        $contactPhone = (string) ($schoolData['contact_phone'] ?? '-');
+        $contactEmail = (string) ($schoolData['contact_email'] ?? '-');
+        $pmbCount = (int) ($schoolData['pmb_count'] ?? 0);
+        $bjsStatus = (string) ($schoolData['bjs_status'] ?? '-');
+        $notes = (string) ($schoolData['notes'] ?? '-');
+        $detailUrl = site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod));
+        $now = date('d F Y, H:i') . ' WIB';
+
+        $subject = '[One Campus Sixty School] Data Sekolah Baru: ' . $schoolName . ' (' . $city . ')';
+
+        $htmlMessage = '
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>' . htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') . '</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 24px; }
+        .email-card { max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+        .email-hdr { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; padding: 26px 28px; }
+        .email-hdr h1 { margin: 0; font-size: 20px; font-weight: 700; }
+        .email-hdr p { margin: 6px 0 0; font-size: 13px; opacity: 0.9; }
+        .email-body { padding: 24px 28px; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .badge-cyan { background: #e0f2fe; color: #0284c7; }
+        .badge-green { background: #dcfce7; color: #15803d; }
+        .table-data { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        .table-data th, .table-data td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; text-align: left; vertical-align: top; }
+        .table-data th { width: 34%; color: #64748b; font-weight: 600; background: #f8fafc; }
+        .table-data td { color: #0f172a; font-weight: 500; }
+        .sec-title { font-size: 13px; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 6px; border-left: 3px solid #0284c7; padding-left: 8px; }
+        .btn-link { display: inline-block; background: #0284c7; color: #ffffff !important; text-decoration: none; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 13px; margin-top: 22px; }
+        .email-ftr { background: #f8fafc; padding: 16px 28px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="email-card">
+        <div class="email-hdr">
+            <h1>Notifikasi One Campus Sixty School</h1>
+            <p>Pengisian data sekolah mitra baru telah berhasil disimpan ke sistem.</p>
+        </div>
+        <div class="email-body">
+            <p style="margin-top:0; font-size: 13.5px; line-height: 1.55;">
+                Halo Tim Marketing Komunikasi (Markom),<br>
+                Terdapat penambahan data sekolah baru pada program <strong>One Campus Sixty School</strong> oleh <strong>' . htmlspecialchars($submitterName, ENT_QUOTES, 'UTF-8') . '</strong> (' . htmlspecialchars($submitterEmail, ENT_QUOTES, 'UTF-8') . ').
+            </p>
+
+            <div class="sec-title">Informasi Sekolah</div>
+            <table class="table-data">
+                <tr><th>Nama Sekolah</th><td><strong>' . htmlspecialchars($schoolName, ENT_QUOTES, 'UTF-8') . '</strong></td></tr>
+                <tr><th>NPSN</th><td>' . htmlspecialchars($npsn, ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Kota / Kabupaten</th><td>' . htmlspecialchars($city, ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Bentuk / Status</th><td>' . htmlspecialchars($schoolType . ' (' . $schoolStatus . ')', ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Kepala Sekolah</th><td>' . htmlspecialchars($headmaster, ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Kontak Sekolah</th><td>' . htmlspecialchars($schoolPhone . ' / ' . $schoolEmail, ENT_QUOTES, 'UTF-8') . '</td></tr>
+            </table>
+
+            <div class="sec-title">Detail Kampus & Program PMB</div>
+            <table class="table-data">
+                <tr><th>Kampus Pengusul</th><td>' . htmlspecialchars($campusName, ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Periode PMB</th><td><span class="badge badge-cyan">' . htmlspecialchars($pmbPeriod, ENT_QUOTES, 'UTF-8') . '</span></td></tr>
+                <tr><th>Status BJS</th><td><span class="badge badge-green">' . htmlspecialchars($bjsStatus, ENT_QUOTES, 'UTF-8') . '</span></td></tr>
+                <tr><th>Target / Perolehan Mhs</th><td>' . $pmbCount . ' Mahasiswa</td></tr>
+                <tr><th>PIC / Kontak Guru</th><td>' . htmlspecialchars($contactName, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($contactPhone . ' / ' . $contactEmail, ENT_QUOTES, 'UTF-8') . ')</td></tr>
+                <tr><th>Catatan</th><td>' . nl2br(htmlspecialchars($notes, ENT_QUOTES, 'UTF-8')) . '</td></tr>
+                <tr><th>Waktu Pendaftaran</th><td>' . $now . '</td></tr>
+            </table>
+
+            <div style="text-align: center;">
+                <a href="' . $detailUrl . '" class="btn-link">Lihat Selengkapnya di EventHub &rarr;</a>
+            </div>
+        </div>
+        <div class="email-ftr">
+            &copy; ' . date('Y') . ' EventHub &bull; Markom Universitas Bina Sarana Informatika.<br>
+            Pemberitahuan otomatis ini dikirim ke ' . htmlspecialchars($recipient, ENT_QUOTES, 'UTF-8') . '.
+        </div>
+    </div>
+</body>
+</html>';
+
+        $plainTextMessage = implode("\n", [
+            'PENGISIAN DATA BARU ONE CAMPUS SIXTY SCHOOL',
+            '==========================================',
+            'Nama Sekolah   : ' . $schoolName,
+            'NPSN           : ' . $npsn,
+            'Kota           : ' . $city,
+            'Bentuk/Status  : ' . $schoolType . ' (' . $schoolStatus . ')',
+            'Kepala Sekolah : ' . $headmaster,
+            'Kampus         : ' . $campusName,
+            'Periode PMB    : ' . $pmbPeriod,
+            'Status BJS     : ' . $bjsStatus,
+            'Perolehan Mhs  : ' . $pmbCount . ' Mahasiswa',
+            'PIC Guru       : ' . $contactName . ' (' . $contactPhone . ' / ' . $contactEmail . ')',
+            'Penginput      : ' . $submitterName . ' (' . $submitterEmail . ')',
+            'Waktu Input    : ' . $now,
+            'Tautan         : ' . $detailUrl,
+        ]);
+
+        $config = [
+            'protocol' => env('email.protocol', 'mail'),
+            'SMTPHost' => env('email.SMTPHost', ''),
+            'SMTPUser' => env('email.SMTPUser', ''),
+            'SMTPPass' => env('email.SMTPPass', ''),
+            'SMTPPort' => (int) env('email.SMTPPort', 25),
+            'SMTPCrypto' => env('email.SMTPCrypto', 'tls'),
+            'mailType' => 'html',
+            'charset' => 'UTF-8',
+            'newline' => "\r\n",
+            'CRLF' => "\r\n",
+        ];
+
+        try {
+            $email = service('email', $config, false);
+            $email->setFrom(env('email.fromEmail', 'noreply@eventhub.local'), env('email.fromName', 'EventHub Markom'));
+            $email->setTo($recipient);
+            $email->setSubject($subject);
+            $email->setMessage($htmlMessage);
+            if (is_object($email) && method_exists($email, 'setAltMessage')) {
+                $email->setAltMessage($plainTextMessage);
+            }
+
+            $sent = $email->send(false);
+            if (! $sent) {
+                $headers = "MIME-Version: 1.0\r\n" .
+                           "Content-type: text/html; charset=UTF-8\r\n" .
+                           "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
+                @mail($recipient, $subject, $htmlMessage, $headers);
+            }
+
+            return true;
+        } catch (\Throwable $error) {
+            log_message('error', 'Gagal mengirim email Sixty School: ' . $error->getMessage());
+            try {
+                $headers = "MIME-Version: 1.0\r\n" .
+                           "Content-type: text/html; charset=UTF-8\r\n" .
+                           "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
+                @mail($recipient, $subject, $htmlMessage, $headers);
+            } catch (\Throwable) {}
+
+            return false;
+        }
+    }
+
+    private function calendarIntegrationsByEvent(array $items): array
+    {
+        $mapped = [];
+        foreach ($items as $item) {
+            $mapped[$this->eventCode((int) $item['event_id'])] = $item;
+        }
+
+        return $mapped;
+    }
+
+    private function selectedCalendarMonth(): string
+    {
+        $month = (string) $this->request->getGet('month');
+
+        if (preg_match('/^\d{4}-\d{2}$/', $month) === 1) {
+            return $month;
+        }
+
+        return date('Y-m');
+    }
+
+    private function calendarState(string $month, array $events): array
+    {
+        $timezone = new \DateTimeZone('Asia/Jakarta');
+        $firstDay = new \DateTimeImmutable($month . '-01', $timezone);
+        $previousMonth = $firstDay->modify('first day of previous month')->format('Y-m');
+        $nextMonth = $firstDay->modify('first day of next month')->format('Y-m');
+        $daysInMonth = (int) $firstDay->format('t');
+        $leadingDays = (int) $firstDay->format('N') - 1;
+        $totalCells = (int) ceil(($leadingDays + $daysInMonth) / 7) * 7;
+        $eventsByCode = [];
+        foreach ($events as $event) {
+            $eventsByCode[strtoupper((string) ($event['id'] ?? ''))] = $event;
+        }
+
+        $googleEvents = [];
+        foreach ((new GoogleCalendarEventModel())->eventsForMonth((int) session('user.id'), $month) as $event) {
+            $text = implode(' ', [
+                (string) ($event['summary'] ?? ''),
+                (string) ($event['location'] ?? ''),
+                (string) ($event['description'] ?? ''),
+            ]);
+
+            if (preg_match('/EventHub code:\s*([A-Z]+-\d+)/i', (string) ($event['description'] ?? ''), $matches) === 1) {
+                $linkedEvent = $eventsByCode[strtoupper($matches[1])] ?? null;
+                if ($linkedEvent !== null) {
+                    continue;
+                }
+            }
+
+            $event['calendar_campus'] = $this->calendarCampusKey($text);
+
+            $googleEvents[] = $event;
+        }
+        $visibleEvents = array_values(array_filter($events, static function (array $event) use ($month): bool {
+            $start = (string) ($event['date'] ?? '');
+            $end = (string) (($event['end_date'] ?? '') ?: $start);
+
+            return $start <= $month . '-31' && $end >= $month . '-01';
+        }));
+
+        $cells = [];
+        for ($index = 0; $index < $totalCells; $index++) {
+            $dayNumber = $index - $leadingDays + 1;
+            if ($dayNumber < 1 || $dayNumber > $daysInMonth) {
+                $cells[] = ['date' => null, 'day' => null, 'localEvents' => [], 'googleEvents' => []];
+                continue;
+            }
+
+            $date = $firstDay->setDate((int) $firstDay->format('Y'), (int) $firstDay->format('m'), $dayNumber)->format('Y-m-d');
+            $cells[] = [
+                'date' => $date,
+                'day' => $dayNumber,
+                'localEvents' => array_values(array_filter($events, static function (array $event) use ($date): bool {
+                    $start = (string) ($event['date'] ?? '');
+                    $end = (string) (($event['end_date'] ?? '') ?: $start);
+
+                    return $start <= $date && $end >= $date;
+                })),
+                'googleEvents' => array_values(array_filter($googleEvents, static fn (array $event): bool => substr((string) $event['start_at'], 0, 10) === $date)),
+            ];
+        }
+
+        return [
+            'key' => $month,
+            'label' => $this->monthLabel($firstDay),
+            'previous' => $previousMonth,
+            'next' => $nextMonth,
+            'cells' => $cells,
+            'visibleEvents' => $visibleEvents,
+            'googleEvents' => $googleEvents,
+        ];
+    }
+
+    private function calendarCampusKey(string $text): string
+    {
+        $text = strtoupper($text);
+
+        if (preg_match('/\bUNM\b|NUSA\s+MANDIRI/', $text) === 1) {
+            return 'unm';
+        }
+
+        if (preg_match('/\bCU\b|CYBER\s+(?:UNIVERSITY|UNIV)/', $text) === 1) {
+            return 'cu';
+        }
+
+        if (preg_match('/\bUBSI\b|\bBSI\b|BINA\s+SARANA\s+INFORMATIKA/', $text) === 1) {
+            return 'ubsi';
+        }
+
+        return 'other';
+    }
+
+    private function monthLabel(\DateTimeImmutable $date): string
+    {
+        $months = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+
+        return $months[(int) $date->format('n')] . ' ' . $date->format('Y');
+    }
+
+    private function accessOptions(): array
+    {
+        return [
+            'dashboard' => 'Dashboard',
+            'crm' => 'CRM',
+            'events' => 'Event',
+            'calendar' => 'Kalender',
+            'approvals' => 'Approval',
+            'documents' => 'Dokumen',
+            'reports' => 'Laporan',
+            'one-campus' => 'One Campus',
+            'analytics' => 'Analytics',
+            'notifications' => 'Notifikasi',
+            'users' => 'Users',
+        ];
+    }
+
+    private function selectedPermissions(string $field = 'access_permissions', ?array $fallback = null): array
+    {
+        $selected = $this->request->getPost($field);
+        $selected = is_array($selected) ? $selected : ($fallback ?? []);
+        $allowed = array_keys($this->accessOptions());
+        $permissions = array_values(array_intersect($allowed, $selected));
+
+        if (! in_array('dashboard', $permissions, true)) {
+            array_unshift($permissions, 'dashboard');
+        }
+
+        return array_values(array_unique($permissions));
+    }
+
+    private function permissionsFromRole(array $role): array
+    {
+        if (($role['name'] ?? '') === 'Admin Sistem') {
+            return array_keys($this->accessOptions());
+        }
+
+        $decoded = json_decode((string) ($role['default_permissions'] ?? '[]'), true);
+
+        return $this->normalizePermissions(is_array($decoded) ? $decoded : []);
+    }
+
+    private function normalizePermissions(array $permissions): array
+    {
+        $allowed = array_keys($this->accessOptions());
+        $permissions = array_values(array_intersect($allowed, $permissions));
+
+        if (! in_array('dashboard', $permissions, true)) {
+            array_unshift($permissions, 'dashboard');
+        }
+
+        return array_values(array_unique($permissions));
+    }
+
+    private function activeRoleByName(string $name): ?array
+    {
+        $name = $this->normalizedRoleName($name);
+        if ($name === '') {
+            return null;
+        }
+
+        return (new RoleModel())->where('name', $name)->first();
+    }
+
+    private function normalizedRoleName(string $name): string
+    {
+        return trim((string) preg_replace('/\s+/', ' ', $name));
+    }
+
+    private function normalizedCrmRole(string $role): string
+    {
+        return in_array($role, ['Admin', 'Agent'], true) ? $role : 'Agent';
+    }
+
+    private function normalizedCrmStatus(string $status): string
+    {
+        return in_array($status, ['Active', 'Inactive', 'Review'], true) ? $status : 'Active';
+    }
+
+    private function normalizedCampusName(string $name): string
+    {
+        return trim((string) preg_replace('/\s+/', ' ', $name));
+    }
+
+    private function normalizedCategoryName(string $name): string
+    {
+        return trim((string) preg_replace('/\s+/', ' ', $name));
+    }
+
+    private function activeAdminCount(?int $excludeId = null): int
+    {
+        $builder = (new UserModel())
+            ->where('role', 'Admin Sistem')
+            ->where('status', 'Aktif')
+            ->where('deleted_at', null);
+
+        if ($excludeId !== null) {
+            $builder->where('id !=', $excludeId);
+        }
+
+        return $builder->countAllResults();
+    }
+}
