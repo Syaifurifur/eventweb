@@ -5,6 +5,7 @@ cd /var/www/html
 
 mkdir -p \
   storage/app/public \
+  storage/uploads/crm_follow_up \
   storage/cache \
   storage/framework/cache/data \
   storage/framework/sessions \
