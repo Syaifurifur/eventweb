@@ -24,7 +24,7 @@
                     <div class="p-4 rounded-xl bg-white/10 border border-white/15"><strong class="block text-xl font-bold text-white">3</strong><span class="text-xs text-neutral-200">Login</span></div>
                 </div>
             </div>
-            <div class="relative z-10 text-xs text-neutral-300">© <?= date('Y') ?> EventHub — WowDash UI</div>
+            <div class="relative z-10 text-xs text-neutral-300">© <?= date('Y') ?> EventHub</div>
         </div>
 
         <div class="lg:w-1/2 w-full py-8 px-6 flex flex-col justify-center">

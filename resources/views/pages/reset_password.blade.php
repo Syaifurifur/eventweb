@@ -19,7 +19,7 @@
                 <span class="inline-block px-3 py-1 rounded-full bg-primary-600/30 border border-primary-400/30 text-primary-200 text-xs font-semibold uppercase tracking-wider mb-3">Password baru</span>
                 <h1 class="text-3xl font-bold text-white leading-tight">Amankan akun dengan password baru yang mudah diingat dan sulit ditebak.</h1>
             </div>
-            <div class="relative z-10 text-xs text-neutral-300">© <?= date('Y') ?> EventHub — WowDash UI</div>
+            <div class="relative z-10 text-xs text-neutral-300">© <?= date('Y') ?> EventHub</div>
         </div>
 
         <div class="lg:w-1/2 w-full py-8 px-6 flex flex-col justify-center">

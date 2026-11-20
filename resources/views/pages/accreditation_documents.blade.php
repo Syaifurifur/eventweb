@@ -3,32 +3,105 @@
 .dx-chip-green { background:#dcfce7; color:#15803d; }
 .dx-chip-amber { background:#ffedd5; color:#c2410c; }
 .dx-chip-red { background:#ffe4e6; color:#be123c; }
-.dx-chip-slate { background:#e2e8f0; color:#475569; }
+.dx-chip-slate { background:#e2e8f0; color:#334155; }
 
-html.dark .dx-chip-green { background:rgba(34,197,94,0.2); color:#4ade80; border:1px solid rgba(34,197,94,0.3); }
-html.dark .dx-chip-amber { background:rgba(245,158,11,0.2); color:#fbbf24; border:1px solid rgba(245,158,11,0.3); }
-html.dark .dx-chip-red { background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.3); }
-html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); }
+html.dark .dx-chip-green, [data-theme="dark"] .dx-chip-green { background:rgba(34,197,94,0.2); color:#4ade80; border:1px solid rgba(34,197,94,0.3); }
+html.dark .dx-chip-amber, [data-theme="dark"] .dx-chip-amber { background:rgba(245,158,11,0.2); color:#fbbf24; border:1px solid rgba(245,158,11,0.3); }
+html.dark .dx-chip-red, [data-theme="dark"] .dx-chip-red { background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+html.dark .dx-chip-slate, [data-theme="dark"] .dx-chip-slate { background:rgba(148,163,184,0.2); color:#cbd5e1; border:1px solid rgba(148,163,184,0.3); }
+
+/* High-contrast light mode defaults (prevent OS prefers-color-scheme:dark from making text pale in light mode) */
+.accreditation-page-wrapper { color: #0f172a; }
+.accreditation-page-wrapper .acc-card-white { background-color: #ffffff !important; border-color: #cbd5e1 !important; color: #0f172a !important; }
+.accreditation-page-wrapper .acc-card-amber { background-color: #fffbeb !important; border-color: #f59e0b !important; color: #78350f !important; }
+.accreditation-page-wrapper .acc-card-blue  { background-color: #eff6ff !important; border-color: #3b82f6 !important; color: #1e3a8a !important; }
+.accreditation-page-wrapper .acc-card-emerald { background-color: #ecfdf5 !important; border-color: #10b981 !important; color: #064e3b !important; }
+.accreditation-page-wrapper select,
+.accreditation-page-wrapper select option,
+.accreditation-page-wrapper input[type="text"],
+.accreditation-page-wrapper input[type="url"],
+.accreditation-page-wrapper textarea {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+}
+.accreditation-page-wrapper input[readonly] {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+}
+.accreditation-page-wrapper .acc-table-head {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+}
+.accreditation-page-wrapper .acc-table-head th {
+    color: #ffffff !important;
+}
+
+/* Override any media-based dark:* classes when EventHub is in Light Mode */
+html:not(.dark):not([data-theme="dark"]) .accreditation-page-wrapper .text-slate-900 { color: #0f172a !important; }
+html:not(.dark):not([data-theme="dark"]) .accreditation-page-wrapper .text-slate-800 { color: #1e293b !important; }
+html:not(.dark):not([data-theme="dark"]) .accreditation-page-wrapper .text-slate-700 { color: #334155 !important; }
+html:not(.dark):not([data-theme="dark"]) .accreditation-page-wrapper .text-slate-600,
+html:not(.dark):not([data-theme="dark"]) .accreditation-page-wrapper .text-slate-500 { color: #334155 !important; }
+html:not(.dark):not([data-theme="dark"]) .accreditation-page-wrapper .text-slate-400 { color: #475569 !important; }
+html:not(.dark):not([data-theme="dark"]) .accreditation-page-wrapper .bg-white { background-color: #ffffff !important; }
+html:not(.dark):not([data-theme="dark"]) .accreditation-page-wrapper .bg-slate-50 { background-color: #f8fafc !important; }
+
+/* Explicit Dark Mode support when EventHub dark theme is active */
+html.dark .accreditation-page-wrapper,
+[data-theme="dark"] .accreditation-page-wrapper { color: #f1f5f9; }
+html.dark .accreditation-page-wrapper .acc-card-white,
+[data-theme="dark"] .accreditation-page-wrapper .acc-card-white { background-color: #1e293b !important; border-color: #334155 !important; color: #f8fafc !important; }
+html.dark .accreditation-page-wrapper .acc-card-amber,
+[data-theme="dark"] .accreditation-page-wrapper .acc-card-amber { background-color: rgba(245, 158, 11, 0.16) !important; border-color: rgba(245, 158, 11, 0.4) !important; color: #fde68a !important; }
+html.dark .accreditation-page-wrapper .acc-card-blue,
+[data-theme="dark"] .accreditation-page-wrapper .acc-card-blue { background-color: rgba(59, 130, 246, 0.16) !important; border-color: rgba(59, 130, 246, 0.4) !important; color: #bfdbfe !important; }
+html.dark .accreditation-page-wrapper .acc-card-emerald,
+[data-theme="dark"] .accreditation-page-wrapper .acc-card-emerald { background-color: rgba(16, 185, 129, 0.16) !important; border-color: rgba(16, 185, 129, 0.4) !important; color: #a7f3d0 !important; }
+html.dark .accreditation-page-wrapper .text-slate-900,
+html.dark .accreditation-page-wrapper .text-slate-800,
+html.dark .accreditation-page-wrapper .text-slate-700,
+[data-theme="dark"] .accreditation-page-wrapper .text-slate-900,
+[data-theme="dark"] .accreditation-page-wrapper .text-slate-800,
+[data-theme="dark"] .accreditation-page-wrapper .text-slate-700 { color: #f1f5f9 !important; }
+html.dark .accreditation-page-wrapper .text-slate-600,
+html.dark .accreditation-page-wrapper .text-slate-500,
+[data-theme="dark"] .accreditation-page-wrapper .text-slate-600,
+[data-theme="dark"] .accreditation-page-wrapper .text-slate-500 { color: #cbd5e1 !important; }
+html.dark .accreditation-page-wrapper select,
+html.dark .accreditation-page-wrapper select option,
+html.dark .accreditation-page-wrapper input[type="text"],
+html.dark .accreditation-page-wrapper input[type="url"],
+html.dark .accreditation-page-wrapper textarea,
+[data-theme="dark"] .accreditation-page-wrapper select,
+[data-theme="dark"] .accreditation-page-wrapper select option,
+[data-theme="dark"] .accreditation-page-wrapper input[type="text"],
+[data-theme="dark"] .accreditation-page-wrapper input[type="url"],
+[data-theme="dark"] .accreditation-page-wrapper textarea {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
+}
 </style>
 
-<div class="space-y-6">
+<div class="accreditation-page-wrapper space-y-6">
     <!-- Header & Breadcrumbs -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-300">
         <div>
-            <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1">
+            <div class="flex items-center gap-2 text-xs font-semibold text-slate-700 mb-1">
                 <a href="<?= site_url('dashboard') ?>" class="hover:text-primary-600 transition-colors">Dashboard</a>
                 <span>&rsaquo;</span>
                 <span>Dokumen &amp; Laporan</span>
                 <span>&rsaquo;</span>
-                <span class="font-bold text-slate-700 dark:text-slate-200">Dokumen Akreditasi</span>
+                <span class="font-extrabold text-slate-900">Dokumen Akreditasi</span>
             </div>
-            <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
+            <h1 class="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2.5">
                 <span class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-primary-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 text-sm">
                     🎓
                 </span>
                 Dokumen Akreditasi Kampus
             </h1>
-            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <p class="text-xs sm:text-sm font-medium text-slate-700 mt-1">
                 Fasilitas pengelolaan berkas &amp; bukti fisik pelaksanaan event untuk pemenuhan instrumen akreditasi (BAN-PT &amp; LAM-INFOKOM)
             </p>
         </div>
@@ -40,11 +113,11 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
                     <span>🔍 Cari Dokumen Event &amp; Jadikan Akreditasi</span>
                 </button>
             <?php endif; ?>
-            <a href="<?= site_url('documents') ?>" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors shadow-sm" title="Buka seluruh dokumen event untuk memilih">
+            <a href="<?= site_url('documents') ?>" class="acc-card-white inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 transition-colors shadow-sm" title="Buka seluruh dokumen event untuk memilih">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 <span>Kelola Dokumen Event</span>
             </a>
-            <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors shadow-sm">
+            <button type="button" onclick="window.print()" class="acc-card-white inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 transition-colors shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                 <span>Cetak Lembar Kendali</span>
             </button>
@@ -74,56 +147,56 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
 
     <!-- 4 Stats Cards (Ringkasan Kesiapan Akreditasi) -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm">
+        <div class="acc-card-white p-4 rounded-2xl bg-white border border-slate-300 shadow-sm">
             <div class="flex items-center justify-between">
-                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Dokumen</span>
-                <span class="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">📄</span>
+                <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-700">Total Dokumen</span>
+                <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">📄</span>
             </div>
-            <div class="text-2xl font-black text-slate-900 dark:text-slate-100 mt-2"><?= (int) $stats['total'] ?></div>
-            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Ditetapkan untuk akreditasi</div>
+            <div class="text-2xl font-black text-slate-900 mt-2"><?= (int) $stats['total'] ?></div>
+            <div class="text-[11px] font-semibold text-slate-600 mt-0.5">Ditetapkan untuk akreditasi</div>
         </div>
 
-        <div class="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 shadow-sm">
+        <div class="acc-card-amber p-4 rounded-2xl bg-amber-50 border border-amber-300 shadow-sm">
             <div class="flex items-center justify-between">
-                <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Menunggu Kelengkapan</span>
-                <span class="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xs font-bold">⚠️</span>
+                <span class="text-[11px] font-extrabold uppercase tracking-wider" style="color: inherit;">Menunggu Kelengkapan</span>
+                <span class="w-7 h-7 rounded-lg bg-amber-200/80 text-amber-900 flex items-center justify-center text-xs font-bold">⚠️</span>
             </div>
-            <div class="text-2xl font-black text-amber-700 dark:text-amber-300 mt-2"><?= (int) $stats['waiting_complete'] ?></div>
-            <div class="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">Perlu dilengkapi Kepala Kampus</div>
+            <div class="text-2xl font-black mt-2" style="color: inherit;"><?= (int) $stats['waiting_complete'] ?></div>
+            <div class="text-[11px] font-semibold mt-0.5" style="color: inherit;">Perlu dilengkapi Kepala Kampus</div>
         </div>
 
-        <div class="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/50 shadow-sm">
+        <div class="acc-card-blue p-4 rounded-2xl bg-blue-50 border border-blue-300 shadow-sm">
             <div class="flex items-center justify-between">
-                <span class="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">Menunggu Verifikasi</span>
-                <span class="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-bold">🕒</span>
+                <span class="text-[11px] font-extrabold uppercase tracking-wider" style="color: inherit;">Menunggu Verifikasi</span>
+                <span class="w-7 h-7 rounded-lg bg-blue-200/80 text-blue-900 flex items-center justify-center text-xs font-bold">🕒</span>
             </div>
-            <div class="text-2xl font-black text-blue-700 dark:text-blue-300 mt-2"><?= (int) $stats['waiting_verify'] ?></div>
-            <div class="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">Sudah diisi, menunggu review Admin</div>
+            <div class="text-2xl font-black mt-2" style="color: inherit;"><?= (int) $stats['waiting_verify'] ?></div>
+            <div class="text-[11px] font-semibold mt-0.5" style="color: inherit;">Sudah diisi, menunggu review Admin</div>
         </div>
 
-        <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/50 shadow-sm">
+        <div class="acc-card-emerald p-4 rounded-2xl bg-emerald-50 border border-emerald-300 shadow-sm">
             <div class="flex items-center justify-between">
-                <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Lengkap &amp; Terverifikasi</span>
-                <span class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs font-bold">✅</span>
+                <span class="text-[11px] font-extrabold uppercase tracking-wider" style="color: inherit;">Lengkap &amp; Terverifikasi</span>
+                <span class="w-7 h-7 rounded-lg bg-emerald-200/80 text-emerald-900 flex items-center justify-center text-xs font-bold">✅</span>
             </div>
-            <div class="text-2xl font-black text-emerald-700 dark:text-emerald-300 mt-2"><?= (int) $stats['verified'] ?></div>
-            <div class="flex items-center justify-between text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+            <div class="text-2xl font-black mt-2" style="color: inherit;"><?= (int) $stats['verified'] ?></div>
+            <div class="flex items-center justify-between text-[11px] font-semibold mt-0.5" style="color: inherit;">
                 <span>Siap instrumen akreditasi</span>
-                <span class="font-extrabold"><?= (int) $stats['percentage'] ?>%</span>
+                <span class="font-black"><?= (int) $stats['percentage'] ?>%</span>
             </div>
         </div>
     </div>
 
     <!-- Filter Bar Interaktif: Kampus, Tahun Pelaksanaan, Status, Standar Akreditasi & Pencarian -->
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm p-4 sm:p-5">
+    <div class="acc-card-white bg-white rounded-2xl border border-slate-300 shadow-sm p-4 sm:p-5">
         <form method="get" action="<?= site_url('documents/accreditation') ?>" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
             <!-- Filter 1: Kampus -->
             <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-800 mb-1.5">
                     Kampus Pelaksana:
                 </label>
                 <?php if ($isAdmin): ?>
-                    <select name="campus_id" class="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                    <select name="campus_id" class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-primary-500 focus:outline-none">
                         <option value="">-- Semua Kampus --</option>
                         <?php foreach ($campuses as $c): ?>
                             <option value="<?= $c['id'] ?>" <?= ($selectedCampusId == $c['id']) ? 'selected' : '' ?>>
@@ -141,17 +214,17 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
                             }
                         }
                     ?>
-                    <input type="text" readonly value="<?= esc($userCampusName) ?> (Terkunci)" class="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 cursor-not-allowed">
+                    <input type="text" readonly value="<?= esc($userCampusName) ?> (Terkunci)" class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-slate-100 text-slate-700 cursor-not-allowed">
                     <input type="hidden" name="campus_id" value="<?= (int) $selectedCampusId ?>">
                 <?php endif; ?>
             </div>
 
             <!-- Filter 2: Tahun Pelaksanaan -->
             <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-800 mb-1.5">
                     Tahun Pelaksanaan:
                 </label>
-                <select name="year" class="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <select name="year" class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-primary-500 focus:outline-none">
                     <option value="">-- Semua Tahun --</option>
                     <?php foreach ($availableYears as $yr): ?>
                         <option value="<?= $yr ?>" <?= ($selectedYear == $yr) ? 'selected' : '' ?>>
@@ -163,10 +236,10 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
 
             <!-- Filter 3: Status Kelengkapan -->
             <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-800 mb-1.5">
                     Status Kelengkapan:
                 </label>
-                <select name="status" class="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <select name="status" class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-primary-500 focus:outline-none">
                     <option value="">-- Semua Status --</option>
                     <option value="menunggu_kelengkapan" <?= ($selectedStatus === 'menunggu_kelengkapan') ? 'selected' : '' ?>>⚠️ Menunggu Kelengkapan</option>
                     <option value="menunggu_verifikasi" <?= ($selectedStatus === 'menunggu_verifikasi') ? 'selected' : '' ?>>🕒 Menunggu Verifikasi</option>
@@ -176,10 +249,10 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
 
             <!-- Filter 4: Standar Akreditasi -->
             <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-800 mb-1.5">
                     Kriteria / Standar:
                 </label>
-                <select name="standard" class="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                <select name="standard" class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-primary-500 focus:outline-none">
                     <option value="">-- Semua Kriteria --</option>
                     <?php foreach ($accreditationStandards as $std): ?>
                         <option value="<?= esc($std) ?>" <?= ($selectedStandard === $std) ? 'selected' : '' ?>>
@@ -191,18 +264,18 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
 
             <!-- Filter 5: Pencarian & Tombol Aksi -->
             <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-800 mb-1.5">
                     Pencarian Kata Kunci:
                 </label>
                 <div class="flex items-center gap-1.5">
                     <div class="relative flex-1">
-                        <input type="text" name="q" value="<?= esc($search) ?>" placeholder="Judul, kode event, catatan..." class="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                        <input type="text" name="q" value="<?= esc($search) ?>" placeholder="Judul, kode event, catatan..." class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-primary-500 focus:outline-none">
                     </div>
-                    <button type="submit" class="px-3 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold transition-colors shrink-0" title="Terapkan Filter">
+                    <button type="submit" class="px-3.5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-bold transition-colors shrink-0" title="Terapkan Filter">
                         Cari
                     </button>
                     <?php if (!empty($selectedCampusId) || !empty($selectedYear) || !empty($selectedStatus) || !empty($selectedStandard) || !empty($search)): ?>
-                        <a href="<?= site_url('documents/accreditation') ?>" class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors shrink-0" title="Reset Filter">
+                        <a href="<?= site_url('documents/accreditation') ?>" class="px-2.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-colors shrink-0" title="Reset Filter">
                             ✕
                         </a>
                     <?php endif; ?>
@@ -212,18 +285,18 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
     </div>
 
     <!-- Tabel Data Dokumen Akreditasi -->
-    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-sm overflow-hidden">
-        <div class="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+    <div class="acc-card-white bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h3 class="text-base font-extrabold text-slate-900 dark:text-slate-100">
+                <h3 class="text-base font-extrabold text-slate-900">
                     Daftar Dokumen Akreditasi
                 </h3>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Menampilkan <strong><?= count($items) ?></strong> dokumen yang ditetapkan untuk bukti akreditasi
+                <p class="text-xs font-medium text-slate-600 mt-0.5">
+                    Menampilkan <strong class="text-slate-900"><?= count($items) ?></strong> dokumen yang ditetapkan untuk bukti akreditasi
                 </p>
             </div>
             <div class="flex items-center gap-2 text-xs">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-indigo-100 text-indigo-900 border border-indigo-300" style="background-color: #e0e7ff; color: #1e1b4b; border-color: #a5b4fc;">
                     <span>🏛 Cakupan:</span>
                     <strong><?= $isAdmin ? ($selectedCampusId ? 'Kampus Terpilih' : 'Seluruh Kampus') : 'Kampus Anda' ?></strong>
                 </span>
@@ -232,7 +305,7 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
 
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
+                <thead class="acc-table-head bg-slate-900 border-b border-slate-800 text-white font-bold uppercase tracking-wider text-[11px]">
                     <tr>
                         <th class="py-3 px-3.5 text-center w-12">No</th>
                         <th class="py-3 px-4">Event &amp; Kode</th>
@@ -244,16 +317,16 @@ html.dark .dx-chip-slate { background:rgba(148,163,184,0.2); color:#94a3b8; bord
                         <th class="py-3 px-4 text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/60 text-slate-700 dark:text-slate-300">
+                <tbody class="divide-y divide-slate-200 text-slate-800">
                     <?php if (empty($items)): ?>
                         <tr>
-                            <td colspan="8" class="py-12 text-center text-slate-400 dark:text-slate-500">
-                                <svg class="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                <p class="text-xs font-bold text-slate-600 dark:text-slate-400">Belum ada dokumen akreditasi yang sesuai dengan filter.</p>
+                            <td colspan="8" class="py-12 text-center text-slate-600">
+                                <svg class="w-10 h-10 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <p class="text-xs font-extrabold text-slate-800">Belum ada dokumen akreditasi yang sesuai dengan filter.</p>
                                 <?php if ($isAdmin): ?>
-                                    <p class="text-[11px] text-slate-400 mt-1">Klik tombol <strong>"+ Pilih Dokumen Event untuk Akreditasi"</strong> di atas untuk menetapkan dokumen baru.</p>
+                                    <p class="text-xs font-medium text-slate-600 mt-1">Klik tombol <strong class="text-slate-900">"🔍 Cari Dokumen Event &amp; Jadikan Akreditasi"</strong> di atas untuk menetapkan dokumen baru.</p>
                                 <?php else: ?>
-                                    <p class="text-[11px] text-slate-400 mt-1">Admin belum menetapkan dokumen akreditasi untuk kampus Anda pada filter ini.</p>
+                                    <p class="text-xs font-medium text-slate-600 mt-1">Admin belum menetapkan dokumen akreditasi untuk kampus Anda pada filter ini.</p>
                                 <?php endif; ?>
                             </td>
                         </tr>
