@@ -553,6 +553,154 @@ class EventSuite extends BaseController
         return response()->json($realtimePayload);
     }
 
+    public function crmReportLeadDetail(int $id): \Illuminate\Http\JsonResponse
+    {
+        $lead = \Illuminate\Support\Facades\DB::table('crm_leads as l')
+            ->leftJoin('events as e', 'l.event_id', '=', 'e.id')
+            ->leftJoin('campuses as c', 'e.campus_id', '=', 'c.id')
+            ->leftJoin('crm_users as u', 'l.agent_id', '=', 'u.id')
+            ->select([
+                'l.id', 'l.student_name', 'l.school_origin', 'l.whatsapp', 'l.email',
+                'l.stage', 'l.label', 'l.notes', 'l.rejection_reason', 'l.pmb_period',
+                'e.code as event_code', 'e.title as event_title', 'e.campus_id as event_campus_id',
+                'c.name as campus_name', 'u.full_name as agent_name',
+            ])
+            ->where('l.id', $id)
+            ->first();
+
+        if (! $lead || ! $this->canViewCrmLeadInReport((int) ($lead->event_campus_id ?? 0))) {
+            return response()->json(['ok' => false, 'message' => 'Data prospek tidak ditemukan atau akses ditolak.'], 404);
+        }
+
+        $messages = [];
+        try {
+            $msgRows = \Illuminate\Support\Facades\DB::table('crm_chat_messages')
+                ->where('lead_id', $id)
+                ->orderBy('created_at', 'ASC')
+                ->orderBy('id', 'ASC')
+                ->limit(100)
+                ->get();
+            foreach ($msgRows as $m) {
+                $createdAt = (string) ($m->created_at ?? '');
+                $messages[] = [
+                    'id' => (int) ($m->id ?? 0),
+                    'sender_type' => (string) ($m->sender_type ?? 'agent'),
+                    'message' => (string) ($m->message ?? ''),
+                    'created_at' => $createdAt,
+                    'formatted_date' => $createdAt !== '' ? date('d M Y, H:i', strtotime($createdAt)) : '',
+                ];
+            }
+        } catch (\Throwable $e) {
+            $messages = [];
+        }
+
+        $logs = [];
+        try {
+            $logRows = \Illuminate\Support\Facades\DB::table('crm_lead_logs as lg')
+                ->leftJoin('crm_users as u', 'lg.user_id', '=', 'u.id')
+                ->select(['lg.id', 'lg.action', 'lg.new_stage', 'lg.new_label', 'lg.summary', 'lg.follow_up_image', 'lg.created_at', 'u.full_name as actor_name'])
+                ->where('lg.lead_id', $id)
+                ->orderByDesc('lg.created_at')
+                ->orderByDesc('lg.id')
+                ->limit(20)
+                ->get();
+            foreach ($logRows as $lg) {
+                $createdAt = (string) ($lg->created_at ?? '');
+                $logs[] = [
+                    'id' => (int) ($lg->id ?? 0),
+                    'action' => (string) ($lg->action ?? 'update'),
+                    'new_stage' => (string) ($lg->new_stage ?? ''),
+                    'new_label' => (string) ($lg->new_label ?? ''),
+                    'summary' => (string) ($lg->summary ?? ''),
+                    'actor_name' => (string) ($lg->actor_name ?: 'Tim CRM'),
+                    'image_url' => ! empty($lg->follow_up_image) ? site_url('laporan-crm/log-image/' . $lg->id) : null,
+                    'formatted_time' => $createdAt !== '' ? date('d M Y, H:i', strtotime($createdAt)) : '-',
+                ];
+            }
+        } catch (\Throwable $e) {
+            $logs = [];
+        }
+
+        return response()->json([
+            'ok' => true,
+            'lead' => [
+                'id' => (int) $lead->id,
+                'student_name' => (string) ($lead->student_name ?: 'Calon Mahasiswa #' . $lead->id),
+                'school_origin' => (string) ($lead->school_origin ?: '-'),
+                'whatsapp' => (string) ($lead->whatsapp ?: '-'),
+                'stage' => (string) ($lead->stage ?: '-'),
+                'label' => (string) ($lead->label ?: '-'),
+                'notes' => (string) ($lead->notes ?? ''),
+                'rejection_reason' => (string) ($lead->rejection_reason ?? ''),
+                'pmb_period' => (string) ($lead->pmb_period ?? ''),
+                'event_code' => (string) ($lead->event_code ?: '-'),
+                'event_title' => (string) ($lead->event_title ?: '-'),
+                'campus_name' => (string) ($lead->campus_name ?: '-'),
+                'agent_name' => (string) ($lead->agent_name ?: 'Belum diassign'),
+            ],
+            'messages' => $messages,
+            'logs' => $logs,
+        ]);
+    }
+
+    public function crmReportLogImage(int $id)
+    {
+        $log = \Illuminate\Support\Facades\DB::table('crm_lead_logs as lg')
+            ->leftJoin('crm_leads as l', 'lg.lead_id', '=', 'l.id')
+            ->leftJoin('events as e', 'l.event_id', '=', 'e.id')
+            ->select(['lg.follow_up_image', 'e.campus_id as event_campus_id'])
+            ->where('lg.id', $id)
+            ->first();
+
+        if (! $log || empty($log->follow_up_image) || ! $this->canViewCrmLeadInReport((int) ($log->event_campus_id ?? 0))) {
+            abort(404);
+        }
+
+        $relativePath = str_replace('\\', '/', trim((string) $log->follow_up_image));
+        if (! str_starts_with($relativePath, 'uploads/crm_follow_up/') || str_contains($relativePath, '..')) {
+            abort(404);
+        }
+
+        $root = realpath(WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'crm_follow_up');
+        $path = realpath(WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $relativePath));
+        if ($root === false || $path === false || ! is_file($path)) {
+            abort(404);
+        }
+
+        $rootPrefix = rtrim($root, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        if (! str_starts_with($path, $rootPrefix)) {
+            abort(404);
+        }
+
+        $mime = mime_content_type($path);
+        if (! in_array($mime, ['image/jpeg', 'image/png'], true)) {
+            abort(404);
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
+    private function canViewCrmLeadInReport(int $eventCampusId): bool
+    {
+        $roleName = (string) session('user.role');
+        $normalizedRole = strtolower($this->normalizedRoleName($roleName));
+        if (in_array($normalizedRole, ['admin sistem', 'super admin', 'admin', 'dmer'], true) || $this->isGlobalMarkomCampus()) {
+            return true;
+        }
+
+        $userCampusId = (int) session('user.campus_id');
+        if ($userCampusId <= 0 && (int) session('crmUser.campus_id') > 0) {
+            $userCampusId = (int) session('crmUser.campus_id');
+        }
+
+        return $userCampusId > 0 && $userCampusId === $eventCampusId;
+    }
+
     public function taskManager(): string
     {
         $activeTab = $this->request->getGet('tab') === 'selesai' ? 'selesai' : 'berjalan';

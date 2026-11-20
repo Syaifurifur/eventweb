@@ -140,6 +140,8 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::get('crm-report', [EventSuite::class, 'crmRecommendationReport'])->middleware('access:dashboard');
     Route::get('laporan-crm/realtime-data', [EventSuite::class, 'crmRealtimeReportData'])->middleware('access:dashboard');
     Route::get('crm-report/realtime-data', [EventSuite::class, 'crmRealtimeReportData'])->middleware('access:dashboard');
+    Route::get('laporan-crm/lead-detail/{id}', [EventSuite::class, 'crmReportLeadDetail'])->whereNumber('id')->middleware('access:dashboard');
+    Route::get('laporan-crm/log-image/{id}', [EventSuite::class, 'crmReportLogImage'])->whereNumber('id')->middleware('access:dashboard');
     Route::get('reports/export', [EventSuite::class, 'exportReports'])->middleware('access:reports');
     Route::get('reports/crm-export', [EventSuite::class, 'exportCrmResults'])->middleware('access:reports');
     Route::post('reports/{code}', [EventSuite::class, 'updateReport'])->middleware('access:reports');

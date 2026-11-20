@@ -174,6 +174,7 @@ class CrmRealtimeReportService
                     'lg.new_stage',
                     'lg.new_label',
                     'lg.summary',
+                    'lg.follow_up_image',
                     'u.full_name as agent_name',
                     'lg.created_at',
                 ]);
@@ -208,6 +209,7 @@ class CrmRealtimeReportService
                     'new_stage' => (string) ($lg->new_stage ?: '-'),
                     'new_label' => (string) ($lg->new_label ?: '-'),
                     'summary' => (string) ($lg->summary ?: 'Follow up prospek'),
+                    'has_image' => !empty($lg->follow_up_image),
                     'created_at' => (string) $lg->created_at,
                     'time_ago' => $this->timeElapsedString((string) $lg->created_at),
                 ];

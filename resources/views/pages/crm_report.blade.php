@@ -922,6 +922,7 @@ $initialActiveTab = $canViewAllCrmCampuses
                 <th class="py-2.5 px-2.5">Agent / Petugas</th>
                 <th class="py-2.5 px-2 text-center">Tahap / Label Respon</th>
                 <th class="py-2.5 px-3">Ringkasan Interaksi</th>
+                <th class="py-2.5 px-3 text-center">Chat &amp; Bukti</th>
               </tr>
             </thead>
             <tbody id="crmRecentLogsTableBody" class="divide-y divide-slate-200">
@@ -994,6 +995,34 @@ $initialActiveTab = $canViewAllCrmCampuses
   <!-- Toast Notification -->
   <div id="toastNotice" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-medium border border-slate-700">
     Sinkronisasi Berhasil!
+  </div>
+
+  <!-- Pop-up Modal: Detail Chat, Catatan Follow-Up & Bukti Screenshot -->
+  <div id="crmLogDetailModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/65 backdrop-blur-xs p-3 sm:p-5" role="dialog" aria-modal="true" aria-labelledby="crmLogModalStudentName">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-3xl max-h-[88vh] flex flex-col overflow-hidden">
+      <div class="bg-slate-900 text-white px-5 py-4 flex items-start justify-between gap-3 shrink-0">
+        <div class="space-y-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h3 id="crmLogModalStudentName" class="text-base font-extrabold text-white">Memuat Detail Prospek...</h3>
+            <span id="crmLogModalStageBadge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">-</span>
+          </div>
+          <p id="crmLogModalMeta" class="text-xs text-slate-300">-</p>
+        </div>
+        <button type="button" onclick="closeCrmLogDetailModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition" aria-label="Tutup jendela">✕</button>
+      </div>
+
+      <div id="crmLogModalBody" class="p-5 overflow-y-auto crm-custom-scrollbar space-y-5 text-xs">
+        <!-- Populated dynamically via JS -->
+      </div>
+
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+        <span class="text-[11px] text-slate-500">Data diambil langsung dari database CRM Workspace secara real-time.</span>
+        <div class="flex items-center gap-2">
+          <a id="crmLogModalOpenCrmLink" href="<?= site_url('crm') ?>" target="_blank" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition">Buka di CRM Workspace ↗</a>
+          <button type="button" onclick="closeCrmLogDetailModal()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-800 transition">Tutup</button>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -2046,12 +2075,12 @@ $initialActiveTab = $canViewAllCrmCampuses
 
     const logs = CRM_RECENT_LOGS || [];
     if (logs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">Belum ada rekaman log follow-up terbaru.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">Belum ada rekaman log follow-up terbaru.</td></tr>`;
       return;
     }
 
     logs.slice(0, 25).forEach((log) => {
-      let labelBadge = `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[10px]">${log.new_label || log.new_stage || '-'}</span>`;
+      let labelBadge = `<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[10px]">${escapeHtml(log.new_label || log.new_stage || '-')}</span>`;
       const lb = (log.new_label || '').toLowerCase();
       if (lb.includes('closing')) {
         labelBadge = `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">★ Closing</span>`;
@@ -2063,24 +2092,145 @@ $initialActiveTab = $canViewAllCrmCampuses
         labelBadge = `<span class="px-2 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[10px]">Menolak</span>`;
       }
 
+      const imgTag = log.has_image ? `<span title="Memiliki bukti screenshot chat">🖼️</span>` : '';
       const tr = document.createElement('tr');
       tr.className = 'hover:bg-slate-50';
       tr.innerHTML = `
         <td class="py-2 px-3 text-slate-500 whitespace-nowrap">
-          <div>${log.time_ago || log.created_at}</div>
-          <div class="text-[9px] text-slate-400 font-mono">${log.created_at}</div>
+          <div>${escapeHtml(log.time_ago || log.created_at)}</div>
+          <div class="text-[9px] text-slate-400 font-mono">${escapeHtml(log.created_at)}</div>
         </td>
-        <td class="py-2 px-3 font-bold text-slate-900">${log.student_name}</td>
+        <td class="py-2 px-3 font-bold text-slate-900">${escapeHtml(log.student_name)}</td>
         <td class="py-2 px-3 text-slate-600">
-          <div class="font-semibold text-slate-800">${log.campus_name}</div>
-          <div class="text-[10px] text-indigo-600 font-mono font-medium">${log.event_code} — ${log.event_title}</div>
+          <div class="font-semibold text-slate-800">${escapeHtml(log.campus_name)}</div>
+          <div class="text-[10px] text-indigo-600 font-mono font-medium">${escapeHtml(log.event_code)} — ${escapeHtml(log.event_title)}</div>
         </td>
-        <td class="py-2 px-2.5 font-medium text-slate-700">${log.agent_name}</td>
+        <td class="py-2 px-2.5 font-medium text-slate-700">${escapeHtml(log.agent_name)}</td>
         <td class="py-2 px-2 text-center">${labelBadge}</td>
-        <td class="py-2 px-3 text-slate-600 max-w-xs truncate" title="${log.summary}">${log.summary}</td>
+        <td class="py-2 px-3 text-slate-600 max-w-xs truncate" title="${escapeHtml(log.summary)}">${escapeHtml(log.summary)}</td>
+        <td class="py-2 px-3 text-center whitespace-nowrap">
+          <button type="button" onclick="openCrmLogDetailModal(${Number(log.lead_id)})" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition shadow-2xs">
+            <span>💬 Lihat Chat &amp; Bukti</span>${imgTag}
+          </button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
+  }
+
+  function closeCrmLogDetailModal() {
+    const modal = document.getElementById('crmLogDetailModal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  }
+
+  async function openCrmLogDetailModal(leadId) {
+    const modal = document.getElementById('crmLogDetailModal');
+    const titleEl = document.getElementById('crmLogModalStudentName');
+    const stageEl = document.getElementById('crmLogModalStageBadge');
+    const metaEl = document.getElementById('crmLogModalMeta');
+    const bodyEl = document.getElementById('crmLogModalBody');
+    const crmLinkEl = document.getElementById('crmLogModalOpenCrmLink');
+    if (!modal || !bodyEl) return;
+
+    if (titleEl) titleEl.textContent = 'Memuat Detail Prospek...';
+    if (stageEl) stageEl.textContent = '...';
+    if (metaEl) metaEl.textContent = 'Mengambil riwayat chat, catatan follow-up, dan bukti gambar...';
+    bodyEl.innerHTML = `<div class="py-8 text-center text-slate-500 font-medium">⏳ Sedang memuat data dari server...</div>`;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    try {
+      const res = await fetch(`<?= site_url('laporan-crm/lead-detail') ?>/${encodeURIComponent(leadId)}`);
+      const data = await res.json();
+      if (!res.ok || !data || !data.ok) {
+        throw new Error((data && data.message) || 'Gagal memuat detail prospek.');
+      }
+
+      const lead = data.lead || {};
+      const messages = data.messages || [];
+      const logs = data.logs || [];
+
+      if (titleEl) titleEl.textContent = lead.student_name || `Calon Mahasiswa #${leadId}`;
+      if (stageEl) stageEl.textContent = `${lead.stage || '-'} • ${lead.label || '-'}`;
+      if (metaEl) {
+        metaEl.textContent = `${lead.campus_name || '-'} • ${lead.event_code || '-'} (${lead.event_title || '-'}) • Agent: ${lead.agent_name || '-'} • WA: ${lead.whatsapp || '-'}`;
+      }
+      if (crmLinkEl) {
+        crmLinkEl.href = `<?= site_url('crm') ?>?q=${encodeURIComponent(lead.student_name || '')}`;
+      }
+
+      // 1. Riwayat Chat CRM
+      let chatHtml = '';
+      if (messages.length === 0) {
+        chatHtml = `<div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500">Belum ada riwayat chat yang dicatat di panel Chat CRM Workspace untuk siswa ini (agent kemungkinan menghubungi langsung via WhatsApp eksternal).</div>`;
+      } else {
+        chatHtml = `<div class="space-y-2 max-h-56 overflow-y-auto crm-custom-scrollbar p-3 rounded-xl bg-slate-50 border border-slate-200">` +
+          messages.map((m) => {
+            const isStudent = (m.sender_type || '').toLowerCase() === 'student';
+            return `
+              <div class="flex ${isStudent ? 'justify-start' : 'justify-end'}">
+                <div class="max-w-[82%] rounded-xl px-3 py-2 border ${isStudent ? 'bg-white border-slate-200 text-slate-800' : 'bg-indigo-600 border-indigo-600 text-white'}">
+                  <div class="text-[10px] font-bold mb-0.5 ${isStudent ? 'text-emerald-700' : 'text-indigo-100'}">${isStudent ? '🎓 Calon Mahasiswa' : '👤 Agent CRM'} • ${escapeHtml(m.formatted_date || m.created_at || '')}</div>
+                  <div class="whitespace-pre-wrap leading-relaxed">${escapeHtml(m.message || '')}</div>
+                </div>
+              </div>
+            `;
+          }).join('') +
+          `</div>`;
+      }
+
+      // 2. Catatan Follow-Up
+      const notesText = (lead.notes || '').trim();
+      const rejText = (lead.rejection_reason || '').trim();
+      let notesHtml = '';
+      if (!notesText && !rejText) {
+        notesHtml = `<div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500">Belum ada catatan follow-up tertulis dari agent.</div>`;
+      } else {
+        notesHtml = `<div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-slate-800 space-y-1.5">
+          ${notesText ? `<div class="whitespace-pre-wrap leading-relaxed">${escapeHtml(notesText)}</div>` : ''}
+          ${rejText ? `<div class="text-[11px] font-semibold text-rose-700">Alasan Penolakan: ${escapeHtml(rejText)}</div>` : ''}
+        </div>`;
+      }
+
+      // 3. Bukti Screenshot Chat & Log Perubahan
+      const logsWithImg = logs.filter((l) => !!l.image_url);
+      let imgHtml = '';
+      if (logsWithImg.length === 0) {
+        imgHtml = `<div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500">Belum ada gambar screenshot bukti chat WhatsApp yang diunggah pada log follow-up siswa ini.</div>`;
+      } else {
+        imgHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">` +
+          logsWithImg.map((l) => `
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 space-y-2">
+              <a href="${escapeHtml(l.image_url)}" target="_blank" class="block overflow-hidden rounded-lg border border-slate-200 bg-white">
+                <img src="${escapeHtml(l.image_url)}" alt="Bukti Chat Follow-Up" class="w-full h-44 object-contain bg-slate-100 hover:scale-[1.02] transition">
+              </a>
+              <div class="text-[11px] text-slate-700 font-semibold">${escapeHtml(l.actor_name || 'Tim CRM')} • ${escapeHtml(l.formatted_time || '-')}</div>
+              <div class="text-[11px] text-slate-500">${escapeHtml(l.summary || '')}</div>
+            </div>
+          `).join('') +
+          `</div>`;
+      }
+
+      bodyEl.innerHTML = `
+        <div class="space-y-2">
+          <h4 class="font-extrabold text-slate-900 flex items-center gap-1.5"><span>1. 💬 Riwayat Chat CRM</span><span class="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200">${messages.length} pesan</span></h4>
+          ${chatHtml}
+        </div>
+        <div class="space-y-2">
+          <h4 class="font-extrabold text-slate-900">2. 📝 Catatan Follow-Up Agent</h4>
+          ${notesHtml}
+        </div>
+        <div class="space-y-2">
+          <h4 class="font-extrabold text-slate-900 flex items-center gap-1.5"><span>3. 🖼️ Bukti Screenshot Chat WhatsApp</span><span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">${logsWithImg.length} gambar</span></h4>
+          ${imgHtml}
+        </div>
+      `;
+    } catch (err) {
+      bodyEl.innerHTML = `<div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 font-semibold">⚠️ ${escapeHtml(err.message || 'Gagal memuat detail prospek.')}</div>`;
+    }
   }
 
   function switchTab(tabName) {
@@ -2303,6 +2453,12 @@ $initialActiveTab = $canViewAllCrmCampuses
     }
     document.getElementById('topCrmPmbPeriodFilter')?.addEventListener('change', (e) => handlePmbPeriodChange(e.target.value));
     document.getElementById('adminCrmPmbPeriodFilter')?.addEventListener('change', (e) => handlePmbPeriodChange(e.target.value));
+    document.getElementById('crmLogDetailModal')?.addEventListener('click', (e) => {
+      if (e.target && e.target.id === 'crmLogDetailModal') closeCrmLogDetailModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeCrmLogDetailModal();
+    });
 
     populateCrmCampusDropdown();
     document.getElementById('crmCampusSelect')?.addEventListener('change', (e) => {
