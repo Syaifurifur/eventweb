@@ -479,11 +479,11 @@ $allSections = [
         border-color: var(--ai-primary);
     }
 
-    /* Document Sheet */
+    /* Document Sheet (Per-Page A4 Stack) */
     .ai-doc-canvas {
-        background: #64748b;
-        padding: 16px;
-        max-height: 520px;
+        background: #475569;
+        padding: 18px 14px;
+        max-height: 600px;
         overflow-y: auto;
         display: flex;
         justify-content: center;
@@ -491,20 +491,78 @@ $allSections = [
     .ai-doc-sheet {
         width: 100%;
         max-width: 440px;
-        min-height: 600px;
-        background: #ffffff;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-        border-radius: 4px;
-        padding: 24px;
+        background: transparent;
+        box-shadow: none;
+        padding: 0;
         font-size: 11px;
         line-height: 1.5;
         color: #1e293b;
         position: relative;
     }
+    #sheetContent {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+    #sheetCoverBox {
+        background: #ffffff;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.28);
+        border-radius: 6px;
+        padding: 18px 22px 16px;
+        position: relative;
+    }
+    .ai-doc-body {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+    .ai-a4-page {
+        background: #ffffff;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.28);
+        border-radius: 6px;
+        padding: 18px 22px 16px;
+        min-height: 480px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        box-sizing: border-box;
+    }
+    .ai-page-meta-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #64748b;
+        border-bottom: 1px dashed #e2e8f0;
+        padding-bottom: 6px;
+        margin-bottom: 12px;
+    }
+    .ai-page-meta-badge {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        padding: 1px 7px;
+        border-radius: 999px;
+        font-size: 9px;
+        font-weight: 800;
+    }
+    .ai-page-meta-foot {
+        margin-top: 16px;
+        padding-top: 8px;
+        border-top: 1px solid #cbd5e1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 9.5px;
+        color: #64748b;
+        font-weight: 600;
+    }
     .ai-doc-cover {
-        border-bottom: 2px solid #2563eb;
-        padding-bottom: 18px;
-        margin-bottom: 18px;
+        border-bottom: none !important;
+        padding-bottom: 6px !important;
+        margin-bottom: 4px !important;
         text-align: center;
     }
     .ai-doc-cover-brand {
@@ -1188,7 +1246,7 @@ if ($cleanInitialBody === '' || stripos($cleanInitialBody, 'Proposal otomatis di
                 </p>
                 <div class="ai-result-buttons">
                     <button type="button" class="ai-btn" style="flex:1; padding:8px 12px; font-size:12px;" onclick="downloadWordDoc()">
-                        <span style="color:#2563eb;">⬇</span> Download Word
+                        <span style="color:#2563eb;">⬇</span> Download Word (.docx)
                     </button>
                     <button type="button" class="ai-btn" style="flex:1; padding:8px 12px; font-size:12px;" onclick="downloadPdfDoc()">
                         <span style="color:#dc2626;">⬇</span> Download PDF
@@ -1263,6 +1321,118 @@ function switchBriefTab(btn, targetId) {
     document.getElementById('tab-brief').style.display = targetId === 'tab-brief' ? 'block' : 'none';
 }
 
+// Ekstrak isi body bersih tanpa wrapper visual halaman (.ai-a4-page)
+function getCleanBodyHtml() {
+    const sheet = document.getElementById('sheetBodyText');
+    if (!sheet) return '';
+    const pageInnerNodes = sheet.querySelectorAll('.ai-a4-page-inner');
+    if (pageInnerNodes.length > 0) {
+        const parts = [];
+        pageInnerNodes.forEach((inner) => {
+            parts.push(inner.innerHTML.trim());
+        });
+        return parts.join('\n\n');
+    }
+    return sheet.innerHTML.trim();
+}
+
+// Bagi otomatis tampilan Preview menjadi beberapa lembar Halaman A4 (Halaman 1 Cover, Halaman 2, 3, dst.)
+function renderPaginatedPreviewPages() {
+    const coverBox = document.getElementById('sheetCoverBox');
+    const sheet = document.getElementById('sheetBodyText');
+    if (!sheet) return;
+
+    const rawHtml = getCleanBodyHtml();
+    if (!rawHtml) return;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = rawHtml;
+
+    // Jika dibungkus satu .doc-body-page, buka anak-anaknya
+    let sourceParent = temp;
+    if (temp.children.length === 1 && temp.children[0].classList.contains('doc-body-page')) {
+        sourceParent = temp.children[0];
+    }
+
+    const pages = [];
+    let currentNodes = [];
+
+    const isMajorChapterNode = (el) => {
+        if (!el || el.nodeType !== 1) return false;
+        const tag = el.tagName.toLowerCase();
+        if (el.classList.contains('page-break')) return 'break-only';
+        if (['h1', 'h2', 'h3', 'h4', 'p'].includes(tag)) {
+            const txt = (el.textContent || '').trim();
+            if (/^(?:KATA\s+PENGANTAR|DAFTAR\s+ISI|BAB\s+[IVX0-9]+|LAMPIRAN|[EFGIJ]\.\s+(?:KONSEP|SUSUNAN|RUNDOWN|RENCANA\s+ANGGARAN|REALISASI\s+ANGGARAN|PENUTUP))\b/i.test(txt)) {
+                if (tag === 'p' && txt.length > 75) return false;
+                return true;
+            }
+        }
+        return false;
+    };
+
+    Array.from(sourceParent.childNodes).forEach((node) => {
+        if (node.nodeType === 3 && !(node.textContent || '').trim()) {
+            return;
+        }
+        const breakType = isMajorChapterNode(node);
+        if (breakType === 'break-only') {
+            if (currentNodes.length > 0) {
+                pages.push(currentNodes);
+                currentNodes = [];
+            }
+            return;
+        }
+        if (breakType === true && currentNodes.length > 0) {
+            pages.push(currentNodes);
+            currentNodes = [];
+        }
+        currentNodes.push(node.cloneNode(true));
+    });
+
+    if (currentNodes.length > 0) {
+        pages.push(currentNodes);
+    }
+
+    const totalPages = 1 + pages.length;
+
+    // Update badge nomor halaman pada Cover (Halaman 1)
+    if (coverBox) {
+        let topBar = coverBox.querySelector('.ai-page-meta-top');
+        if (!topBar) {
+            topBar = document.createElement('div');
+            topBar.className = 'ai-page-meta-top';
+            coverBox.insertBefore(topBar, coverBox.firstChild);
+        }
+        topBar.innerHTML = '<span>Format A4 Resmi (.DOCX)</span><span class="ai-page-meta-badge">Halaman 1 dari ' + totalPages + ' • Cover</span>';
+    }
+
+    sheet.innerHTML = '';
+    pages.forEach((nodeList, idx) => {
+        const pageNum = idx + 2;
+        const pageCard = document.createElement('div');
+        pageCard.className = 'ai-a4-page';
+
+        const topMeta = document.createElement('div');
+        topMeta.className = 'ai-page-meta-top';
+        topMeta.innerHTML = '<span>BSI Group • Kampus Digital Kreatif</span><span class="ai-page-meta-badge">Halaman ' + pageNum + ' dari ' + totalPages + '</span>';
+
+        const inner = document.createElement('div');
+        inner.className = 'ai-a4-page-inner';
+        inner.style.flex = '1';
+        nodeList.forEach((n) => inner.appendChild(n));
+
+        const footMeta = document.createElement('div');
+        footMeta.className = 'ai-page-meta-foot';
+        footMeta.innerHTML = '<span>Universitas Bina Sarana Informatika</span><strong>Halaman ' + pageNum + ' dari ' + totalPages + '</strong>';
+
+        pageCard.appendChild(topMeta);
+        pageCard.appendChild(inner);
+        pageCard.appendChild(footMeta);
+        sheet.appendChild(pageCard);
+    });
+}
+
 function switchPreviewMode(mode) {
     const btnPreview = document.getElementById('tabBtnPreview');
     const btnEdit = document.getElementById('tabBtnEdit');
@@ -1272,13 +1442,14 @@ function switchPreviewMode(mode) {
     if (mode === 'editor') {
         btnPreview.classList.remove('is-active');
         btnEdit.classList.add('is-active');
-        editor.value = document.getElementById('sheetBodyText').innerHTML.trim();
+        editor.value = getCleanBodyHtml();
         sheet.style.display = 'none';
         editor.style.display = 'block';
     } else {
         btnEdit.classList.remove('is-active');
         btnPreview.classList.add('is-active');
         document.getElementById('sheetBodyText').innerHTML = editor.value;
+        renderPaginatedPreviewPages();
         editor.style.display = 'none';
         sheet.style.display = 'block';
     }
@@ -1323,17 +1494,25 @@ function filterEventList(q) {
 function getFullPreviewDocumentHtml() {
     const coverBox = document.getElementById('sheetCoverBox');
     const editor = document.getElementById('rawEditorText');
-    const sheet = document.getElementById('sheetBodyText');
-    const coverPart = coverBox ? coverBox.innerHTML.trim() : '';
+    let coverPart = '';
+    if (coverBox) {
+        const cloneCover = coverBox.cloneNode(true);
+        cloneCover.querySelectorAll('.ai-page-meta-top, .ai-page-meta-foot').forEach(el => el.remove());
+        coverPart = cloneCover.innerHTML.trim();
+    }
     const bodyPart = (editor && editor.style.display !== 'none')
         ? editor.value.trim()
-        : (sheet ? sheet.innerHTML.trim() : '');
+        : getCleanBodyHtml();
 
     if (bodyPart.indexOf('doc-cover-page') !== -1 || bodyPart.indexOf('ai-doc-cover') !== -1) {
         return bodyPart;
     }
     return coverPart + '\n<div class="doc-body-page">' + bodyPart + '</div>';
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderPaginatedPreviewPages();
+});
 
 // Proses Generate dengan AI
 function processGenerateAi() {

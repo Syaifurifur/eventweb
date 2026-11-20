@@ -3466,11 +3466,11 @@ class EventSuite extends BaseController
             'pic_phone' => '0812-xxxx-xxxx',
         ];
         $htmlContent = $this->buildOfficialDocumentHtml($docType, $sampleEvent, (string) ($enriched['name'] ?? 'Template Resmi'), '', '', '', [], ['md_guide' => $mdContent]);
-        $wordHtml = $this->wordDocumentHtml($docType, 'TEMPLATE', $htmlContent);
-        $safeName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string) ($enriched['name'] ?? 'Template_Dokumen')) . '.doc';
+        $wordHtml = $this->buildNativeDocxBinary($docType, 'TEMPLATE', $htmlContent, $sampleEvent, $enriched);
+        $safeName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string) ($enriched['name'] ?? 'Template_Dokumen')) . '.docx';
 
         return $this->response
-            ->setHeader('Content-Type', 'application/msword; charset=utf-8')
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $safeName . '"')
             ->setHeader('Cache-Control', 'max-age=0')
             ->setBody($wordHtml);
@@ -4270,7 +4270,7 @@ class EventSuite extends BaseController
         $code = (string) ($eventRaw['code'] ?? 'EVT-' . $eventRaw['id']);
 
         $fullContent = $this->ensureDocumentCoverHtml($content, $type, $normalizedEvent, $template);
-        $generatedPath = $this->writeGeneratedDocument($type, $code, $fullContent);
+        $generatedPath = $this->writeGeneratedDocument($type, $code, $fullContent, $normalizedEvent, $template);
 
         if ($type === 'report') {
             $report = $this->ensureReportRecord((int) $eventRaw['id']);
@@ -4298,7 +4298,7 @@ class EventSuite extends BaseController
 
         return $this->response->setJSON([
             'ok' => true,
-            'message' => 'Dokumen ' . ($type === 'report' ? 'Laporan (LPJ)' : 'Proposal') . ' beserta format cover & logo berhasil disimpan ke Dokumen Event dengan status "Review Admin".',
+            'message' => 'Dokumen ' . ($type === 'report' ? 'Laporan (LPJ)' : 'Proposal') . ' (.docx per-halaman beserta cover & logo) berhasil disimpan ke Dokumen Event dengan status "Review Admin".',
             'redirect_url' => site_url('documents?type=' . $type),
         ]);
     }
@@ -4343,14 +4343,14 @@ class EventSuite extends BaseController
             $content = $this->ensureDocumentCoverHtml($this->markdownToWordHtml($content), $type, $normalizedEvent, $template);
         }
 
-        $wordHtml = $this->wordDocumentHtml($type, $code, $content);
-        $fileName = ucfirst($type) . '_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $code) . '.doc';
+        $docxBinary = $this->buildNativeDocxBinary($type, $code, $content, $normalizedEvent, $template);
+        $fileName = ucfirst($type) . '_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $code) . '.docx';
 
         return $this->response
-            ->setHeader('Content-Type', 'application/msword; charset=utf-8')
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $fileName . '"')
             ->setHeader('Cache-Control', 'max-age=0')
-            ->setBody($wordHtml);
+            ->setBody($docxBinary);
     }
 
     public function aiExportPdfDocument()
@@ -4396,14 +4396,18 @@ class EventSuite extends BaseController
         $html = '<!DOCTYPE html><html><head><meta charset="utf-8">';
         $html .= '<title>' . htmlspecialchars(ucfirst($type) . ' - ' . $title) . '</title>';
         $html .= '<style>';
-        $html .= '@page { size: A4; margin: 2cm; }';
-        $html .= 'body { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #1e293b; background:#fff; margin:0; padding:20px; }';
-        $html .= '.print-bar { background:#2563eb; color:#fff; padding:10px 16px; border-radius:6px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }';
+        $html .= '@page { size: A4; margin: 2.2cm; }';
+        $html .= 'body { font-family: "Times New Roman", "Segoe UI", Arial, sans-serif; font-size: 12pt; line-height: 1.6; color: #0f172a; background:#fff; margin:0; padding:20px; }';
+        $html .= '.print-bar { background:#2563eb; color:#fff; padding:10px 16px; border-radius:6px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; font-family: "Segoe UI", Arial, sans-serif; font-size:13px; }';
         $html .= '.print-btn { background:#fff; color:#2563eb; font-weight:700; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; }';
-        $html .= 'table { width:100%; border-collapse:collapse; margin:10px 0; } th, td { border:1px solid #cbd5e1; padding:6px 8px; } th { background:#f1f5f9; }';
+        $html .= '.doc-cover-page { page-break-after: always; }';
+        $html .= '.page-break { page-break-before: always; }';
+        $html .= 'h1, h2, h4 { page-break-before: always; page-break-after: avoid; }';
+        $html .= '.doc-body-page > h1:first-child, .doc-body-page > h2:first-child, .doc-body-page > h4:first-child { page-break-before: auto; }';
+        $html .= 'table { width:100%; border-collapse:collapse; margin:10px 0; } th, td { border:1px solid #94a3b8; padding:6px 8px; } th { background:#eff6ff; }';
         $html .= '@media print { .print-bar { display:none; } body { padding:0; } }';
         $html .= '</style></head><body>';
-        $html .= '<div class="print-bar"><span>Dokumen Resmi UBSI - Siap Cetak / Simpan PDF (Format Cover &amp; Logo Dipertahankan)</span><button class="print-btn" onclick="window.print()">Cetak / Simpan PDF</button></div>';
+        $html .= '<div class="print-bar"><span>Dokumen Resmi UBSI - Format Per Halaman A4 (Cover &amp; Logo Dipertahankan)</span><button class="print-btn" onclick="window.print()">Cetak / Simpan PDF</button></div>';
         $html .= $content;
         $html .= '<script>window.onload = function() { setTimeout(function(){ window.print(); }, 600); };</script>';
         $html .= '</body></html>';
@@ -11554,7 +11558,7 @@ class EventSuite extends BaseController
         ]);
     }
 
-    private function writeGeneratedDocument(string $type, string $code, string $content): string
+    private function writeGeneratedDocument(string $type, string $code, string $content, array $event = [], ?array $template = null): string
     {
         $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'generated_documents';
         if (! is_dir($targetDir)) {
@@ -11565,107 +11569,542 @@ class EventSuite extends BaseController
             @mkdir($publicDir, 0775, true);
         }
 
-        $fileName = $type . '-' . $code . '-' . date('YmdHis') . '.doc';
-        $wordContent = $this->wordDocumentHtml($type, $code, $content);
-        file_put_contents($targetDir . DIRECTORY_SEPARATOR . $fileName, $wordContent);
-        @file_put_contents($publicDir . DIRECTORY_SEPARATOR . $fileName, $wordContent);
+        if ($event === []) {
+            $evRow = (new EventModel())->findByCode($code);
+            if ($evRow) {
+                $event = $this->normalizeEvent($evRow);
+            }
+        }
+        if ($template === null) {
+            $template = (new DocumentTemplateModel())
+                ->where('doc_type', $type)
+                ->whereIn('status', ['active', 'Aktif', 'aktif'])
+                ->orderBy('id', 'DESC')
+                ->first();
+        }
+
+        $fileName = $type . '-' . $code . '-' . date('YmdHis') . '.docx';
+        $docxBytes = $this->buildNativeDocxBinary($type, $code, $content, $event, $template);
+        file_put_contents($targetDir . DIRECTORY_SEPARATOR . $fileName, $docxBytes);
+        @file_put_contents($publicDir . DIRECTORY_SEPARATOR . $fileName, $docxBytes);
 
         return 'uploads/generated_documents/' . $fileName;
     }
 
-    private function wordDocumentHtml(string $type, string $code, string $content): string
+    private function wordDocumentHtml(string $type, string $code, string $content, array $event = [], ?array $template = null): string
     {
-        $title = strtoupper($type) . ' ' . $code;
-        $bodyHtml = $this->markdownToWordHtml($content);
+        return $this->buildNativeDocxBinary($type, $code, $content, $event, $template);
+    }
 
-        // Extract any data:image/...;base64,... images into MHTML MIME parts so Microsoft Word embeds the cover logo natively
-        $mimeParts = [];
-        $imgCounter = 0;
-        $bodyHtml = preg_replace_callback(
-            '/src=["\']data:(image\/(?:png|jpeg|jpg|gif));base64,([A-Za-z0-9+\/=\r\n]+)["\']/i',
-            static function (array $m) use (&$mimeParts, &$imgCounter): string {
-                $imgCounter++;
-                $mime = strtolower($m[1]);
-                $ext = str_contains($mime, 'png') ? 'png' : (str_contains($mime, 'gif') ? 'gif' : 'jpg');
-                $loc = 'file:///C:/EventHubDoc/cover_logo_' . $imgCounter . '.' . $ext;
-                $mimeParts[] = [
-                    'location' => $loc,
-                    'mime' => $mime,
-                    'base64' => chunk_split(preg_replace('/\s+/', '', $m[2]) ?? '', 76, "\r\n"),
-                ];
-                return 'src="' . $loc . '"';
-            },
-            $bodyHtml
-        ) ?? $bodyHtml;
+    private function docxXmlEsc(string $text): string
+    {
+        $clean = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', '', $text) ?? $text;
+        return htmlspecialchars($clean, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+    }
 
-        $htmlDoc = implode("\r\n", [
-            '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">',
-            '<head>',
-            '<meta charset="utf-8">',
-            '<meta name="ProgId" content="Word.Document">',
-            '<meta name="Generator" content="EventHub Gemini Document Generator">',
-            '<title>' . esc($title) . '</title>',
-            '<style>',
-            '@page Section1 { size: 21cm 29.7cm; margin: 2.5cm 2.5cm 2.5cm 2.5cm; }',
-            'div.Section1 { page: Section1; }',
-            'body { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.5; color: #111111; }',
-            '.doc-cover-page { page-break-after: always; text-align: center; padding: 12pt 0 24pt; margin-bottom: 18pt; }',
-            'h1 { font-size: 16pt; text-align: center; text-transform: uppercase; margin: 0 0 18pt; font-weight: bold; }',
-            'h1.page-heading { page-break-before: always; margin-top: 0; }',
-            'h1.first-heading { page-break-before: auto; }',
-            'h2 { font-size: 13pt; margin: 14pt 0 6pt; font-weight: bold; }',
-            'h3, h4 { font-size: 12pt; margin: 10pt 0 4pt; font-weight: bold; }',
-            'p { margin: 0 0 8pt; text-align: justify; }',
-            'p.center { text-align: center; }',
-            'p.signature-line { margin-top: 28pt; text-align: center; }',
-            'ul, ol { margin: 0 0 8pt 24pt; padding: 0; }',
-            'li { margin-bottom: 4pt; text-align: justify; }',
-            'table { width: 100%; border-collapse: collapse; margin: 8pt 0 12pt; }',
-            'th, td { border: 1px solid #333333; padding: 5pt 6pt; vertical-align: top; font-size: 11pt; line-height: 1.35; }',
-            'th { text-align: center; font-weight: bold; background: #eeeeee; }',
-            'td.number, th.number { text-align: center; }',
-            '.page-break { page-break-before: always; }',
-            '</style>',
-            '</head>',
-            '<body>',
-            '<div class="Section1">',
-            $bodyHtml,
-            '</div>',
-            '</body>',
-            '</html>',
-        ]);
+    private function buildNativeDocxBinary(string $type, string $code, string $html, array $event = [], ?array $template = null): string
+    {
+        $isProposal = $type === 'proposal';
+        $docTitle = $isProposal ? 'PROPOSAL KEGIATAN' : 'LAPORAN PERTANGGUNGJAWABAN (LPJ) KEGIATAN';
+        $eventTitle = (string) ($event['title'] ?? 'Kegiatan Resmi Kampus UBSI');
+        $campus = trim((string) ($event['campus_name'] ?? $event['campus'] ?? ''));
+        if ($campus === '' || $campus === 'Belum ditentukan') {
+            $campus = 'UBSI Kampus Pelaksana';
+        }
+        $dateLabel = (string) ($event['date_range_label'] ?? $event['date'] ?? date('d F Y'));
+        $location = (string) ($event['location'] ?? 'Kampus Pelaksana UBSI');
+        $category = (string) ($event['category'] ?? 'Sosialisasi');
+        $themeText = 'Kegiatan ' . $category . ' & Pengembangan Kompetensi Kampus';
+        $year = date('Y', strtotime((string) ($event['date'] ?? 'now'))) ?: date('Y');
 
-        if ($mimeParts === []) {
-            return $htmlDoc;
+        $logoRaw = $this->extractTemplateLogoBinary($template);
+        $logoMime = $logoRaw['mime'] ?? 'image/png';
+        $logoExt = str_contains($logoMime, 'png') ? 'png' : (str_contains($logoMime, 'gif') ? 'gif' : 'jpg');
+        $logoBytes = $logoRaw['bytes'] ?? '';
+
+        $bodyXml = '';
+
+        // ================= HALAMAN 1: COVER PAGE (FORMAT & LOGO SESUAI PREVIEW) =================
+        $bodyXml .= '<w:tbl>'
+            . '<w:tblPr>'
+            . '<w:tblW w:w="5000" w:type="pct"/>'
+            . '<w:tblBorders>'
+            . '<w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:bottom w:val="single" w:sz="18" w:space="6" w:color="2563EB"/>'
+            . '<w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '</w:tblBorders>'
+            . '<w:tblCellMar><w:top w:w="60" w:type="dxa"/><w:bottom w:w="140" w:type="dxa"/></w:tblCellMar>'
+            . '</w:tblPr>'
+            . '<w:tr>'
+            . '<w:tc><w:tcPr><w:tcW w:w="2500" w:type="pct"/></w:tcPr>'
+            . '<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:before="0" w:after="0"/></w:pPr>'
+            . '<w:r><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/><w:color w:val="1E3A8A"/></w:rPr><w:t>BSI GROUP</w:t></w:r></w:p></w:tc>'
+            . '<w:tc><w:tcPr><w:tcW w:w="2500" w:type="pct"/></w:tcPr>'
+            . '<w:p><w:pPr><w:jc w:val="right"/><w:spacing w:before="0" w:after="0"/></w:pPr>'
+            . '<w:r><w:rPr><w:b/><w:sz w:val="22"/><w:szCs w:val="22"/><w:color w:val="2563EB"/></w:rPr><w:t>Kampus Digital Kreatif</w:t></w:r></w:p></w:tc>'
+            . '</w:tr>'
+            . '</w:tbl>';
+
+        $bodyXml .= $this->docxParagraph($docTitle, ['align' => 'center', 'bold' => true, 'size' => 36, 'color' => '0F172A', 'before' => 640, 'after' => 160]);
+        $bodyXml .= $this->docxParagraph($eventTitle, ['align' => 'center', 'bold' => true, 'size' => 30, 'color' => '1D4ED8', 'before' => 80, 'after' => 140]);
+        $bodyXml .= $this->docxParagraph('“' . $themeText . '”', ['align' => 'center', 'bold' => true, 'italic' => true, 'size' => 23, 'color' => '475569', 'before' => 40, 'after' => 140]);
+        $bodyXml .= $this->docxParagraph($dateLabel, ['align' => 'center', 'bold' => true, 'size' => 24, 'color' => '0F172A', 'before' => 40, 'after' => 320]);
+
+        if ($logoBytes !== '') {
+            $bodyXml .= $this->docxLogoParagraph('rIdLogo', 1550000, 1550000);
         }
 
-        $boundary = '----=_NextPart_EventHub_Doc_001';
-        $mhtml = [];
-        $mhtml[] = 'MIME-Version: 1.0';
-        $mhtml[] = 'Content-Type: multipart/related; boundary="' . $boundary . '"';
-        $mhtml[] = '';
-        $mhtml[] = '--' . $boundary;
-        $mhtml[] = 'Content-Location: file:///C:/EventHubDoc/document.htm';
-        $mhtml[] = 'Content-Transfer-Encoding: 8bit';
-        $mhtml[] = 'Content-Type: text/html; charset="utf-8"';
-        $mhtml[] = '';
-        $mhtml[] = $htmlDoc;
+        $bodyXml .= '<w:tbl>'
+            . '<w:tblPr>'
+            . '<w:tblW w:w="6200" w:type="dxa"/>'
+            . '<w:jc w:val="center"/>'
+            . '<w:tblBorders>'
+            . '<w:top w:val="single" w:sz="8" w:space="0" w:color="CBD5E1"/>'
+            . '<w:left w:val="single" w:sz="8" w:space="0" w:color="CBD5E1"/>'
+            . '<w:bottom w:val="single" w:sz="8" w:space="0" w:color="CBD5E1"/>'
+            . '<w:right w:val="single" w:sz="8" w:space="0" w:color="CBD5E1"/>'
+            . '<w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '</w:tblBorders>'
+            . '<w:tblCellMar><w:top w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:left w:w="200" w:type="dxa"/><w:right w:w="200" w:type="dxa"/></w:tblCellMar>'
+            . '</w:tblPr>';
+        foreach ([['Tanggal', $dateLabel], ['Lokasi', $location], ['Kampus', $campus]] as $metaRow) {
+            $bodyXml .= '<w:tr>'
+                . '<w:tc><w:tcPr><w:tcW w:w="1600" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="F8FAFC"/></w:tcPr>'
+                . '<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="64748B"/></w:rPr><w:t>' . $this->docxXmlEsc($metaRow[0]) . '</w:t></w:r></w:p></w:tc>'
+                . '<w:tc><w:tcPr><w:tcW w:w="4600" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="F8FAFC"/></w:tcPr>'
+                . '<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/><w:color w:val="0F172A"/></w:rPr><w:t>: ' . $this->docxXmlEsc($metaRow[1]) . '</w:t></w:r></w:p></w:tc>'
+                . '</w:tr>';
+        }
+        $bodyXml .= '</w:tbl>';
 
-        foreach ($mimeParts as $part) {
-            $mhtml[] = '';
-            $mhtml[] = '--' . $boundary;
-            $mhtml[] = 'Content-Location: ' . $part['location'];
-            $mhtml[] = 'Content-Transfer-Encoding: base64';
-            $mhtml[] = 'Content-Type: ' . $part['mime'];
-            $mhtml[] = '';
-            $mhtml[] = rtrim($part['base64']);
+        $bodyXml .= '<w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="12" w:space="12" w:color="2563EB"/></w:pBdr><w:spacing w:before="680" w:after="80"/><w:jc w:val="center"/></w:pPr>'
+            . '<w:r><w:rPr><w:b/><w:sz w:val="26"/><w:szCs w:val="26"/><w:color w:val="0F172A"/></w:rPr><w:t>UNIVERSITAS BINA SARANA INFORMATIKA</w:t></w:r></w:p>';
+        $bodyXml .= $this->docxParagraph(strtoupper($campus), ['align' => 'center', 'bold' => true, 'size' => 24, 'color' => '1E40AF', 'before' => 40, 'after' => 60]);
+        $bodyXml .= $this->docxParagraph((string) $year, ['align' => 'center', 'bold' => true, 'size' => 22, 'color' => '475569', 'before' => 20, 'after' => 120]);
+
+        // Page Break setelah Halaman 1 (Cover)
+        $bodyXml .= '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+
+        // ================= HALAMAN 2..N: ISI DOKUMEN PER HALAMAN =================
+        $bodyXml .= $this->convertBodyHtmlToOpenXml($html);
+
+        // Section Properties (A4 + Footer Nomor Halaman)
+        $bodyXml .= '<w:sectPr>'
+            . '<w:footerReference w:type="default" r:id="rId3"/>'
+            . '<w:pgSz w:w="11906" w:h="16838"/>'
+            . '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>'
+            . '<w:titlePg/>'
+            . '</w:sectPr>';
+
+        $documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+            . 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+            . 'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
+            . 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+            . 'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+            . '<w:body>' . $bodyXml . '</w:body></w:document>';
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'evdocx_');
+        $zip = new \ZipArchive();
+        $zip->open($tmpFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Default Extension="' . $logoExt . '" ContentType="' . $logoMime . '"/>'
+            . '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+            . '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+            . '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>'
+            . '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>'
+            . '</Types>');
+
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+            . '</Relationships>');
+
+        $relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>'
+            . '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>';
+        if ($logoBytes !== '') {
+            $relsXml .= '<Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/cover_logo.' . $logoExt . '"/>';
+            $zip->addFromString('word/media/cover_logo.' . $logoExt, $logoBytes);
+        }
+        $relsXml .= '</Relationships>';
+        $zip->addFromString('word/_rels/document.xml.rels', $relsXml);
+
+        $zip->addFromString('word/settings.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            . '<w:view w:val="print"/>'
+            . '<w:zoom w:percent="100"/>'
+            . '</w:settings>');
+
+        $zip->addFromString('word/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            . '<w:docDefaults>'
+            . '<w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:color w:val="0F172A"/></w:rPr></w:rPrDefault>'
+            . '<w:pPrDefault><w:pPr><w:spacing w:after="140" w:line="340" w:lineRule="auto"/></w:pPr></w:pPrDefault>'
+            . '</w:docDefaults>'
+            . '</w:styles>');
+
+        $zip->addFromString('word/footer1.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            . '<w:p>'
+            . '<w:pPr><w:pBdr><w:top w:val="single" w:sz="6" w:space="4" w:color="CBD5E1"/></w:pBdr><w:jc w:val="right"/></w:pPr>'
+            . '<w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t xml:space="preserve">Universitas Bina Sarana Informatika  •  Halaman </w:t></w:r>'
+            . '<w:fldSimple w:instr="PAGE"><w:r><w:rPr><w:b/><w:sz w:val="18"/><w:color w:val="1E3A8A"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>'
+            . '<w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t xml:space="preserve"> dari </w:t></w:r>'
+            . '<w:fldSimple w:instr="NUMPAGES"><w:r><w:rPr><w:b/><w:sz w:val="18"/><w:color w:val="1E3A8A"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>'
+            . '</w:p>'
+            . '</w:ftr>');
+
+        $zip->addFromString('word/document.xml', $documentXml);
+        $zip->close();
+
+        $bin = (string) @file_get_contents($tmpFile);
+        @unlink($tmpFile);
+        return $bin;
+    }
+
+    private function docxParagraph(string $text, array $opts = []): string
+    {
+        $align = $opts['align'] ?? 'both';
+        $bold = ! empty($opts['bold']);
+        $italic = ! empty($opts['italic']);
+        $size = (int) ($opts['size'] ?? 24);
+        $color = (string) ($opts['color'] ?? '0F172A');
+        $before = (int) ($opts['before'] ?? 0);
+        $after = (int) ($opts['after'] ?? 140);
+        $line = (int) ($opts['line'] ?? 340);
+
+        $rPr = '<w:rPr>';
+        if ($bold) {
+            $rPr .= '<w:b/>';
+        }
+        if ($italic) {
+            $rPr .= '<w:i/>';
+        }
+        $rPr .= '<w:sz w:val="' . $size . '"/><w:szCs w:val="' . $size . '"/><w:color w:val="' . $color . '"/></w:rPr>';
+
+        return '<w:p>'
+            . '<w:pPr><w:spacing w:before="' . $before . '" w:after="' . $after . '" w:line="' . $line . '" w:lineRule="auto"/><w:jc w:val="' . $align . '"/></w:pPr>'
+            . '<w:r>' . $rPr . '<w:t xml:space="preserve">' . $this->docxXmlEsc($text) . '</w:t></w:r>'
+            . '</w:p>';
+    }
+
+    private function docxLogoParagraph(string $rId, int $cx, int $cy): string
+    {
+        return '<w:p>'
+            . '<w:pPr><w:spacing w:before="220" w:after="260"/><w:jc w:val="center"/></w:pPr>'
+            . '<w:r>'
+            . '<w:drawing>'
+            . '<wp:inline distT="0" distB="0" distL="0" distR="0">'
+            . '<wp:extent cx="' . $cx . '" cy="' . $cy . '"/>'
+            . '<wp:docPr id="1" name="CoverLogo"/>'
+            . '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>'
+            . '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+            . '<pic:pic>'
+            . '<pic:nvPicPr><pic:cNvPr id="0" name="cover_logo.png"/><pic:cNvPicPr/></pic:nvPicPr>'
+            . '<pic:blipFill><a:blip r:embed="' . $rId . '"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+            . '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' . $cx . '" cy="' . $cy . '"/></a:xfrm>'
+            . '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+            . '</pic:pic>'
+            . '</a:graphicData></a:graphic>'
+            . '</wp:inline>'
+            . '</w:drawing>'
+            . '</w:r>'
+            . '</w:p>';
+    }
+
+    private function convertBodyHtmlToOpenXml(string $html): string
+    {
+        $bodyOnly = $this->stripDocumentCoverFromHtml($html);
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="UTF-8"><div id="docx-root">' . $bodyOnly . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        $root = $dom->getElementById('docx-root');
+        if (! $root) {
+            return $this->docxParagraph(strip_tags($bodyOnly));
         }
 
-        $mhtml[] = '';
-        $mhtml[] = '--' . $boundary . '--';
-        $mhtml[] = '';
+        $hasEmittedContent = false;
+        return $this->walkDomToOpenXml($root, $hasEmittedContent);
+    }
 
-        return implode("\r\n", $mhtml);
+    private function walkDomToOpenXml(\DOMNode $parent, bool &$hasEmittedContent): string
+    {
+        $xml = '';
+        foreach ($parent->childNodes as $node) {
+            if ($node->nodeType === XML_TEXT_NODE) {
+                $t = trim($node->nodeValue ?? '');
+                if ($t !== '') {
+                    $xml .= $this->docxParagraph($t);
+                    $hasEmittedContent = true;
+                }
+                continue;
+            }
+            if ($node->nodeType !== XML_ELEMENT_NODE) {
+                continue;
+            }
+
+            $tag = strtolower($node->nodeName);
+            $classAttr = ($node instanceof \DOMElement) ? strtolower($node->getAttribute('class')) : '';
+            if (str_contains($classAttr, 'doc-cover-page') || str_contains($classAttr, 'ai-doc-cover') || str_contains($classAttr, 'ai-page-meta-top') || str_contains($classAttr, 'ai-page-meta-foot')) {
+                continue;
+            }
+
+            if (str_contains($classAttr, 'page-break')) {
+                if ($hasEmittedContent) {
+                    $xml .= '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+                }
+                continue;
+            }
+
+            if (in_array($tag, ['h1', 'h2', 'h3', 'h4'], true)) {
+                $headingText = trim(preg_replace('/\s+/', ' ', $node->textContent ?? '') ?? '');
+                if ($headingText === '') {
+                    continue;
+                }
+                $isMajorChapter = preg_match('/^(?:KATA\s+PENGANTAR|DAFTAR\s+ISI|BAB\s+[IVX0-9]+|LAMPIRAN|[EFGIJ]\.\s+(?:KONSEP|SUSUNAN|RUNDOWN|RENCANA\s+ANGGARAN|REALISASI\s+ANGGARAN|PENUTUP))\b/iu', $headingText) === 1 || $tag === 'h1';
+                if ($isMajorChapter && $hasEmittedContent) {
+                    $xml .= '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+                }
+                $isCenteredMajor = preg_match('/^(?:KATA\s+PENGANTAR|DAFTAR\s+ISI|BAB\s+[IVX0-9]+|LAMPIRAN)\b/iu', $headingText) === 1 || $tag === 'h1';
+                $xml .= $this->docxParagraph($headingText, [
+                    'align' => $isCenteredMajor ? 'center' : 'left',
+                    'bold' => true,
+                    'size' => $isCenteredMajor ? 28 : 25,
+                    'color' => $isCenteredMajor ? '0F172A' : '1E3A8A',
+                    'before' => $isMajorChapter ? 120 : 240,
+                    'after' => 160,
+                ]);
+                $hasEmittedContent = true;
+                continue;
+            }
+
+            if ($tag === 'p') {
+                $pText = trim($node->textContent ?? '');
+                if ($pText === '') {
+                    continue;
+                }
+                $isMajorInP = preg_match('/^(?:KATA\s+PENGANTAR|DAFTAR\s+ISI|BAB\s+[IVX0-9]+(?:\s+[A-Z\s]+)?|LAMPIRAN)$/u', $pText) === 1;
+                if ($isMajorInP) {
+                    if ($hasEmittedContent) {
+                        $xml .= '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+                    }
+                    $xml .= $this->docxParagraph($pText, [
+                        'align' => 'center',
+                        'bold' => true,
+                        'size' => 28,
+                        'color' => '0F172A',
+                        'before' => 120,
+                        'after' => 160,
+                    ]);
+                    $hasEmittedContent = true;
+                    continue;
+                }
+                $xml .= $this->convertParagraphNodeToOpenXml($node);
+                $hasEmittedContent = true;
+                continue;
+            }
+
+            if ($tag === 'ul' || $tag === 'ol') {
+                $idx = 1;
+                foreach ($node->childNodes as $li) {
+                    if (strtolower($li->nodeName) === 'li') {
+                        $liText = trim(preg_replace('/\s+/', ' ', $li->textContent ?? '') ?? '');
+                        if ($liText !== '') {
+                            $prefix = $tag === 'ol' ? ($idx . '. ') : '• ';
+                            $xml .= '<w:p>'
+                                . '<w:pPr><w:spacing w:before="40" w:after="100" w:line="340" w:lineRule="auto"/><w:ind w:left="540" w:hanging="280"/><w:jc w:val="both"/></w:pPr>'
+                                . '<w:r><w:rPr><w:sz w:val="24"/><w:color w:val="0F172A"/></w:rPr><w:t xml:space="preserve">' . $this->docxXmlEsc($prefix . $liText) . '</w:t></w:r>'
+                                . '</w:p>';
+                            $idx++;
+                            $hasEmittedContent = true;
+                        }
+                    }
+                }
+                continue;
+            }
+
+            if ($tag === 'table') {
+                $xml .= $this->convertTableNodeToOpenXml($node);
+                $hasEmittedContent = true;
+                continue;
+            }
+
+            if ($tag === 'div' || $tag === 'section' || $tag === 'article') {
+                $styleAttr = ($node instanceof \DOMElement) ? strtolower($node->getAttribute('style')) : '';
+                if (str_contains($styleAttr, 'justify-content:space-between') || str_contains($styleAttr, 'justify-content: space-between')) {
+                    $xml .= $this->convertFlexSignatureToTableOpenXml($node);
+                    $hasEmittedContent = true;
+                    continue;
+                }
+                $xml .= $this->walkDomToOpenXml($node, $hasEmittedContent);
+                continue;
+            }
+        }
+        return $xml;
+    }
+
+    private function convertParagraphNodeToOpenXml(\DOMNode $pNode): string
+    {
+        $styleAttr = ($pNode instanceof \DOMElement) ? strtolower($pNode->getAttribute('style')) : '';
+        $align = 'both';
+        if (str_contains($styleAttr, 'text-align:center') || str_contains($styleAttr, 'text-align: center')) {
+            $align = 'center';
+        } elseif (str_contains($styleAttr, 'text-align:right') || str_contains($styleAttr, 'text-align: right')) {
+            $align = 'right';
+        }
+
+        $runsXml = $this->buildRunsFromInlineNodes($pNode, false, false);
+        if ($runsXml === '') {
+            return '';
+        }
+
+        return '<w:p>'
+            . '<w:pPr><w:spacing w:before="60" w:after="140" w:line="340" w:lineRule="auto"/><w:jc w:val="' . $align . '"/></w:pPr>'
+            . $runsXml
+            . '</w:p>';
+    }
+
+    private function buildRunsFromInlineNodes(\DOMNode $parent, bool $bold, bool $italic): string
+    {
+        $runs = '';
+        foreach ($parent->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE) {
+                $text = preg_replace('/[ \t\r\n]+/', ' ', $child->nodeValue ?? '') ?? '';
+                if ($text !== '') {
+                    $rPr = '<w:rPr>';
+                    if ($bold) {
+                        $rPr .= '<w:b/>';
+                    }
+                    if ($italic) {
+                        $rPr .= '<w:i/>';
+                    }
+                    $rPr .= '<w:sz w:val="24"/><w:szCs w:val="24"/><w:color w:val="0F172A"/></w:rPr>';
+                    $runs .= '<w:r>' . $rPr . '<w:t xml:space="preserve">' . $this->docxXmlEsc($text) . '</w:t></w:r>';
+                }
+            } elseif ($child->nodeType === XML_ELEMENT_NODE) {
+                $cTag = strtolower($child->nodeName);
+                if ($cTag === 'br') {
+                    $runs .= '<w:r><w:br/></w:r>';
+                } elseif (in_array($cTag, ['strong', 'b'], true)) {
+                    $runs .= $this->buildRunsFromInlineNodes($child, true, $italic);
+                } elseif (in_array($cTag, ['em', 'i'], true)) {
+                    $runs .= $this->buildRunsFromInlineNodes($child, $bold, true);
+                } else {
+                    $runs .= $this->buildRunsFromInlineNodes($child, $bold, $italic);
+                }
+            }
+        }
+        return $runs;
+    }
+
+    private function convertTableNodeToOpenXml(\DOMNode $tableNode): string
+    {
+        $xpath = new \DOMXPath($tableNode->ownerDocument);
+        $rows = $xpath->query('.//tr', $tableNode);
+        if (! $rows || $rows->length === 0) {
+            return '';
+        }
+
+        $tblXml = '<w:tbl>'
+            . '<w:tblPr>'
+            . '<w:tblW w:w="5000" w:type="pct"/>'
+            . '<w:tblBorders>'
+            . '<w:top w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>'
+            . '<w:left w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>'
+            . '<w:bottom w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>'
+            . '<w:right w:val="single" w:sz="6" w:space="0" w:color="94A3B8"/>'
+            . '<w:insideH w:val="single" w:sz="6" w:space="0" w:color="CBD5E1"/>'
+            . '<w:insideV w:val="single" w:sz="6" w:space="0" w:color="CBD5E1"/>'
+            . '</w:tblBorders>'
+            . '<w:tblCellMar><w:top w:w="90" w:type="dxa"/><w:bottom w:w="90" w:type="dxa"/><w:left w:w="130" w:type="dxa"/><w:right w:w="130" w:type="dxa"/></w:tblCellMar>'
+            . '</w:tblPr>';
+
+        foreach ($rows as $rIdx => $tr) {
+            $cells = $xpath->query('./th|./td', $tr);
+            if (! $cells || $cells->length === 0) {
+                continue;
+            }
+            $tblXml .= '<w:tr>';
+            foreach ($cells as $cell) {
+                $isHeader = strtolower($cell->nodeName) === 'th' || $rIdx === 0;
+                $colspan = ($cell instanceof \DOMElement && $cell->hasAttribute('colspan')) ? max(1, (int) $cell->getAttribute('colspan')) : 1;
+                $tcPr = '<w:tcPr>';
+                if ($colspan > 1) {
+                    $tcPr .= '<w:gridSpan w:val="' . $colspan . '"/>';
+                }
+                if ($isHeader) {
+                    $tcPr .= '<w:shd w:val="clear" w:color="auto" w:fill="EFF6FF"/>';
+                }
+                $tcPr .= '</w:tcPr>';
+
+                $cellText = trim(preg_replace('/\s+/', ' ', $cell->textContent ?? '') ?? '');
+                $align = $isHeader ? 'center' : 'left';
+                $rPr = '<w:rPr>' . ($isHeader ? '<w:b/>' : '') . '<w:sz w:val="22"/><w:szCs w:val="22"/><w:color w:val="0F172A"/></w:rPr>';
+
+                $tblXml .= '<w:tc>' . $tcPr
+                    . '<w:p><w:pPr><w:spacing w:before="40" w:after="40" w:line="280" w:lineRule="auto"/><w:jc w:val="' . $align . '"/></w:pPr>'
+                    . '<w:r>' . $rPr . '<w:t xml:space="preserve">' . $this->docxXmlEsc($cellText) . '</w:t></w:r>'
+                    . '</w:p></w:tc>';
+            }
+            $tblXml .= '</w:tr>';
+        }
+
+        $tblXml .= '</w:tbl>';
+        return $tblXml;
+    }
+
+    private function convertFlexSignatureToTableOpenXml(\DOMNode $flexNode): string
+    {
+        $cols = [];
+        foreach ($flexNode->childNodes as $child) {
+            if ($child->nodeType === XML_ELEMENT_NODE) {
+                $lines = [];
+                foreach ($child->childNodes as $sub) {
+                    if ($sub->nodeType === XML_ELEMENT_NODE || $sub->nodeType === XML_TEXT_NODE) {
+                        $t = trim($sub->textContent ?? '');
+                        if ($t !== '') {
+                            $lines[] = $t;
+                        }
+                    }
+                }
+                if ($lines !== []) {
+                    $cols[] = $lines;
+                }
+            }
+        }
+        if ($cols === []) {
+            return '';
+        }
+
+        $tblXml = '<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/></w:tblPr><w:tr>';
+        $pct = (int) floor(5000 / count($cols));
+        foreach ($cols as $colLines) {
+            $tblXml .= '<w:tc><w:tcPr><w:tcW w:w="' . $pct . '" w:type="pct"/></w:tcPr>';
+            foreach ($colLines as $lIdx => $line) {
+                $before = ($lIdx === count($colLines) - 2 && count($colLines) >= 3) ? 840 : 40;
+                $bold = $lIdx >= 1;
+                $tblXml .= $this->docxParagraph($line, [
+                    'align' => 'center',
+                    'bold' => $bold,
+                    'size' => 22,
+                    'before' => $before,
+                    'after' => 40,
+                ]);
+            }
+            $tblXml .= '</w:tc>';
+        }
+        $tblXml .= '</w:tr></w:tbl>';
+        return $tblXml;
     }
 
     private function markdownToWordHtml(string $content): string
