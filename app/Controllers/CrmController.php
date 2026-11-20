@@ -442,7 +442,8 @@ class CrmController extends BaseController
             return redirect()->to(site_url('crm'))->with('error', 'File tidak berisi data yang bisa dibaca.');
         }
 
-        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: 'September 2025 - September 2026';
+        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
+        $pmbPeriod = trim((string) $this->request->getPost('pmb_period')) ?: $defaultPeriod;
 
         $batchCode = 'BATCH_' . date('YmdHis') . '_' . random_int(100, 999);
         $batchId = (new CrmUploadBatchModel())->insert([
@@ -1002,10 +1003,19 @@ class CrmController extends BaseController
     {
         $pmbPeriod = trim((string) $this->request->getGet('pmb_period'));
         if ($pmbPeriod === '') {
-            $pmbPeriod = 'September 2025 - September 2026';
+            $pmbPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
         }
         if ($pmbPeriod !== 'all') {
-            $builder->where('crm_leads.pmb_period', $pmbPeriod);
+            if ($pmbPeriod === 'September 2025 - September 2026') {
+                $builder
+                    ->groupStart()
+                    ->where('crm_leads.pmb_period', $pmbPeriod)
+                    ->orWhere('crm_leads.pmb_period', '')
+                    ->orWhere('crm_leads.pmb_period IS NULL', null, false)
+                    ->groupEnd();
+            } else {
+                $builder->where('crm_leads.pmb_period', $pmbPeriod);
+            }
         }
 
         $q = trim((string) $this->request->getGet('q'));
@@ -2309,9 +2319,11 @@ class CrmController extends BaseController
 
     public function getAvailableCrmPmbPeriods(): array
     {
-        // Default periods: September 2025 - September 2026 (requested), plus upcoming & previous
+        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
+
+        // Default periods: September 2025 - September 2026, plus upcoming & previous
         $periods = [
-            'September 2025 - September 2026' => 'September 2025 - September 2026 (Aktif / Data CRM)',
+            'September 2025 - September 2026' => 'September 2025 - September 2026',
             'September 2026 - September 2027' => 'September 2026 - September 2027',
             'September 2024 - September 2025' => 'September 2024 - September 2025',
         ];
@@ -2323,7 +2335,7 @@ class CrmController extends BaseController
             if (is_array($customs)) {
                 foreach ($customs as $cKey => $cLabel) {
                     if (is_string($cKey) && trim($cKey) !== '') {
-                        $periods[$cKey] = $cLabel;
+                        $periods[$cKey] = $cKey;
                     }
                 }
             }
@@ -2336,7 +2348,7 @@ class CrmController extends BaseController
             if (is_array($shared)) {
                 foreach ($shared as $sKey => $sLabel) {
                     if (is_string($sKey) && trim($sKey) !== '' && ! isset($periods[$sKey])) {
-                        $periods[$sKey] = $sLabel;
+                        $periods[$sKey] = $sKey;
                     }
                 }
             }
@@ -2346,12 +2358,16 @@ class CrmController extends BaseController
         $deletedJson = \App\Models\SystemSettingModel::getSetting('crm_deleted_pmb_periods', '[]');
         $deleted = json_decode($deletedJson, true);
         if (is_array($deleted)) {
-            $defaultPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
             foreach ($deleted as $delKey) {
                 if (is_string($delKey) && $delKey !== $defaultPeriod && isset($periods[$delKey])) {
                     unset($periods[$delKey]);
                 }
             }
+        }
+
+        // Tandai klaster yang sedang menjadi Default Aktif secara dinamis
+        foreach ($periods as $pKey => $pLabel) {
+            $periods[$pKey] = ($pKey === $defaultPeriod) ? ($pKey . ' (Aktif)') : $pKey;
         }
 
         return $periods;

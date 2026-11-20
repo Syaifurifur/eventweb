@@ -15,8 +15,10 @@ class CrmRealtimeReportService
      */
     public function getAvailablePmbPeriods(): array
     {
+        $defaultPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
+
         $periods = [
-            'September 2025 - September 2026' => 'September 2025 - September 2026 (Aktif / Data CRM)',
+            'September 2025 - September 2026' => 'September 2025 - September 2026',
             'September 2026 - September 2027' => 'September 2026 - September 2027',
             'September 2024 - September 2025' => 'September 2024 - September 2025',
         ];
@@ -27,7 +29,7 @@ class CrmRealtimeReportService
             if (is_array($customs)) {
                 foreach ($customs as $cKey => $cLabel) {
                     if (is_string($cKey) && trim($cKey) !== '') {
-                        $periods[$cKey] = (string) $cLabel;
+                        $periods[$cKey] = $cKey;
                     }
                 }
             }
@@ -39,7 +41,7 @@ class CrmRealtimeReportService
             if (is_array($shared)) {
                 foreach ($shared as $sKey => $sLabel) {
                     if (is_string($sKey) && trim($sKey) !== '' && !isset($periods[$sKey])) {
-                        $periods[$sKey] = (string) $sLabel;
+                        $periods[$sKey] = $sKey;
                     }
                 }
             }
@@ -48,12 +50,15 @@ class CrmRealtimeReportService
         $deletedJson = \App\Models\SystemSettingModel::getSetting('crm_deleted_pmb_periods', '[]');
         $deleted = json_decode($deletedJson, true);
         if (is_array($deleted)) {
-            $defaultPeriod = \App\Models\SystemSettingModel::getSetting('crm_default_pmb_period', 'September 2025 - September 2026');
             foreach ($deleted as $delKey) {
                 if (is_string($delKey) && $delKey !== $defaultPeriod && isset($periods[$delKey])) {
                     unset($periods[$delKey]);
                 }
             }
+        }
+
+        foreach ($periods as $pKey => $pLabel) {
+            $periods[$pKey] = ($pKey === $defaultPeriod) ? ($pKey . ' (Aktif)') : $pKey;
         }
 
         return $periods;

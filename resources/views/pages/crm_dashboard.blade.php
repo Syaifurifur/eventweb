@@ -1349,7 +1349,7 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                 <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted, #64748b); display: block; margin-bottom: 4px;">Klaster Masa PMB</span>
                                 <select name="pmb_period" class="control" style="width: 100%; border-radius: 8px; padding: 7px 10px; font-size: 0.85rem;">
                                     <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
-                                        <option value="<?= esc($pKey, 'attr') ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === 'September 2025 - September 2026')) ? 'selected' : '' ?>>
+                                        <option value="<?= esc($pKey, 'attr') ?>" <?= ($selectedPmbPeriod === $pKey || ($selectedPmbPeriod === 'all' && $pKey === $defaultPmbPeriod)) ? 'selected' : '' ?>>
                                             <?= esc($pLabel) ?>
                                         </option>
                                     <?php endforeach; ?>
