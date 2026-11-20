@@ -886,29 +886,77 @@ $allSections = [
                 <input type="hidden" name="type" value="<?= esc($selectedDocType) ?>">
 
                 <!-- A. Pilih Template Resmi -->
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                    <strong style="font-size:13px; color:#1e293b;">A. Pilih Template Resmi</strong>
-                    <div class="ai-tpl-grid">
-                        <?php foreach ($templates as $tIdx => $tpl): ?>
-                            <?php
-                            $isSelected = (int) $tpl['id'] === $selectedTemplateId || ($selectedTemplateId === 0 && $tIdx === 0);
-                            $thumbSrc = ! empty($tpl['thumbnail_path']) ? base_url($tpl['thumbnail_path']) : base_url('assets/img/templates/proposal_sosialisasi.svg');
-                            ?>
-                            <label class="ai-tpl-card <?= $isSelected ? 'is-active' : '' ?>">
-                                <input
-                                    type="radio"
-                                    name="template_id"
-                                    value="<?= esc($tpl['id']) ?>"
-                                    class="ai-tpl-radio"
-                                    <?= $isSelected ? 'checked' : '' ?>
-                                    onchange="document.querySelectorAll('.ai-tpl-card').forEach(c=>c.classList.remove('is-active')); this.closest('.ai-tpl-card').classList.add('is-active');"
-                                >
-                                <img src="<?= esc($thumbSrc) ?>" alt="<?= esc($tpl['name']) ?>" class="ai-tpl-thumb">
-                                <span class="ai-tpl-title"><?= esc($tpl['name']) ?></span>
-                                <span class="ai-tpl-desc"><?= esc($tpl['description'] ?? 'Template resmi institusi') ?></span>
-                            </label>
-                        <?php endforeach; ?>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <strong style="font-size:13px; color:#1e293b;">A. Pilih Template Resmi (Terintegrasi File .DOCX &amp; Panduan .MD)</strong>
+                        <a href="<?= site_url('document-templates?doc_type=' . urlencode($selectedDocType)) ?>" class="ai-btn" style="padding:4px 10px; font-size:11.5px; color:#2563eb; border-color:#bfdbfe; background:#eff6ff;">
+                            📂 Kelola / Upload Template &amp; .MD (<?= count($templates) ?>)
+                        </a>
                     </div>
+
+                    <?php if (empty($templates)): ?>
+                        <div style="padding:14px; border:1.5px dashed #cbd5e1; border-radius:12px; background:#f8fafc; text-align:center; font-size:12px; color:#475569;">
+                            Belum ada template khusus untuk <strong><?= esc($docTitleLabel) ?></strong>. Sistem akan menggunakan Struktur Standar Resmi UBSI, atau
+                            <a href="<?= site_url('document-templates?doc_type=' . urlencode($selectedDocType)) ?>" style="color:#2563eb; font-weight:700;">klik di sini untuk upload template &amp; file .md baru</a>.
+                        </div>
+                    <?php else: ?>
+                        <div class="ai-tpl-grid">
+                            <?php foreach ($templates as $tIdx => $tpl): ?>
+                                <?php
+                                $isSelected = (int) $tpl['id'] === $selectedTemplateId || ($selectedTemplateId === 0 && $tIdx === 0);
+                                $thumbSrc = ! empty($tpl['thumbnail_path']) ? base_url($tpl['thumbnail_path']) : base_url('assets/img/templates/proposal_sosialisasi.svg');
+                                ?>
+                                <label class="ai-tpl-card <?= $isSelected ? 'is-active' : '' ?>" data-tpl-id="<?= (int) $tpl['id'] ?>">
+                                    <input
+                                        type="radio"
+                                        name="template_id"
+                                        value="<?= esc($tpl['id']) ?>"
+                                        class="ai-tpl-radio"
+                                        <?= $isSelected ? 'checked' : '' ?>
+                                        onchange="selectAiTemplateCard(<?= (int) $tpl['id'] ?>, this)"
+                                    >
+                                    <img src="<?= esc($thumbSrc) ?>" alt="<?= esc($tpl['name']) ?>" class="ai-tpl-thumb">
+                                    <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:2px;">
+                                        <span style="font-size:9.5px; font-weight:800; padding:1px 6px; border-radius:999px; background:#e0e7ff; color:#1e1b4b;"><?= esc($tpl['file_format'] ?? 'DOCX') ?></span>
+                                        <span style="font-size:9.5px; font-weight:800; padding:1px 6px; border-radius:999px; background:#ccfbf1; color:#0f766e;">🤖 .MD AI</span>
+                                    </div>
+                                    <span class="ai-tpl-title"><?= esc($tpl['name']) ?></span>
+                                    <span class="ai-tpl-desc"><?= esc($tpl['description'] ?? 'Template resmi institusi') ?></span>
+                                    <div style="display:flex; gap:4px; margin-top:auto; padding-top:4px; border-top:1px solid #f1f5f9;" onclick="event.stopPropagation();">
+                                        <a href="<?= site_url('document-templates/' . (int) $tpl['id'] . '/preview') ?>" target="_blank" style="flex:1; text-align:center; font-size:10px; font-weight:700; padding:3px 4px; border-radius:6px; background:#eff6ff; color:#1d4ed8; text-decoration:none;" title="Preview Template & .MD">👁 Preview</a>
+                                        <a href="<?= site_url('document-templates/' . (int) $tpl['id'] . '/download') ?>" style="flex:1; text-align:center; font-size:10px; font-weight:700; padding:3px 4px; border-radius:6px; background:#f1f5f9; color:#0f172a; text-decoration:none;" title="Download Template">⬇ Unduh</a>
+                                    </div>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <?php
+                        $activeTplObj = $templates[0];
+                        foreach ($templates as $tItem) {
+                            if ((int) $tItem['id'] === $selectedTemplateId) {
+                                $activeTplObj = $tItem;
+                                break;
+                            }
+                        }
+                        ?>
+                        <div id="activeTemplateMdBox" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 12px; font-size:12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                                <div style="display:flex; align-items:center; gap:6px; color:#065f46; font-weight:800;">
+                                    <span>🤖 Panduan AI (.md) Aktif:</span>
+                                    <span id="activeTplMdNameBadge" style="background:#dcfce7; border:1px solid #86efac; padding:1px 8px; border-radius:999px; font-size:11px;"><?= esc($activeTplObj['name'] ?? '') ?></span>
+                                </div>
+                                <div style="display:flex; gap:6px;">
+                                    <a id="activeTplPreviewLink" href="<?= site_url('document-templates/' . (int) ($activeTplObj['id'] ?? 0) . '/preview') ?>" target="_blank" style="font-size:11px; font-weight:700; color:#1d4ed8; text-decoration:none;">👁 Preview Template</a>
+                                    <span>&bull;</span>
+                                    <a id="activeTplDownloadMdLink" href="<?= site_url('document-templates/' . (int) ($activeTplObj['id'] ?? 0) . '/download-md') ?>" style="font-size:11px; font-weight:700; color:#047857; text-decoration:none;">⬇ Unduh .MD</a>
+                                </div>
+                            </div>
+                            <details style="margin-top:6px;">
+                                <summary style="cursor:pointer; font-size:11.5px; font-weight:700; color:#047857;">Lihat instruksi pengisian .md yang dibaca AI untuk template ini</summary>
+                                <pre id="activeTplMdContentPre" style="margin:6px 0 0; padding:8px 10px; background:#ffffff; border:1px solid #bbf7d0; border-radius:8px; font-family:monospace; font-size:11px; color:#0f172a; white-space:pre-wrap; max-height:150px; overflow-y:auto;"><?= esc($activeTplObj['md_content'] ?? '') ?></pre>
+                            </details>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- B. Informasi dan Brief untuk AI -->
@@ -1318,15 +1366,63 @@ function saveToEventDocument() {
 }
 
 function downloadWordDoc() {
-    const eventId = '<?= esc((string) $eventDbId) ?>';
-    const type = '<?= esc($selectedDocType) ?>';
-    window.location.href = '<?= site_url('documents/generate/export-word') ?>?event_id=' + encodeURIComponent(eventId) + '&type=' + encodeURIComponent(type);
+    submitExportForm('<?= site_url('documents/generate/export-word') ?>', '_self');
 }
 
 function downloadPdfDoc() {
-    const eventId = '<?= esc((string) $eventDbId) ?>';
-    const type = '<?= esc($selectedDocType) ?>';
-    window.open('<?= site_url('documents/generate/export-pdf') ?>?event_id=' + encodeURIComponent(eventId) + '&type=' + encodeURIComponent(type), '_blank');
+    submitExportForm('<?= site_url('documents/generate/export-pdf') ?>', '_blank');
+}
+
+function submitExportForm(actionUrl, targetWindow) {
+    const editor = document.getElementById('rawEditorText');
+    const sheet = document.getElementById('sheetBodyText');
+    const currentContent = (editor && editor.style.display !== 'none')
+        ? editor.value
+        : (sheet ? sheet.innerHTML : '');
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = actionUrl;
+    form.target = targetWindow || '_self';
+    form.style.display = 'none';
+
+    const fields = {
+        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        'event_id': '<?= esc((string) $eventDbId) ?>',
+        'type': '<?= esc($selectedDocType) ?>',
+        'content': currentContent
+    };
+
+    Object.keys(fields).forEach((k) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = k;
+        input.value = fields[k];
+        form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
+
+const AI_TEMPLATES_MAP = <?= json_encode(array_column($templates, null, 'id'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+function selectAiTemplateCard(tplId, radioEl) {
+    document.querySelectorAll('.ai-tpl-card').forEach(c => c.classList.remove('is-active'));
+    if (radioEl && radioEl.closest('.ai-tpl-card')) {
+        radioEl.closest('.ai-tpl-card').classList.add('is-active');
+    }
+    const tpl = AI_TEMPLATES_MAP[tplId];
+    if (!tpl) return;
+    const badge = document.getElementById('activeTplMdNameBadge');
+    if (badge) badge.textContent = tpl.name || '';
+    const pre = document.getElementById('activeTplMdContentPre');
+    if (pre) pre.textContent = tpl.md_content || '';
+    const prevLink = document.getElementById('activeTplPreviewLink');
+    if (prevLink) prevLink.href = '<?= site_url('document-templates') ?>/' + encodeURIComponent(tplId) + '/preview';
+    const dlMdLink = document.getElementById('activeTplDownloadMdLink');
+    if (dlMdLink) dlMdLink.href = '<?= site_url('document-templates') ?>/' + encodeURIComponent(tplId) + '/download-md';
 }
 </script>
 

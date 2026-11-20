@@ -2743,7 +2743,7 @@ class EventSuite extends BaseController
             $builder->where('status', $status);
         }
 
-        $templates = $builder->findAll();
+        $templates = $this->enrichDocumentTemplates($builder->findAll());
 
         if ($q !== '') {
             $qLower = strtolower($q);
@@ -2781,7 +2781,12 @@ class EventSuite extends BaseController
         $docType = trim((string) $this->request->getPost('doc_type'));
         $eventCategory = trim((string) $this->request->getPost('event_category'));
         $description = trim((string) $this->request->getPost('description'));
-        $status = trim((string) $this->request->getPost('status')) ?: 'Aktif';
+        $status = trim((string) $this->request->getPost('status')) ?: 'active';
+        if (strtolower($status) === 'aktif') {
+            $status = 'active';
+        } elseif (strtolower($status) === 'nonaktif') {
+            $status = 'inactive';
+        }
 
         if ($name === '') {
             return redirect()->back()->withInput()->with('error', 'Nama template wajib diisi.');
@@ -2790,22 +2795,60 @@ class EventSuite extends BaseController
             $docType = 'proposal';
         }
 
-        $targetDir = public_path('uploads/templates');
-        if (! is_dir($targetDir)) {
-            @mkdir($targetDir, 0777, true);
+        $storageDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'templates';
+        $publicDir = public_path('uploads/templates');
+        if (! is_dir($storageDir)) {
+            @mkdir($storageDir, 0775, true);
+        }
+        if (! is_dir($publicDir)) {
+            @mkdir($publicDir, 0775, true);
         }
 
-        $format = 'DOCX';
+        $format = strtoupper(trim((string) $this->request->getPost('file_format')) ?: 'DOCX');
         $filePath = null;
 
         $file = $this->request->getFile('template_file');
         if ($file && $file->isValid()) {
-            $ext = strtolower($file->getClientExtension());
+            $ext = strtolower($file->getClientExtension() ?: pathinfo($file->getClientName(), PATHINFO_EXTENSION));
             $format = in_array($ext, ['doc', 'docx', 'pdf', 'dotx'], true) ? strtoupper($ext) : 'DOCX';
             $newName = 'template_' . $docType . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-            $file->move($targetDir, $newName);
+            $file->move($storageDir, $newName);
+            @copy($storageDir . DIRECTORY_SEPARATOR . $newName, $publicDir . DIRECTORY_SEPARATOR . $newName);
             $filePath = 'uploads/templates/' . $newName;
         }
+
+        // Proses upload file .md atau input panduan .md untuk AI
+        $mdContent = trim((string) $this->request->getPost('md_content'));
+        $mdName = '';
+        $mdPath = null;
+        $mdFile = $this->request->getFile('md_file');
+        if ($mdFile && $mdFile->isValid()) {
+            $rawMd = @file_get_contents($mdFile->getTempName());
+            if (is_string($rawMd) && trim($rawMd) !== '') {
+                $mdContent = trim($rawMd);
+            }
+            $mdName = $mdFile->getClientName() ?: ('panduan_' . $docType . '.md');
+        }
+        if ($mdContent === '') {
+            $mdContent = $this->defaultTemplateMarkdownGuide($docType, $name, $eventCategory ?: 'Semua', $description);
+            $mdName = 'panduan_ai_' . $docType . '.md';
+        }
+        if ($mdContent !== '') {
+            $mdSavedName = 'guide_' . $docType . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.md';
+            @file_put_contents($storageDir . DIRECTORY_SEPARATOR . $mdSavedName, $mdContent);
+            @file_put_contents($publicDir . DIRECTORY_SEPARATOR . $mdSavedName, $mdContent);
+            $mdPath = 'uploads/templates/' . $mdSavedName;
+            if ($mdName === '') {
+                $mdName = $mdSavedName;
+            }
+        }
+
+        $structureJson = json_encode([
+            'md_path' => $mdPath,
+            'md_name' => $mdName,
+            'md_content' => $mdContent,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $catSlug = strtolower(explode(' ', trim($eventCategory))[0] ?? 'lainnya');
         if (! in_array($catSlug, ['sosialisasi', 'seminar', 'lomba', 'lainnya'], true)) {
@@ -2817,16 +2860,17 @@ class EventSuite extends BaseController
         $model->insert([
             'name' => $name,
             'doc_type' => $docType,
-            'event_category' => $eventCategory ?: 'Umum',
+            'event_category' => $eventCategory ?: 'Semua',
             'description' => $description,
             'file_path' => $filePath,
             'file_format' => $format,
             'thumbnail_path' => $thumbnailPath,
+            'structure_json' => $structureJson,
             'status' => $status,
             'created_by' => (int) session('user.id'),
         ]);
 
-        return redirect()->to(site_url('document-templates?type=' . $docType))->with('success', 'Template ' . ucfirst($docType) . ' berhasil ditambahkan.');
+        return redirect()->to(site_url('document-templates?doc_type=' . $docType))->with('success', 'Template ' . ($docType === 'report' ? 'Laporan (LPJ)' : 'Proposal') . ' beserta panduan AI (.md) berhasil ditambahkan dan terhubung ke Konfigurasi Generate AI.');
     }
 
     public function updateDocumentTemplate($id)
@@ -2842,12 +2886,31 @@ class EventSuite extends BaseController
         }
 
         $name = trim((string) $this->request->getPost('name'));
+        $docType = trim((string) $this->request->getPost('doc_type'));
+        if (! in_array($docType, ['proposal', 'report'], true)) {
+            $docType = (string) ($template['doc_type'] ?? 'proposal');
+        }
         $eventCategory = trim((string) $this->request->getPost('event_category'));
         $description = trim((string) $this->request->getPost('description'));
-        $status = trim((string) $this->request->getPost('status')) ?: ($template['status'] ?? 'Aktif');
+        $status = trim((string) $this->request->getPost('status')) ?: ($template['status'] ?? 'active');
+        if (strtolower($status) === 'aktif') {
+            $status = 'active';
+        } elseif (strtolower($status) === 'nonaktif') {
+            $status = 'inactive';
+        }
+
+        $storageDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'templates';
+        $publicDir = public_path('uploads/templates');
+        if (! is_dir($storageDir)) {
+            @mkdir($storageDir, 0775, true);
+        }
+        if (! is_dir($publicDir)) {
+            @mkdir($publicDir, 0775, true);
+        }
 
         $updateData = [
             'name' => $name !== '' ? $name : $template['name'],
+            'doc_type' => $docType,
             'event_category' => $eventCategory !== '' ? $eventCategory : $template['event_category'],
             'description' => $description,
             'status' => $status,
@@ -2855,20 +2918,332 @@ class EventSuite extends BaseController
 
         $file = $this->request->getFile('template_file');
         if ($file && $file->isValid()) {
-            $targetDir = public_path('uploads/templates');
-            if (! is_dir($targetDir)) {
-                @mkdir($targetDir, 0777, true);
-            }
-            $ext = strtolower($file->getClientExtension());
+            $ext = strtolower($file->getClientExtension() ?: pathinfo($file->getClientName(), PATHINFO_EXTENSION));
             $updateData['file_format'] = in_array($ext, ['doc', 'docx', 'pdf', 'dotx'], true) ? strtoupper($ext) : 'DOCX';
-            $newName = 'template_' . $template['doc_type'] . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-            $file->move($targetDir, $newName);
+            $newName = 'template_' . $docType . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            $file->move($storageDir, $newName);
+            @copy($storageDir . DIRECTORY_SEPARATOR . $newName, $publicDir . DIRECTORY_SEPARATOR . $newName);
             $updateData['file_path'] = 'uploads/templates/' . $newName;
+        }
+
+        $existingStruct = json_decode((string) ($template['structure_json'] ?? ''), true);
+        if (! is_array($existingStruct)) {
+            $existingStruct = [];
+        }
+
+        $mdContent = trim((string) $this->request->getPost('md_content'));
+        $mdName = (string) ($existingStruct['md_name'] ?? '');
+        $mdPath = $existingStruct['md_path'] ?? null;
+
+        $mdFile = $this->request->getFile('md_file');
+        if ($mdFile && $mdFile->isValid()) {
+            $rawMd = @file_get_contents($mdFile->getTempName());
+            if (is_string($rawMd) && trim($rawMd) !== '') {
+                $mdContent = trim($rawMd);
+            }
+            $mdName = $mdFile->getClientName() ?: ('panduan_' . $docType . '.md');
+        } elseif ($mdContent === '' && ! empty($existingStruct['md_content'])) {
+            $mdContent = (string) $existingStruct['md_content'];
+        }
+
+        if ($mdContent !== '') {
+            $mdSavedName = 'guide_' . $docType . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.md';
+            @file_put_contents($storageDir . DIRECTORY_SEPARATOR . $mdSavedName, $mdContent);
+            @file_put_contents($publicDir . DIRECTORY_SEPARATOR . $mdSavedName, $mdContent);
+            $mdPath = 'uploads/templates/' . $mdSavedName;
+            if ($mdName === '') {
+                $mdName = 'panduan_ai_' . $docType . '.md';
+            }
+            $updateData['structure_json'] = json_encode([
+                'md_path' => $mdPath,
+                'md_name' => $mdName,
+                'md_content' => $mdContent,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
 
         $model->update($template['id'], $updateData);
 
-        return redirect()->to(site_url('document-templates?type=' . $template['doc_type']))->with('success', 'Template berhasil diperbarui.');
+        return redirect()->to(site_url('document-templates?doc_type=' . $docType))->with('success', 'Template beserta panduan AI (.md) berhasil diperbarui.');
+    }
+
+    public function previewDocumentTemplate($id)
+    {
+        $template = (new DocumentTemplateModel())->find((int) $id);
+        if (! $template) {
+            return redirect()->to(site_url('document-templates'))->with('error', 'Template dokumen tidak ditemukan.');
+        }
+
+        $enriched = $this->enrichDocumentTemplates([$template])[0];
+        $docType = (string) ($enriched['doc_type'] ?? 'proposal');
+        $docTypeLabel = $docType === 'report' ? 'Laporan (LPJ)' : 'Proposal';
+        $extractedDocText = $this->extractUploadedDocumentTemplateRecord($enriched);
+        $mdContent = (string) ($enriched['md_content'] ?? '');
+        if ($mdContent === '') {
+            $mdContent = $this->defaultTemplateMarkdownGuide($docType, (string) ($enriched['name'] ?? 'Template'), (string) ($enriched['event_category'] ?? 'Semua'), (string) ($enriched['description'] ?? ''));
+        }
+
+        $sampleEvent = [
+            'title' => 'Contoh Kegiatan: ' . ($enriched['name'] ?? 'Event Kampus UBSI'),
+            'campus' => 'Universitas Bina Sarana Informatika',
+            'campus_name' => 'Universitas Bina Sarana Informatika',
+            'date_range_label' => date('d F Y'),
+            'location' => 'Aula / Auditorium Kampus UBSI',
+            'category' => (string) ($enriched['event_category'] ?? 'Sosialisasi'),
+            'pic_name' => (string) (session('user.name') ?: 'Koordinator Pelaksana'),
+            'pic_phone' => '0812-3456-7890',
+        ];
+
+        $previewDocHtml = $extractedDocText !== ''
+            ? $this->markdownToWordHtml($extractedDocText)
+            : $this->buildOfficialDocumentHtml($docType, $sampleEvent, (string) ($enriched['name'] ?? 'Template Resmi'), '', '', '', [], ['md_guide' => $mdContent]);
+
+        $mdHtml = $this->markdownToWordHtml($mdContent);
+        $tplNameEsc = htmlspecialchars((string) ($enriched['name'] ?? 'Template Dokumen'));
+        $catEsc = htmlspecialchars((string) ($enriched['event_category'] ?? 'Semua'));
+        $fmtEsc = htmlspecialchars((string) ($enriched['file_format'] ?? 'DOCX'));
+        $downloadUrl = site_url('document-templates/' . (int) $enriched['id'] . '/download');
+        $downloadMdUrl = site_url('document-templates/' . (int) $enriched['id'] . '/download-md');
+        $generateUrl = site_url('documents/generate?type=' . urlencode($docType) . '&template_id=' . (int) $enriched['id']);
+        $backUrl = site_url('document-templates?doc_type=' . urlencode($docType));
+
+        $html = '<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">';
+        $html .= '<meta name="viewport" content="width=device-width, initial-scale=1">';
+        $html .= '<title>Preview Template: ' . $tplNameEsc . '</title>';
+        $html .= '<style>';
+        $html .= 'body { font-family: "Segoe UI", Inter, Arial, sans-serif; background:#f1f5f9; color:#0f172a; margin:0; padding:0; }';
+        $html .= '.topbar { background:#0f172a; color:#fff; padding:14px 24px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; position:sticky; top:0; z-index:50; box-shadow:0 4px 12px rgba(0,0,0,0.15); }';
+        $html .= '.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:12.5px; font-weight:700; text-decoration:none; border:1px solid #334155; color:#fff; background:#1e293b; cursor:pointer; }';
+        $html .= '.btn:hover { background:#334155; }';
+        $html .= '.btn-primary { background:#2563eb; border-color:#2563eb; } .btn-primary:hover { background:#1d4ed8; }';
+        $html .= '.btn-emerald { background:#059669; border-color:#059669; } .btn-emerald:hover { background:#047857; }';
+        $html .= '.container { max-width:1280px; margin:24px auto; padding:0 20px; display:grid; grid-template-columns: 1.35fr 1fr; gap:20px; align-items:start; }';
+        $html .= '@media (max-width: 960px) { .container { grid-template-columns: 1fr; } }';
+        $html .= '.panel { background:#fff; border:1px solid #cbd5e1; border-radius:14px; box-shadow:0 4px 16px rgba(15,23,42,0.06); overflow:hidden; }';
+        $html .= '.panel-head { background:#f8fafc; border-bottom:1px solid #e2e8f0; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; }';
+        $html .= '.panel-body { padding:24px; font-size:13px; line-height:1.65; color:#1e293b; overflow-x:auto; }';
+        $html .= '.badge { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; background:#e0e7ff; color:#1e1b4b; }';
+        $html .= '.md-pre { background:#0f172a; color:#e2e8f0; padding:14px; border-radius:10px; font-family:monospace; font-size:12px; white-space:pre-wrap; line-height:1.55; margin-top:12px; max-height:360px; overflow-y:auto; }';
+        $html .= 'table { width:100%; border-collapse:collapse; margin:10px 0; } th, td { border:1px solid #cbd5e1; padding:6px 8px; font-size:12px; } th { background:#f1f5f9; }';
+        $html .= '@media print { .topbar, .md-column { display:none !important; } .container { display:block; margin:0; padding:0; } .panel { border:none; box-shadow:none; } }';
+        $html .= '</style></head><body>';
+        $html .= '<div class="topbar">';
+        $html .= '  <div>';
+        $html .= '    <div style="font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase;">Preview Template &amp; Panduan AI (.md) • ' . htmlspecialchars($docTypeLabel) . '</div>';
+        $html .= '    <div style="font-size:16px; font-weight:800;">' . $tplNameEsc . ' <span class="badge" style="margin-left:6px;">' . $catEsc . ' • ' . $fmtEsc . '</span></div>';
+        $html .= '  </div>';
+        $html .= '  <div style="display:flex; flex-wrap:wrap; gap:8px;">';
+        $html .= '    <a class="btn" href="' . $backUrl . '">&larr; Kembali ke Template</a>';
+        $html .= '    <a class="btn" href="' . $downloadUrl . '">⬇ Download Template (' . $fmtEsc . ')</a>';
+        $html .= '    <a class="btn" href="' . $downloadMdUrl . '">⬇ Download Panduan (.MD)</a>';
+        $html .= '    <button type="button" class="btn" onclick="window.print()">🖨 Cetak / PDF</button>';
+        $html .= '    <a class="btn btn-emerald" href="' . $generateUrl . '">✨ Gunakan di Generate AI &rarr;</a>';
+        $html .= '  </div>';
+        $html .= '</div>';
+        $html .= '<div class="container">';
+        $html .= '  <div class="panel">';
+        $html .= '    <div class="panel-head"><strong style="font-size:14px;">📄 Preview Struktur Dokumen Template (' . htmlspecialchars($docTypeLabel) . ')</strong><span class="badge">' . ($extractedDocText !== '' ? 'Diekstrak dari File Upload' : 'Layout Standar Template') . '</span></div>';
+        $html .= '    <div class="panel-body">' . $previewDocHtml . '</div>';
+        $html .= '  </div>';
+        $html .= '  <div class="panel md-column">';
+        $html .= '    <div class="panel-head"><strong style="font-size:14px;">🤖 Panduan Instruksi AI (.md)</strong><a class="btn btn-primary" style="padding:4px 10px; font-size:11px;" href="' . $downloadMdUrl . '">⬇ Unduh .MD</a></div>';
+        $html .= '    <div class="panel-body">';
+        $html .= '      <div style="font-size:12px; color:#475569; margin-bottom:10px;">Panduan <code>.md</code> ini dibaca langsung oleh Gemini AI saat menyusun ' . htmlspecialchars($docTypeLabel) . ' agar memahami aturan pengisian setiap bab, variabel, dan tabel:</div>';
+        $html .= '      <div style="border:1px solid #e2e8f0; border-radius:10px; padding:14px; background:#f8fafc;">' . $mdHtml . '</div>';
+        $html .= '      <div style="font-size:11.5px; font-weight:700; color:#475569; margin-top:14px;">Raw Markdown (.md):</div>';
+        $html .= '      <div class="md-pre">' . htmlspecialchars($mdContent) . '</div>';
+        $html .= '    </div>';
+        $html .= '  </div>';
+        $html .= '</div>';
+        $html .= '</body></html>';
+
+        return $this->response
+            ->setHeader('Content-Type', 'text/html; charset=utf-8')
+            ->setBody($html);
+    }
+
+    public function downloadDocumentTemplate($id)
+    {
+        $template = (new DocumentTemplateModel())->find((int) $id);
+        if (! $template) {
+            return redirect()->to(site_url('document-templates'))->with('error', 'Template dokumen tidak ditemukan.');
+        }
+
+        $relPath = trim((string) ($template['file_path'] ?? ''));
+        if ($relPath !== '') {
+            $normalizedRel = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($relPath, '/\\'));
+            $candidates = [
+                WRITEPATH . $normalizedRel,
+                public_path($normalizedRel),
+            ];
+            foreach ($candidates as $fullPath) {
+                if (is_file($fullPath)) {
+                    $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION)) ?: 'docx';
+                    $safeName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string) ($template['name'] ?? 'template')) . '.' . $ext;
+                    $mime = match ($ext) {
+                        'pdf' => 'application/pdf',
+                        'doc' => 'application/msword',
+                        default => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    };
+
+                    return response()->download($fullPath, $safeName, ['Content-Type' => $mime]);
+                }
+            }
+        }
+
+        // Fallback: generate a downloadable Word (.doc) file from the template structure & .md guide
+        $enriched = $this->enrichDocumentTemplates([$template])[0];
+        $docType = (string) ($enriched['doc_type'] ?? 'proposal');
+        $mdContent = (string) ($enriched['md_content'] ?? '');
+        if ($mdContent === '') {
+            $mdContent = $this->defaultTemplateMarkdownGuide($docType, (string) ($enriched['name'] ?? 'Template'), (string) ($enriched['event_category'] ?? 'Semua'), (string) ($enriched['description'] ?? ''));
+        }
+        $sampleEvent = [
+            'title' => (string) ($enriched['name'] ?? 'Template Kegiatan UBSI'),
+            'campus' => 'Universitas Bina Sarana Informatika',
+            'campus_name' => 'Universitas Bina Sarana Informatika',
+            'date_range_label' => date('d F Y'),
+            'location' => 'Kampus Pelaksana UBSI',
+            'category' => (string) ($enriched['event_category'] ?? 'Sosialisasi'),
+            'pic_name' => 'Ketua Pelaksana / PIC',
+            'pic_phone' => '0812-xxxx-xxxx',
+        ];
+        $htmlContent = $this->buildOfficialDocumentHtml($docType, $sampleEvent, (string) ($enriched['name'] ?? 'Template Resmi'), '', '', '', [], ['md_guide' => $mdContent]);
+        $wordHtml = $this->wordDocumentHtml($docType, 'TEMPLATE', $htmlContent);
+        $safeName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string) ($enriched['name'] ?? 'Template_Dokumen')) . '.doc';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/msword; charset=utf-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $safeName . '"')
+            ->setHeader('Cache-Control', 'max-age=0')
+            ->setBody($wordHtml);
+    }
+
+    public function downloadDocumentTemplateMd($id)
+    {
+        $template = (new DocumentTemplateModel())->find((int) $id);
+        if (! $template) {
+            return redirect()->to(site_url('document-templates'))->with('error', 'Template dokumen tidak ditemukan.');
+        }
+
+        $enriched = $this->enrichDocumentTemplates([$template])[0];
+        $docType = (string) ($enriched['doc_type'] ?? 'proposal');
+        $mdContent = (string) ($enriched['md_content'] ?? '');
+        if ($mdContent === '') {
+            $mdContent = $this->defaultTemplateMarkdownGuide(
+                $docType,
+                (string) ($enriched['name'] ?? 'Template Dokumen'),
+                (string) ($enriched['event_category'] ?? 'Semua'),
+                (string) ($enriched['description'] ?? '')
+            );
+        }
+
+        $safeName = 'panduan_ai_' . strtolower(preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string) ($enriched['name'] ?? $docType))) . '.md';
+
+        return $this->response
+            ->setHeader('Content-Type', 'text/markdown; charset=utf-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $safeName . '"')
+            ->setHeader('Cache-Control', 'max-age=0')
+            ->setBody($mdContent);
+    }
+
+    private function enrichDocumentTemplates(array $templates): array
+    {
+        foreach ($templates as &$tpl) {
+            $struct = json_decode((string) ($tpl['structure_json'] ?? ''), true);
+            if (! is_array($struct)) {
+                $struct = [];
+            }
+            $mdContent = trim((string) ($struct['md_content'] ?? ''));
+            $mdPath = trim((string) ($struct['md_path'] ?? ''));
+            if ($mdContent === '' && $mdPath !== '') {
+                $normMd = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($mdPath, '/\\'));
+                foreach ([WRITEPATH . $normMd, public_path($normMd)] as $cand) {
+                    if (is_file($cand)) {
+                        $raw = @file_get_contents($cand);
+                        if (is_string($raw) && trim($raw) !== '') {
+                            $mdContent = trim($raw);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            $relFile = trim((string) ($tpl['file_path'] ?? ''));
+            $hasFile = false;
+            if ($relFile !== '') {
+                $normFile = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($relFile, '/\\'));
+                $hasFile = is_file(WRITEPATH . $normFile) || is_file(public_path($normFile));
+            }
+
+            $docType = (string) ($tpl['doc_type'] ?? 'proposal');
+            $defaultMd = $this->defaultTemplateMarkdownGuide(
+                $docType,
+                (string) ($tpl['name'] ?? 'Template'),
+                (string) ($tpl['event_category'] ?? 'Semua'),
+                (string) ($tpl['description'] ?? '')
+            );
+
+            $tpl['has_custom_md'] = $mdContent !== '';
+            $tpl['md_content'] = $mdContent !== '' ? $mdContent : $defaultMd;
+            $tpl['md_name'] = (string) ($struct['md_name'] ?? ($mdContent !== '' ? ('panduan_' . $docType . '.md') : 'panduan_standar_' . $docType . '.md'));
+            $tpl['has_file'] = $hasFile;
+        }
+        unset($tpl);
+
+        return $templates;
+    }
+
+    private function defaultTemplateMarkdownGuide(string $docType, string $name, string $category, string $description = ''): string
+    {
+        $isReport = $docType === 'report';
+        $typeLabel = $isReport ? 'Laporan Pertanggungjawaban (LPJ) Kegiatan' : 'Proposal Kegiatan';
+
+        if ($isReport) {
+            return implode("\n", [
+                '# Panduan Instruksi AI (.md) — ' . $name,
+                '',
+                '- **Jenis Dokumen**: ' . $typeLabel,
+                '- **Kategori Event**: ' . ($category ?: 'Semua Jenis Event'),
+                '- **Deskripsi Template**: ' . ($description ?: 'Standar resmi Laporan Pertanggungjawaban (LPJ) kegiatan kampus UBSI.'),
+                '',
+                '## Aturan Pengisian untuk AI',
+                '1. **Halaman Cover & Identitas Kegiatan**: Cantumkan judul kegiatan, tanggal pelaksanaan realisasi, lokasi, kampus pelaksana, dan PIC.',
+                '2. **BAB I Pendahuluan**: Jelaskan latar belakang terlaksananya kegiatan, tujuan yang dicapai, dan sasaran peserta yang hadir.',
+                '3. **BAB II Pelaksanaan & Hasil Kegiatan**:',
+                '   - Uraikan jalannya kegiatan dari pembukaan, sesi materi/inti, tanya jawab, hingga penutupan.',
+                '   - Cantumkan tabel **Rundown Realisasi Acara** (Waktu, Durasi, Agenda, Pengisi/PIC).',
+                '   - Jelaskan **Evaluasi & Indikator Capaian** (tingkat kehadiran peserta, antusiasme, perolehan prospek/leads PMB).',
+                '4. **BAB III Realisasi Anggaran Biaya**:',
+                '   - Buat tabel realisasi penggunaan dana (No, Uraian Pengeluaran, Volume, Satuan, Harga Satuan, Total Rp) beserta Grand Total.',
+                '5. **BAB IV Penutup & Pengesahan**:',
+                '   - Simpulkan hasil kegiatan, saran perbaikan untuk event berikutnya, dan blok tanda tangan **Ketua Pelaksana / PIC** serta **Kepala Kampus UBSI**.',
+            ]);
+        }
+
+        return implode("\n", [
+            '# Panduan Instruksi AI (.md) — ' . $name,
+            '',
+            '- **Jenis Dokumen**: ' . $typeLabel,
+            '- **Kategori Event**: ' . ($category ?: 'Semua Jenis Event'),
+            '- **Deskripsi Template**: ' . ($description ?: 'Standar resmi Proposal pengajuan kegiatan kampus UBSI.'),
+            '',
+            '## Aturan Pengisian untuk AI',
+            '1. **Halaman Cover & Identitas Proposal**: Cantumkan judul proposal, nama kegiatan (`{{judul_event}}`), tanggal (`{{tanggal}}`), lokasi (`{{lokasi}}`), kampus pelaksana (`{{kampus}}`), dan PIC.',
+            '2. **BAB I Pendahuluan**:',
+            '   - **A. Latar Belakang**: Hubungkan urgensi kegiatan dengan peningkatan kualitas pendidikan tinggi, literasi digital, dan penjaringan mahasiswa baru UBSI.',
+            '   - **B. Tujuan Kegiatan** & **C. Manfaat Kegiatan** (Bagi Siswa/Peserta, Bagi Sekolah/Mitra, Bagi Universitas).',
+            '   - **D. Sasaran Peserta**: Rincikan target peserta dan estimasi kuota partisipan.',
+            '3. **BAB II Konsep, Kepanitiaan & Rundown Acara**:',
+            '   - **E. Konsep & Bentuk Kegiatan**: Jelaskan metode pelaksanaan sesuai brief user.',
+            '   - **F. Susunan Panitia Pelaksana**: Tabel berisi No, Jabatan, Nama Petugas/PIC, dan Deskripsi Tanggung Jawab.',
+            '   - **G. Rundown Susunan Acara**: Tabel berisi Waktu, Durasi, Agenda Kegiatan, dan Keterangan/PIC.',
+            '   - **H. Indikator Keberhasilan**: Target kehadiran dan konversi kuisioner/prospek CRM.',
+            '4. **BAB III Rencana Anggaran Biaya (RAB)**:',
+            '   - **I. Tabel RAB**: No, Pos Anggaran/Item, Volume, Satuan, Harga Satuan, Total (Rp), dan Total Anggaran yang Dibutuhkan.',
+            '5. **BAB IV Penutup & Lembar Pengesahan**:',
+            '   - **J. Penutup** dan tanda tangan **Ketua Pelaksana / PIC** serta **Kepala Kampus UBSI**.',
+        ]);
     }
 
     public function deleteDocumentTemplate($id)
@@ -3325,16 +3700,18 @@ class EventSuite extends BaseController
 
         $templates = (new DocumentTemplateModel())
             ->where('doc_type', $type)
-            ->where('status', 'Aktif')
-            ->orderBy('id', 'ASC')
+            ->whereIn('status', ['active', 'Aktif', 'aktif'])
+            ->orderBy('id', 'DESC')
             ->findAll();
 
         if (empty($templates)) {
             $templates = (new DocumentTemplateModel())
                 ->where('doc_type', $type)
-                ->orderBy('id', 'ASC')
+                ->orderBy('id', 'DESC')
                 ->findAll();
         }
+
+        $templates = $this->enrichDocumentTemplates($templates);
 
         $selectedTemplateId = (int) ($this->request->getGet('template_id') ?: ($templates[0]['id'] ?? 0));
 
@@ -3372,7 +3749,7 @@ class EventSuite extends BaseController
         }
 
         $templateId = (int) ($this->request->getPost('template_id') ?: 0);
-        $template = (new DocumentTemplateModel())->find($templateId);
+        $template = $templateId > 0 ? (new DocumentTemplateModel())->find($templateId) : null;
         $templateName = $template['name'] ?? ($type === 'proposal' ? 'Template Proposal Standar' : 'Template Laporan Standar');
 
         $event = (new EventModel())->withCreator()->find($eventId);
@@ -3386,29 +3763,39 @@ class EventSuite extends BaseController
         $customBrief = trim((string) $this->request->getPost('custom_brief'));
         $sections = (array) ($this->request->getPost('sections') ?: []);
 
+        $resolvedTemplate = $this->resolveDocumentTemplateForAi($type, $event, [], $templateId);
+        if (! empty($resolvedTemplate['name'])) {
+            $templateName = $resolvedTemplate['name'];
+        }
+
         $structure = [
             'Tujuan kegiatan' => $goals,
             'Sasaran peserta' => $target,
             'Catatan tambahan' => $customBrief,
         ];
+        if (! empty($sections)) {
+            $structure['Bagian dokumen yang wajib disertakan'] = implode(', ', $sections);
+        }
 
         $service = new GeminiDocumentService();
         $content = '';
 
         if ($service->isConfigured()) {
             try {
-                $content = $service->generateDocument($type, $event, $templateName, $structure);
+                $rawAi = $service->generateDocument($type, $event, (string) ($resolvedTemplate['content'] ?? ''), $structure, $resolvedTemplate);
+                $content = $this->markdownToWordHtml($rawAi);
             } catch (\Throwable $e) {
-                $content = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections);
+                $content = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections, $resolvedTemplate);
             }
         } else {
-            $content = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections);
+            $content = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections, $resolvedTemplate);
         }
 
         return $this->response->setJSON([
             'ok' => true,
             'content_html' => $content,
             'template_name' => $templateName,
+            'has_md_guide' => ! empty($resolvedTemplate['md_guide']),
             'type' => $type,
         ]);
     }
@@ -3477,8 +3864,8 @@ class EventSuite extends BaseController
 
     public function aiExportWordDocument()
     {
-        $eventId = (int) ($this->request->getGet('event_id') ?: 0);
-        $type = trim((string) ($this->request->getGet('type') ?: 'proposal'));
+        $eventId = (int) ($this->request->getPost('event_id') ?: $this->request->getGet('event_id') ?: 0);
+        $type = trim((string) ($this->request->getPost('type') ?: $this->request->getGet('type') ?: 'proposal'));
         if (! in_array($type, ['proposal', 'report'], true)) {
             $type = 'proposal';
         }
@@ -3486,14 +3873,16 @@ class EventSuite extends BaseController
         $event = (new EventModel())->find($eventId);
         $code = (string) ($event['code'] ?? 'EVT-' . $eventId);
 
-        $doc = null;
-        if ($type === 'report') {
-            $doc = (new ReportModel())->where('event_id', $eventId)->first();
-        } else {
-            $doc = (new ProposalModel())->where('event_id', $eventId)->first();
+        $postedContent = trim((string) ($this->request->getPost('content') ?? ''));
+        $content = $postedContent;
+
+        if ($content === '') {
+            $doc = $type === 'report'
+                ? (new ReportModel())->where('event_id', $eventId)->first()
+                : (new ProposalModel())->where('event_id', $eventId)->first();
+            $content = (string) ($doc['content'] ?? '');
         }
 
-        $content = $doc['content'] ?? '';
         if (trim($content) === '') {
             $content = $this->buildOfficialDocumentHtml($type, $this->normalizeEvent($event ?: []), 'Template Resmi', '', '', '', []);
         }
@@ -3510,8 +3899,8 @@ class EventSuite extends BaseController
 
     public function aiExportPdfDocument()
     {
-        $eventId = (int) ($this->request->getGet('event_id') ?: 0);
-        $type = trim((string) ($this->request->getGet('type') ?: 'proposal'));
+        $eventId = (int) ($this->request->getPost('event_id') ?: $this->request->getGet('event_id') ?: 0);
+        $type = trim((string) ($this->request->getPost('type') ?: $this->request->getGet('type') ?: 'proposal'));
         if (! in_array($type, ['proposal', 'report'], true)) {
             $type = 'proposal';
         }
@@ -3520,16 +3909,20 @@ class EventSuite extends BaseController
         $code = (string) ($event['code'] ?? 'EVT-' . $eventId);
         $title = (string) ($event['title'] ?? 'Dokumen Event');
 
-        $doc = null;
-        if ($type === 'report') {
-            $doc = (new ReportModel())->where('event_id', $eventId)->first();
-        } else {
-            $doc = (new ProposalModel())->where('event_id', $eventId)->first();
+        $postedContent = trim((string) ($this->request->getPost('content') ?? ''));
+        $content = $postedContent;
+
+        if ($content === '') {
+            $doc = $type === 'report'
+                ? (new ReportModel())->where('event_id', $eventId)->first()
+                : (new ProposalModel())->where('event_id', $eventId)->first();
+            $content = (string) ($doc['content'] ?? '');
         }
 
-        $content = $doc['content'] ?? '';
         if (trim($content) === '') {
             $content = $this->buildOfficialDocumentHtml($type, $this->normalizeEvent($event ?: []), 'Template Resmi', '', '', '', []);
+        } else {
+            $content = $this->markdownToWordHtml($content);
         }
 
         $html = '<!DOCTYPE html><html><head><meta charset="utf-8">';
@@ -3551,10 +3944,10 @@ class EventSuite extends BaseController
             ->setBody($html);
     }
 
-    private function buildOfficialDocumentHtml(string $type, array $event, string $templateName, string $goals = '', string $target = '', string $customBrief = '', array $sections = []): string
+    private function buildOfficialDocumentHtml(string $type, array $event, string $templateName, string $goals = '', string $target = '', string $customBrief = '', array $sections = [], array $resolvedTemplate = []): string
     {
         $isProposal = $type === 'proposal';
-        $docTitle = $isProposal ? 'PROPOSAL KEGIATAN' : 'LAPORAN KEGIATAN';
+        $docTitle = $isProposal ? 'PROPOSAL KEGIATAN' : 'LAPORAN PERTANGGUNGJAWABAN (LPJ) KEGIATAN';
         $eventTitle = htmlspecialchars((string) ($event['title'] ?? 'Sosialisasi PMB dan BJU di SMAN 1 Sungai Kakap'));
         $campus = htmlspecialchars((string) ($event['campus_name'] ?? $event['campus'] ?? 'UBSI Kampus Pontianak'));
         $dateLabel = htmlspecialchars((string) ($event['date_range_label'] ?? $event['date'] ?? date('d F Y')));
@@ -10463,16 +10856,17 @@ class EventSuite extends BaseController
 
         // 1. Jika user memilih template dari Menu Template Dokumen
         if ($selectedTpl) {
-            $extracted = $this->extractUploadedDocumentTemplateRecord($selectedTpl);
-            if ($extracted !== '') {
-                return [
-                    'content' => $extracted,
-                    'has_custom' => true,
-                    'name' => (string) ($selectedTpl['name'] ?? ''),
-                    'category' => (string) ($selectedTpl['event_category'] ?? ''),
-                    'description' => (string) ($selectedTpl['description'] ?? ''),
-                ];
-            }
+            $enrichedTpl = $this->enrichDocumentTemplates([$selectedTpl])[0];
+            $extracted = $this->extractUploadedDocumentTemplateRecord($enrichedTpl);
+            $mdGuide = (string) ($enrichedTpl['md_content'] ?? '');
+            return [
+                'content' => $extracted,
+                'md_guide' => $mdGuide,
+                'has_custom' => $extracted !== '' || $mdGuide !== '',
+                'name' => (string) ($enrichedTpl['name'] ?? ''),
+                'category' => (string) ($enrichedTpl['event_category'] ?? ''),
+                'description' => (string) ($enrichedTpl['description'] ?? ''),
+            ];
         }
 
         // 2. Jika ada template khusus per-event yang pernah diupload
@@ -10483,6 +10877,7 @@ class EventSuite extends BaseController
                 if ($content !== '') {
                     return [
                         'content' => $content,
+                        'md_guide' => '',
                         'has_custom' => true,
                         'name' => (string) ($document['template_name'] ?? basename($path)),
                         'category' => (string) ($event['category'] ?? ''),
@@ -10492,7 +10887,7 @@ class EventSuite extends BaseController
             }
         }
 
-        // 3. Cari otomatis template Aktif di Menu Template Dokumen (prioritas kategori event sama, lalu Umum, lalu terbaru)
+        // 3. Cari otomatis template Aktif di Menu Template Dokumen (prioritas kategori event sama, lalu Umum/Semua, lalu terbaru)
         $activeTemplates = (new DocumentTemplateModel())
             ->where('doc_type', $type)
             ->whereIn('status', ['active', 'Aktif', 'aktif'])
@@ -10507,12 +10902,12 @@ class EventSuite extends BaseController
             $catB = strtolower(trim((string) ($b['event_category'] ?? '')));
             if ($eventCategory !== '' && $catA === $eventCategory) {
                 $scoreA = 2;
-            } elseif ($catA === 'umum') {
+            } elseif (in_array($catA, ['umum', 'semua'], true)) {
                 $scoreA = 1;
             }
             if ($eventCategory !== '' && $catB === $eventCategory) {
                 $scoreB = 2;
-            } elseif ($catB === 'umum') {
+            } elseif (in_array($catB, ['umum', 'semua'], true)) {
                 $scoreB = 1;
             }
             if ($scoreB !== $scoreA) {
@@ -10523,14 +10918,17 @@ class EventSuite extends BaseController
         });
 
         foreach ($activeTemplates as $tpl) {
-            $extracted = $this->extractUploadedDocumentTemplateRecord($tpl);
-            if ($extracted !== '') {
+            $enrichedTpl = $this->enrichDocumentTemplates([$tpl])[0];
+            $extracted = $this->extractUploadedDocumentTemplateRecord($enrichedTpl);
+            $mdGuide = (string) ($enrichedTpl['md_content'] ?? '');
+            if ($extracted !== '' || $mdGuide !== '') {
                 return [
                     'content' => $extracted,
+                    'md_guide' => $mdGuide,
                     'has_custom' => true,
-                    'name' => (string) ($tpl['name'] ?? ''),
-                    'category' => (string) ($tpl['event_category'] ?? ''),
-                    'description' => (string) ($tpl['description'] ?? ''),
+                    'name' => (string) ($enrichedTpl['name'] ?? ''),
+                    'category' => (string) ($enrichedTpl['event_category'] ?? ''),
+                    'description' => (string) ($enrichedTpl['description'] ?? ''),
                 ];
             }
         }
@@ -10538,6 +10936,7 @@ class EventSuite extends BaseController
         // 4. Fallback standar default jika belum ada template terupload
         return [
             'content' => $this->documentTemplateContent($type, $document),
+            'md_guide' => '',
             'has_custom' => false,
             'name' => '',
             'category' => '',
@@ -10731,7 +11130,17 @@ class EventSuite extends BaseController
 
     private function markdownToWordHtml(string $content): string
     {
-        $lines = preg_split('/\R/', trim($content)) ?: [];
+        $trimmed = trim($content);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        // If content is already formatted HTML (from visual sheet / buildOfficialDocumentHtml), preserve HTML tags
+        if (preg_match('/<(?:div|table|h[1-6]|p|ul|ol|thead|tbody|tr)\b/i', $trimmed) === 1) {
+            return $trimmed;
+        }
+
+        $lines = preg_split('/\R/', $trimmed) ?: [];
         $html = [];
         $listType = null;
         $headingCount = 0;
@@ -11826,424 +12235,4 @@ class EventSuite extends BaseController
         $locationPart = $city !== '' ? ' (' . $city . ')' : '';
         $message = 'Data sekolah baru Sixty School: ' . $schoolName . $locationPart . ' untuk ' . $pmbPeriod . ' oleh ' . $submitterName . '.';
         if (mb_strlen($message) > 250) {
-            $message = mb_substr($message, 0, 247) . '...';
-        }
-
-        $recipientIds = [1];
-        if ($currentUserId > 0) {
-            $recipientIds[] = $currentUserId;
-        }
-
-        $adminUsers = (new UserModel())
-            ->whereIn('role', ['Admin Sistem', 'Super Admin', 'DMER', 'Admin'])
-            ->findAll();
-
-        foreach ($adminUsers as $admin) {
-            $recipientIds[] = (int) $admin['id'];
-        }
-
-        $recipientIds = array_values(array_unique(array_filter($recipientIds, fn (int $id): bool => $id > 0)));
-
-        $notificationModel = new NotificationModel();
-        foreach ($recipientIds as $uid) {
-            $notificationModel->insert([
-                'user_id' => $uid,
-                'type' => 'sixty-school',
-                'message' => $message,
-                'read_at' => null,
-            ]);
-        }
-    }
-
-    private function sendOneCampusSchoolNotificationEmail(array $schoolData, string $campusName, string $submitterName, string $submitterEmail): bool
-    {
-        $recipient = 'markom851@bsi.ac.id';
-        $schoolName = (string) ($schoolData['school_name'] ?? '-');
-        $city = (string) ($schoolData['city'] ?? '-');
-        $npsn = (string) ($schoolData['npsn'] ?? '-');
-        $schoolType = (string) ($schoolData['school_type'] ?? '-');
-        $schoolStatus = (string) ($schoolData['school_status'] ?? '-');
-        $pmbPeriod = (string) ($schoolData['pmb_period'] ?? '-');
-        $headmaster = (string) ($schoolData['headmaster_name'] ?? '-');
-        $schoolPhone = (string) ($schoolData['school_phone'] ?? '-');
-        $schoolEmail = (string) ($schoolData['school_email'] ?? '-');
-        $contactName = (string) ($schoolData['contact_name'] ?? '-');
-        $contactPhone = (string) ($schoolData['contact_phone'] ?? '-');
-        $contactEmail = (string) ($schoolData['contact_email'] ?? '-');
-        $pmbCount = (int) ($schoolData['pmb_count'] ?? 0);
-        $bjsStatus = (string) ($schoolData['bjs_status'] ?? '-');
-        $notes = (string) ($schoolData['notes'] ?? '-');
-        $detailUrl = site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod));
-        $now = date('d F Y, H:i') . ' WIB';
-
-        $subject = '[One Campus Sixty School] Data Sekolah Baru: ' . $schoolName . ' (' . $city . ')';
-
-        $htmlMessage = '
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>' . htmlspecialchars($subject, ENT_QUOTES, 'UTF-8') . '</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 24px; }
-        .email-card { max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
-        .email-hdr { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; padding: 26px 28px; }
-        .email-hdr h1 { margin: 0; font-size: 20px; font-weight: 700; }
-        .email-hdr p { margin: 6px 0 0; font-size: 13px; opacity: 0.9; }
-        .email-body { padding: 24px 28px; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-        .badge-cyan { background: #e0f2fe; color: #0284c7; }
-        .badge-green { background: #dcfce7; color: #15803d; }
-        .table-data { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        .table-data th, .table-data td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; text-align: left; vertical-align: top; }
-        .table-data th { width: 34%; color: #64748b; font-weight: 600; background: #f8fafc; }
-        .table-data td { color: #0f172a; font-weight: 500; }
-        .sec-title { font-size: 13px; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 6px; border-left: 3px solid #0284c7; padding-left: 8px; }
-        .btn-link { display: inline-block; background: #0284c7; color: #ffffff !important; text-decoration: none; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 13px; margin-top: 22px; }
-        .email-ftr { background: #f8fafc; padding: 16px 28px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; }
-    </style>
-</head>
-<body>
-    <div class="email-card">
-        <div class="email-hdr">
-            <h1>Notifikasi One Campus Sixty School</h1>
-            <p>Pengisian data sekolah mitra baru telah berhasil disimpan ke sistem.</p>
-        </div>
-        <div class="email-body">
-            <p style="margin-top:0; font-size: 13.5px; line-height: 1.55;">
-                Halo Tim Marketing Komunikasi (Markom),<br>
-                Terdapat penambahan data sekolah baru pada program <strong>One Campus Sixty School</strong> oleh <strong>' . htmlspecialchars($submitterName, ENT_QUOTES, 'UTF-8') . '</strong> (' . htmlspecialchars($submitterEmail, ENT_QUOTES, 'UTF-8') . ').
-            </p>
-
-            <div class="sec-title">Informasi Sekolah</div>
-            <table class="table-data">
-                <tr><th>Nama Sekolah</th><td><strong>' . htmlspecialchars($schoolName, ENT_QUOTES, 'UTF-8') . '</strong></td></tr>
-                <tr><th>NPSN</th><td>' . htmlspecialchars($npsn, ENT_QUOTES, 'UTF-8') . '</td></tr>
-                <tr><th>Kota / Kabupaten</th><td>' . htmlspecialchars($city, ENT_QUOTES, 'UTF-8') . '</td></tr>
-                <tr><th>Bentuk / Status</th><td>' . htmlspecialchars($schoolType . ' (' . $schoolStatus . ')', ENT_QUOTES, 'UTF-8') . '</td></tr>
-                <tr><th>Kepala Sekolah</th><td>' . htmlspecialchars($headmaster, ENT_QUOTES, 'UTF-8') . '</td></tr>
-                <tr><th>Kontak Sekolah</th><td>' . htmlspecialchars($schoolPhone . ' / ' . $schoolEmail, ENT_QUOTES, 'UTF-8') . '</td></tr>
-            </table>
-
-            <div class="sec-title">Detail Kampus & Program PMB</div>
-            <table class="table-data">
-                <tr><th>Kampus Pengusul</th><td>' . htmlspecialchars($campusName, ENT_QUOTES, 'UTF-8') . '</td></tr>
-                <tr><th>Periode PMB</th><td><span class="badge badge-cyan">' . htmlspecialchars($pmbPeriod, ENT_QUOTES, 'UTF-8') . '</span></td></tr>
-                <tr><th>Status BJS</th><td><span class="badge badge-green">' . htmlspecialchars($bjsStatus, ENT_QUOTES, 'UTF-8') . '</span></td></tr>
-                <tr><th>Target / Perolehan Mhs</th><td>' . $pmbCount . ' Mahasiswa</td></tr>
-                <tr><th>PIC / Kontak Guru</th><td>' . htmlspecialchars($contactName, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($contactPhone . ' / ' . $contactEmail, ENT_QUOTES, 'UTF-8') . ')</td></tr>
-                <tr><th>Catatan</th><td>' . nl2br(htmlspecialchars($notes, ENT_QUOTES, 'UTF-8')) . '</td></tr>
-                <tr><th>Waktu Pendaftaran</th><td>' . $now . '</td></tr>
-            </table>
-
-            <div style="text-align: center;">
-                <a href="' . $detailUrl . '" class="btn-link">Lihat Selengkapnya di EventHub &rarr;</a>
-            </div>
-        </div>
-        <div class="email-ftr">
-            &copy; ' . date('Y') . ' EventHub &bull; Markom Universitas Bina Sarana Informatika.<br>
-            Pemberitahuan otomatis ini dikirim ke ' . htmlspecialchars($recipient, ENT_QUOTES, 'UTF-8') . '.
-        </div>
-    </div>
-</body>
-</html>';
-
-        $plainTextMessage = implode("\n", [
-            'PENGISIAN DATA BARU ONE CAMPUS SIXTY SCHOOL',
-            '==========================================',
-            'Nama Sekolah   : ' . $schoolName,
-            'NPSN           : ' . $npsn,
-            'Kota           : ' . $city,
-            'Bentuk/Status  : ' . $schoolType . ' (' . $schoolStatus . ')',
-            'Kepala Sekolah : ' . $headmaster,
-            'Kampus         : ' . $campusName,
-            'Periode PMB    : ' . $pmbPeriod,
-            'Status BJS     : ' . $bjsStatus,
-            'Perolehan Mhs  : ' . $pmbCount . ' Mahasiswa',
-            'PIC Guru       : ' . $contactName . ' (' . $contactPhone . ' / ' . $contactEmail . ')',
-            'Penginput      : ' . $submitterName . ' (' . $submitterEmail . ')',
-            'Waktu Input    : ' . $now,
-            'Tautan         : ' . $detailUrl,
-        ]);
-
-        $config = [
-            'protocol' => env('email.protocol', 'mail'),
-            'SMTPHost' => env('email.SMTPHost', ''),
-            'SMTPUser' => env('email.SMTPUser', ''),
-            'SMTPPass' => env('email.SMTPPass', ''),
-            'SMTPPort' => (int) env('email.SMTPPort', 25),
-            'SMTPCrypto' => env('email.SMTPCrypto', 'tls'),
-            'mailType' => 'html',
-            'charset' => 'UTF-8',
-            'newline' => "\r\n",
-            'CRLF' => "\r\n",
-        ];
-
-        try {
-            $email = service('email', $config, false);
-            $email->setFrom(env('email.fromEmail', 'noreply@eventhub.local'), env('email.fromName', 'EventHub Markom'));
-            $email->setTo($recipient);
-            $email->setSubject($subject);
-            $email->setMessage($htmlMessage);
-            if (is_object($email) && method_exists($email, 'setAltMessage')) {
-                $email->setAltMessage($plainTextMessage);
-            }
-
-            $sent = $email->send(false);
-            if (! $sent) {
-                $headers = "MIME-Version: 1.0\r\n" .
-                           "Content-type: text/html; charset=UTF-8\r\n" .
-                           "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
-                @mail($recipient, $subject, $htmlMessage, $headers);
-            }
-
-            return true;
-        } catch (\Throwable $error) {
-            log_message('error', 'Gagal mengirim email Sixty School: ' . $error->getMessage());
-            try {
-                $headers = "MIME-Version: 1.0\r\n" .
-                           "Content-type: text/html; charset=UTF-8\r\n" .
-                           "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
-                @mail($recipient, $subject, $htmlMessage, $headers);
-            } catch (\Throwable) {}
-
-            return false;
-        }
-    }
-
-    private function calendarIntegrationsByEvent(array $items): array
-    {
-        $mapped = [];
-        foreach ($items as $item) {
-            $mapped[$this->eventCode((int) $item['event_id'])] = $item;
-        }
-
-        return $mapped;
-    }
-
-    private function selectedCalendarMonth(): string
-    {
-        $month = (string) $this->request->getGet('month');
-
-        if (preg_match('/^\d{4}-\d{2}$/', $month) === 1) {
-            return $month;
-        }
-
-        return date('Y-m');
-    }
-
-    private function calendarState(string $month, array $events): array
-    {
-        $timezone = new \DateTimeZone('Asia/Jakarta');
-        $firstDay = new \DateTimeImmutable($month . '-01', $timezone);
-        $previousMonth = $firstDay->modify('first day of previous month')->format('Y-m');
-        $nextMonth = $firstDay->modify('first day of next month')->format('Y-m');
-        $daysInMonth = (int) $firstDay->format('t');
-        $leadingDays = (int) $firstDay->format('N') - 1;
-        $totalCells = (int) ceil(($leadingDays + $daysInMonth) / 7) * 7;
-        $eventsByCode = [];
-        foreach ($events as $event) {
-            $eventsByCode[strtoupper((string) ($event['id'] ?? ''))] = $event;
-        }
-
-        $googleEvents = [];
-        foreach ((new GoogleCalendarEventModel())->eventsForMonth((int) session('user.id'), $month) as $event) {
-            $text = implode(' ', [
-                (string) ($event['summary'] ?? ''),
-                (string) ($event['location'] ?? ''),
-                (string) ($event['description'] ?? ''),
-            ]);
-
-            if (preg_match('/EventHub code:\s*([A-Z]+-\d+)/i', (string) ($event['description'] ?? ''), $matches) === 1) {
-                $linkedEvent = $eventsByCode[strtoupper($matches[1])] ?? null;
-                if ($linkedEvent !== null) {
-                    continue;
-                }
-            }
-
-            $event['calendar_campus'] = $this->calendarCampusKey($text);
-
-            $googleEvents[] = $event;
-        }
-        $visibleEvents = array_values(array_filter($events, static function (array $event) use ($month): bool {
-            $start = (string) ($event['date'] ?? '');
-            $end = (string) (($event['end_date'] ?? '') ?: $start);
-
-            return $start <= $month . '-31' && $end >= $month . '-01';
-        }));
-
-        $cells = [];
-        for ($index = 0; $index < $totalCells; $index++) {
-            $dayNumber = $index - $leadingDays + 1;
-            if ($dayNumber < 1 || $dayNumber > $daysInMonth) {
-                $cells[] = ['date' => null, 'day' => null, 'localEvents' => [], 'googleEvents' => []];
-                continue;
-            }
-
-            $date = $firstDay->setDate((int) $firstDay->format('Y'), (int) $firstDay->format('m'), $dayNumber)->format('Y-m-d');
-            $cells[] = [
-                'date' => $date,
-                'day' => $dayNumber,
-                'localEvents' => array_values(array_filter($events, static function (array $event) use ($date): bool {
-                    $start = (string) ($event['date'] ?? '');
-                    $end = (string) (($event['end_date'] ?? '') ?: $start);
-
-                    return $start <= $date && $end >= $date;
-                })),
-                'googleEvents' => array_values(array_filter($googleEvents, static fn (array $event): bool => substr((string) $event['start_at'], 0, 10) === $date)),
-            ];
-        }
-
-        return [
-            'key' => $month,
-            'label' => $this->monthLabel($firstDay),
-            'previous' => $previousMonth,
-            'next' => $nextMonth,
-            'cells' => $cells,
-            'visibleEvents' => $visibleEvents,
-            'googleEvents' => $googleEvents,
-        ];
-    }
-
-    private function calendarCampusKey(string $text): string
-    {
-        $text = strtoupper($text);
-
-        if (preg_match('/\bUNM\b|NUSA\s+MANDIRI/', $text) === 1) {
-            return 'unm';
-        }
-
-        if (preg_match('/\bCU\b|CYBER\s+(?:UNIVERSITY|UNIV)/', $text) === 1) {
-            return 'cu';
-        }
-
-        if (preg_match('/\bUBSI\b|\bBSI\b|BINA\s+SARANA\s+INFORMATIKA/', $text) === 1) {
-            return 'ubsi';
-        }
-
-        return 'other';
-    }
-
-    private function monthLabel(\DateTimeImmutable $date): string
-    {
-        $months = [
-            1 => 'Januari',
-            2 => 'Februari',
-            3 => 'Maret',
-            4 => 'April',
-            5 => 'Mei',
-            6 => 'Juni',
-            7 => 'Juli',
-            8 => 'Agustus',
-            9 => 'September',
-            10 => 'Oktober',
-            11 => 'November',
-            12 => 'Desember',
-        ];
-
-        return $months[(int) $date->format('n')] . ' ' . $date->format('Y');
-    }
-
-    private function accessOptions(): array
-    {
-        return [
-            'dashboard' => 'Dashboard',
-            'crm' => 'CRM',
-            'events' => 'Event',
-            'calendar' => 'Kalender',
-            'approvals' => 'Approval',
-            'documents' => 'Dokumen',
-            'reports' => 'Laporan',
-            'one-campus' => 'One Campus',
-            'analytics' => 'Analytics',
-            'notifications' => 'Notifikasi',
-            'users' => 'Users',
-        ];
-    }
-
-    private function selectedPermissions(string $field = 'access_permissions', ?array $fallback = null): array
-    {
-        $selected = $this->request->getPost($field);
-        $selected = is_array($selected) ? $selected : ($fallback ?? []);
-        $allowed = array_keys($this->accessOptions());
-        $permissions = array_values(array_intersect($allowed, $selected));
-
-        if (! in_array('dashboard', $permissions, true)) {
-            array_unshift($permissions, 'dashboard');
-        }
-
-        return array_values(array_unique($permissions));
-    }
-
-    private function permissionsFromRole(array $role): array
-    {
-        if (($role['name'] ?? '') === 'Admin Sistem') {
-            return array_keys($this->accessOptions());
-        }
-
-        $decoded = json_decode((string) ($role['default_permissions'] ?? '[]'), true);
-
-        return $this->normalizePermissions(is_array($decoded) ? $decoded : []);
-    }
-
-    private function normalizePermissions(array $permissions): array
-    {
-        $allowed = array_keys($this->accessOptions());
-        $permissions = array_values(array_intersect($allowed, $permissions));
-
-        if (! in_array('dashboard', $permissions, true)) {
-            array_unshift($permissions, 'dashboard');
-        }
-
-        return array_values(array_unique($permissions));
-    }
-
-    private function activeRoleByName(string $name): ?array
-    {
-        $name = $this->normalizedRoleName($name);
-        if ($name === '') {
-            return null;
-        }
-
-        return (new RoleModel())->where('name', $name)->first();
-    }
-
-    private function normalizedRoleName(string $name): string
-    {
-        return trim((string) preg_replace('/\s+/', ' ', $name));
-    }
-
-    private function normalizedCrmRole(string $role): string
-    {
-        return in_array($role, ['Admin', 'Agent'], true) ? $role : 'Agent';
-    }
-
-    private function normalizedCrmStatus(string $status): string
-    {
-        return in_array($status, ['Active', 'Inactive', 'Review'], true) ? $status : 'Active';
-    }
-
-    private function normalizedCampusName(string $name): string
-    {
-        return trim((string) preg_replace('/\s+/', ' ', $name));
-    }
-
-    private function normalizedCategoryName(string $name): string
-    {
-        return trim((string) preg_replace('/\s+/', ' ', $name));
-    }
-
-    private function activeAdminCount(?int $excludeId = null): int
-    {
-        $builder = (new UserModel())
-            ->where('role', 'Admin Sistem')
-            ->where('status', 'Aktif')
-            ->where('deleted_at', null);
-
-        if ($excludeId !== null) {
-            $builder->where('id !=', $excludeId);
-        }
-
-        return $builder->countAllResults();
-    }
-}
+... [truncated for diff preview]

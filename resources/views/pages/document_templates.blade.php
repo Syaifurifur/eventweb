@@ -656,10 +656,10 @@ $dtIcon = static function (string $name, int $size = 18): string {
                         <th>Nama Template</th>
                         <th>Jenis Event</th>
                         <th>Deskripsi</th>
-                        <th>Format</th>
+                        <th>Format &amp; Panduan AI (.md)</th>
                         <th>Tanggal Upload</th>
                         <th>Status</th>
-                        <th style="text-align:right;">Aksi</th>
+                        <th style="text-align:right;">Aksi (Preview, Unduh &amp; Kelola)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -668,13 +668,13 @@ $dtIcon = static function (string $name, int $size = 18): string {
                             <td colspan="8" style="text-align:center; padding:38px 20px; color:#94a3b8;">
                                 <div style="font-size:28px; margin-bottom:8px;">📄</div>
                                 <strong>Belum ada template dokumen</strong>
-                                <p style="margin:4px 0 0; font-size:13px;">Silakan klik "+ Upload Template Baru" untuk menambahkan template <?= esc($activeDocType) ?> resmi.</p>
+                                <p style="margin:4px 0 0; font-size:13px;">Silakan klik "+ Upload Template Baru" untuk menambahkan template <?= esc($activeDocType) ?> resmi beserta file panduan AI (.md).</p>
                             </td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($templates as $idx => $tpl): ?>
                             <?php
-                            $isActive = ($tpl['status'] ?? 'active') === 'active';
+                            $isActive = in_array(strtolower((string) ($tpl['status'] ?? 'active')), ['active', 'aktif'], true);
                             $uploadedDate = ! empty($tpl['created_at']) ? date('d M Y', strtotime((string) $tpl['created_at'])) : '-';
                             ?>
                             <tr>
@@ -693,11 +693,20 @@ $dtIcon = static function (string $name, int $size = 18): string {
                                 <td>
                                     <span class="dt-badge dt-badge-cat"><?= esc($tpl['event_category'] ?? 'Semua') ?></span>
                                 </td>
-                                <td style="max-width:320px; color:#475569; font-size:12.5px; line-height:1.4;">
+                                <td style="max-width:280px; color:#475569; font-size:12.5px; line-height:1.4;">
                                     <?= esc($tpl['description'] ?? '-') ?>
                                 </td>
                                 <td>
-                                    <span class="dt-badge dt-badge-format"><?= esc($tpl['file_format'] ?? 'DOCX') ?></span>
+                                    <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-start;">
+                                        <span class="dt-badge dt-badge-format"><?= esc($tpl['file_format'] ?? 'DOCX') ?></span>
+                                        <a
+                                            href="<?= site_url('document-templates/' . $tpl['id'] . '/download-md') ?>"
+                                            style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; color:#0f766e; background:#ccfbf1; border:1px solid #99f6e4; padding:2px 8px; border-radius:999px; text-decoration:none;"
+                                            title="Unduh file panduan instruksi AI (.md)"
+                                        >
+                                            🤖 <?= ! empty($tpl['has_custom_md']) ? 'Panduan .MD Custom' : 'Panduan .MD Standar' ?> &darr;
+                                        </a>
+                                    </div>
                                 </td>
                                 <td style="color:#64748b; font-size:12.5px; white-space:nowrap;">
                                     <?= esc($uploadedDate) ?>
@@ -710,19 +719,37 @@ $dtIcon = static function (string $name, int $size = 18): string {
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <div class="dt-actions" style="justify-content:flex-end;">
+                                    <div class="dt-actions" style="justify-content:flex-end; flex-wrap:wrap; gap:6px;">
                                         <a
-                                            class="dt-action-btn"
-                                            href="<?= site_url('documents/generate?type=' . esc($tpl['doc_type'] ?? 'proposal') . '&template_id=' . esc($tpl['id'])) ?>"
-                                            title="Uji coba generate dengan template ini"
+                                            class="dt-btn dt-btn-sm"
+                                            style="padding:5px 9px; font-size:11.5px; background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe;"
+                                            href="<?= site_url('document-templates/' . $tpl['id'] . '/preview') ?>"
+                                            target="_blank"
+                                            title="Preview struktur template dan panduan AI (.md)"
                                         >
-                                            <?= $dtIcon('sparkles', 15) ?>
+                                            👁 Preview
+                                        </a>
+                                        <a
+                                            class="dt-btn dt-btn-sm"
+                                            style="padding:5px 9px; font-size:11.5px; background:#f8fafc; color:#0f172a; border-color:#cbd5e1;"
+                                            href="<?= site_url('document-templates/' . $tpl['id'] . '/download') ?>"
+                                            title="Download file template dokumen"
+                                        >
+                                            ⬇ Download
+                                        </a>
+                                        <a
+                                            class="dt-btn dt-btn-sm"
+                                            style="padding:5px 9px; font-size:11.5px; background:#ecfdf5; color:#047857; border-color:#a7f3d0;"
+                                            href="<?= site_url('documents/generate?type=' . esc($tpl['doc_type'] ?? 'proposal') . '&template_id=' . esc($tpl['id'])) ?>"
+                                            title="Buka di Konfigurasi Generate AI"
+                                        >
+                                            ✨ Generate AI
                                         </a>
                                         <?php if ($isAdminSystem): ?>
                                             <button
                                                 type="button"
                                                 class="dt-action-btn"
-                                                title="Edit template"
+                                                title="Edit template & panduan .md"
                                                 onclick='editTemplateModal(<?= json_encode($tpl, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'
                                             >
                                                 <?= $dtIcon('edit', 15) ?>
@@ -849,21 +876,89 @@ $dtIcon = static function (string $name, int $size = 18): string {
                 </div>
 
                 <div class="dt-form-group">
-                    <label for="tpl-file">File Template (.docx / .dotx / .doc)</label>
-                    <input id="tpl-file" type="file" name="template_file" class="dt-input" accept=".docx,.doc,.dotx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
-                    <small style="color:#64748b; font-size:11.5px;">Opsional. Jika kosong, sistem otomatis memakai layout master resmi BSI Group.</small>
+                    <label for="tpl-file">1. File Template Dokumen (.docx / .dotx / .doc / .pdf)</label>
+                    <input id="tpl-file" type="file" name="template_file" class="dt-input" accept=".docx,.doc,.dotx,.pdf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                    <small style="color:#64748b; font-size:11.5px;">Upload file master template Proposal atau Laporan (LPJ) resmi.</small>
+                </div>
+
+                <div class="dt-form-group" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                        <label for="tpl-md-file" style="margin:0; color:#065f46; font-weight:800;">2. 🤖 File Panduan Instruksi AI (.md) untuk Template Ini</label>
+                        <button type="button" class="dt-btn dt-btn-sm" style="padding:3px 9px; font-size:11px; background:#059669; color:#fff; border-color:#059669;" onclick="fillSampleMarkdownGuide()">
+                            ✨ Isi Contoh Format .MD
+                        </button>
+                    </div>
+                    <input id="tpl-md-file" type="file" name="md_file" class="dt-input" accept=".md,.markdown,.txt,text/markdown,text/plain" onchange="handleMdFileSelected(this)" style="background:#fff; margin-bottom:8px;">
+                    <label for="tpl-md-content" style="font-size:11.5px; font-weight:700; color:#065f46; display:block; margin-bottom:4px;">Isi Panduan Markdown (.md) — Instruksi Cara AI Mengisi Setiap Bagian:</label>
+                    <textarea id="tpl-md-content" name="md_content" class="dt-input" rows="6" style="height:auto; padding:10px; font-family:monospace; font-size:12px; background:#fff; line-height:1.45;" placeholder="# Panduan Instruksi AI (.md)&#10;Tuliskan aturan bab, variabel {{judul_event}}, format tabel rundown, RAB, dan instruksi pengisian bagi AI..."></textarea>
+                    <small style="color:#047857; font-size:11px; display:block; margin-top:4px;">Anda dapat mengunggah file <code>.md</code> atau menulis/mengedit langsung di kotak di atas. Panduan ini otomatis terbaca oleh AI di halaman Konfigurasi Generate Proposal &amp; Laporan.</small>
                 </div>
             </div>
 
             <div class="dt-modal-foot">
                 <button type="button" class="dt-btn" onclick="closeTemplateModal()">Batal</button>
-                <button type="submit" class="dt-btn dt-btn-primary">Simpan Template</button>
+                <button type="submit" class="dt-btn dt-btn-primary">Simpan Template &amp; Panduan .MD</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+function getDefaultMdGuideText(docType, tplName) {
+    const name = tplName || (docType === 'report' ? 'Template Laporan (LPJ) Event UBSI' : 'Template Proposal Event UBSI');
+    if (docType === 'report') {
+        return [
+            '# Panduan Instruksi AI (.md) — ' + name,
+            '',
+            '## Aturan Pengisian Laporan Pertanggungjawaban (LPJ) untuk AI',
+            '1. **Halaman Cover & Identitas**: Isi judul laporan, nama event (`{{judul_event}}`), tanggal pelaksanaan (`{{tanggal}}`), lokasi (`{{lokasi}}`), kampus pelaksana (`{{kampus}}`), dan PIC.',
+            '2. **BAB I Pendahuluan**: Uraikan latar belakang pelaksanaan, tujuan yang tercapai, dan jumlah peserta hadir.',
+            '3. **BAB II Pelaksanaan & Hasil Kegiatan**:',
+            '   - Jelaskan jalannya acara dari pembukaan hingga penutupan.',
+            '   - Susun tabel **Rundown Realisasi Acara** (Waktu | Durasi | Agenda | Pengisi/PIC).',
+            '   - Rincikan capaian indikator keberhasilan & perolehan prospek mahasiswa baru.',
+            '4. **BAB III Realisasi Anggaran Biaya**:',
+            '   - Buat tabel realisasi anggaran (No | Pos Pengeluaran | Volume | Satuan | Harga Satuan | Total Rp) beserta Grand Total.',
+            '5. **BAB IV Penutup & Lembar Pengesahan**: Kesimpulan, evaluasi/saran, dan blok tanda tangan Ketua Pelaksana serta Kepala Kampus UBSI.'
+        ].join('\n');
+    }
+    return [
+        '# Panduan Instruksi AI (.md) — ' + name,
+        '',
+        '## Aturan Pengisian Proposal Kegiatan untuk AI',
+        '1. **Halaman Cover & Identitas Proposal**: Isi judul proposal, nama kegiatan (`{{judul_event}}`), tanggal (`{{tanggal}}`), lokasi (`{{lokasi}}`), kampus pelaksana (`{{kampus}}`), dan PIC.',
+        '2. **BAB I Pendahuluan**:',
+        '   - **A. Latar Belakang**: Hubungkan urgensi kegiatan dengan literasi teknologi digital dan penjaringan calon mahasiswa baru UBSI.',
+        '   - **B. Tujuan Kegiatan** & **C. Manfaat Kegiatan** (Bagi Siswa, Sekolah Mitra, dan Kampus).',
+        '   - **D. Sasaran Peserta**: Rincikan target peserta dan estimasi kuota.',
+        '3. **BAB II Konsep, Kepanitiaan & Rundown**:',
+        '   - **E. Konsep & Bentuk Kegiatan**: Sesuaikan dengan brief user.',
+        '   - **F. Susunan Panitia Pelaksana**: Tabel (No | Jabatan | Nama Petugas/PIC | Tanggung Jawab).',
+        '   - **G. Rundown Susunan Acara**: Tabel (Waktu | Durasi | Agenda Kegiatan | PIC).',
+        '   - **H. Indikator Keberhasilan**: Target kehadiran dan konversi prospek CRM.',
+        '4. **BAB III Rencana Anggaran Biaya (RAB)**:',
+        '   - **I. Tabel RAB**: (No | Pos Anggaran/Item | Volume | Satuan | Harga Satuan | Total Rp) beserta Grand Total.',
+        '5. **BAB IV Penutup & Lembar Pengesahan**: Kalimat penutup resmi dan tanda tangan Ketua Pelaksana serta Kepala Kampus UBSI.'
+    ].join('\n');
+}
+
+function fillSampleMarkdownGuide() {
+    const docType = document.getElementById('tpl-doc-type').value || 'proposal';
+    const name = document.getElementById('tpl-name').value.trim();
+    document.getElementById('tpl-md-content').value = getDefaultMdGuideText(docType, name);
+}
+
+function handleMdFileSelected(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        if (e.target && typeof e.target.result === 'string') {
+            document.getElementById('tpl-md-content').value = e.target.result;
+        }
+    };
+    reader.readAsText(input.files[0], 'UTF-8');
+}
+
 function openTemplateModal() {
     const modal = document.getElementById('templateModal');
     const form = document.getElementById('templateForm');
@@ -871,6 +966,7 @@ function openTemplateModal() {
     form.action = '<?= site_url('document-templates/create') ?>';
     form.reset();
     document.getElementById('tpl-doc-type').value = '<?= esc($activeDocType) ?>';
+    document.getElementById('tpl-md-content').value = getDefaultMdGuideText('<?= esc($activeDocType) ?>', '');
     modal.removeAttribute('hidden');
 }
 
@@ -885,7 +981,8 @@ function editTemplateModal(tpl) {
     document.getElementById('tpl-category').value = tpl.event_category || 'Semua';
     document.getElementById('tpl-desc').value = tpl.description || '';
     document.getElementById('tpl-format').value = tpl.file_format || 'DOCX';
-    document.getElementById('tpl-status').value = tpl.status || 'active';
+    document.getElementById('tpl-status').value = (tpl.status === 'inactive' || tpl.status === 'Nonaktif') ? 'inactive' : 'active';
+    document.getElementById('tpl-md-content').value = tpl.md_content || getDefaultMdGuideText(tpl.doc_type || 'proposal', tpl.name || '');
     
     modal.removeAttribute('hidden');
 }

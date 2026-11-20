@@ -94,6 +94,7 @@ class GeminiDocumentService
         $templateName = trim((string) ($templateMeta['name'] ?? ''));
         $templateCategory = trim((string) ($templateMeta['category'] ?? ''));
         $templateDesc = trim((string) ($templateMeta['description'] ?? ''));
+        $mdGuide = trim((string) ($templateMeta['md_guide'] ?? ''));
         $description = trim((string) ($event['description'] ?? ''));
         $autoFill = '[Data belum tersedia - buat otomatis secara realistis berdasarkan konteks acara]';
         $structureValue = static function (array $labels) use ($structure): string {
@@ -288,7 +289,7 @@ KETENTUAN OUTPUT:
 - Jika ada data kosong, bantu generate otomatis menggunakan AI berdasarkan konteks acara
 PROMPT;
 
-        if ($hasCustomTemplate) {
+        if ($hasCustomTemplate || $mdGuide !== '') {
             $metaLines = [];
             if ($templateName !== '') {
                 $metaLines[] = '- Nama Template: ' . $templateName;
@@ -300,15 +301,16 @@ PROMPT;
                 $metaLines[] = '- Keterangan Template: ' . $templateDesc;
             }
 
-            return implode("\n", [
+            $promptParts = [
                 'Anda adalah seorang Event Planner Profesional dan Penulis Dokumen Resmi Universitas.',
                 '',
                 'TUGAS UTAMA:',
-                'Buatlah dokumen ' . $label . ' yang lengkap, formal, profesional, dan siap cetak dengan MENGIKUTI SEPENUHNYA struktur, urutan BAB/subbab, penomoran, bagian pengesahan, serta format dari TEMPLATE YANG DIUPLOAD di bawah ini.',
+                'Buatlah dokumen ' . $label . ' yang lengkap, formal, profesional, dan siap cetak dengan MENGIKUTI SEPENUHNYA struktur, urutan BAB/subbab, penomoran, bagian pengesahan, serta instruksi dari TEMPLATE YANG DIUPLOAD dan PANDUAN FILE .MD di bawah ini.',
                 '',
-                'ATURAN WAJIB INTEGRASI TEMPLATE:',
-                '- Jadikan isi TEMPLATE YANG DIUPLOAD sebagai kerangka/blueprint utama dokumen final. Jangan mengganti urutan BAB, judul bagian, atau format pengesahan yang ada di template dengan format lain.',
-                '- Pertahankan seluruh bagian, heading, tabel (susunan acara, anggaran, dll.), dan struktur penomoran sesuai yang tertulis pada template.',
+                'ATURAN WAJIB INTEGRASI TEMPLATE & PANDUAN .MD:',
+                '- Jadikan isi TEMPLATE YANG DIUPLOAD dan PANDUAN INSTRUKSI .MD sebagai kerangka/blueprint utama dokumen final. Jangan mengganti urutan BAB, judul bagian, atau format pengesahan yang diminta.',
+                '- Ikuti secara ketat aturan cara pengisian setiap bagian/variabel yang dijelaskan di dalam PANDUAN INSTRUKSI PENGISIAN (.MD).',
+                '- Pertahankan seluruh bagian, heading, tabel (susunan acara, anggaran, panitia, realisasi, dll.), dan struktur penomoran sesuai yang tertulis pada template dan panduan .md.',
                 '- Ganti dan lengkapi seluruh bagian isi, placeholder (seperti {{...}}, [...], titik-titik, atau teks contoh pada template) menggunakan DATA EVENT dan RINGKASAN KEGIATAN DARI USER.',
                 '- Jika ada data yang belum tersedia di DATA EVENT (misalnya rincian narasumber, panitia, atau rincian anggaran), lengkapi secara otomatis dan realistis sesuai konteks kegiatan tanpa meninggalkan placeholder kosong.',
                 '- Gunakan markdown heading (# untuk judul utama/BAB, ## untuk subbab, ### untuk subbagian) dan tabel markdown yang rapi untuk jadwal/rundown maupun anggaran.',
@@ -320,12 +322,23 @@ PROMPT;
                 'DATA EVENT:',
                 implode("\n", $dataEventLines),
                 '',
-                'RINGKASAN KEGIATAN DARI USER:',
+                'RINGKASAN / BRIEF KEGIATAN DARI USER:',
                 $structureLines !== [] ? implode("\n", $structureLines) : '- Tidak ada ringkasan tambahan. Lengkapi dari data event dan deskripsi acara.',
-                '',
-                'TEMPLATE YANG DIUPLOAD (IKUTI STRUKTUR & FORMAT INI):',
-                $template,
-            ]);
+            ];
+
+            if ($mdGuide !== '') {
+                $promptParts[] = '';
+                $promptParts[] = 'PANDUAN INSTRUKSI PENGISIAN DARI FILE .MD (WAJIB DIIKUTI CARA MENGISINYA):';
+                $promptParts[] = $mdGuide;
+            }
+
+            if (trim($template) !== '') {
+                $promptParts[] = '';
+                $promptParts[] = 'TEMPLATE DOKUMEN YANG DIUPLOAD (IKUTI STRUKTUR & FORMAT INI):';
+                $promptParts[] = $template;
+            }
+
+            return implode("\n", $promptParts);
         }
 
         return implode("\n", [

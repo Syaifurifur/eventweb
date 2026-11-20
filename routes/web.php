@@ -100,8 +100,8 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::get('documents/generate', [EventSuite::class, 'aiGenerateDocument'])->middleware('access:documents');
     Route::post('documents/generate/process', [EventSuite::class, 'aiProcessGenerateDocument'])->middleware('access:documents');
     Route::post('documents/generate/save', [EventSuite::class, 'aiSaveGeneratedDocument'])->middleware('access:documents');
-    Route::get('documents/generate/export-word', [EventSuite::class, 'aiExportWordDocument'])->middleware('access:documents');
-    Route::get('documents/generate/export-pdf', [EventSuite::class, 'aiExportPdfDocument'])->middleware('access:documents');
+    Route::match(['get', 'post'], 'documents/generate/export-word', [EventSuite::class, 'aiExportWordDocument'])->middleware('access:documents');
+    Route::match(['get', 'post'], 'documents/generate/export-pdf', [EventSuite::class, 'aiExportPdfDocument'])->middleware('access:documents');
     Route::get('documents/accreditation', [EventSuite::class, 'accreditationDocuments'])->middleware('access:documents');
     Route::post('documents/accreditation/designate', [EventSuite::class, 'designateAccreditationDocument'])->middleware('access:documents');
     Route::post('documents/accreditation/{id}/complete', [EventSuite::class, 'completeAccreditationDocument'])->middleware('access:documents');
@@ -117,6 +117,9 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('documents/{code}/{type}/delete', [EventSuite::class, 'deleteDocumentLink'])->middleware('role:Admin Sistem');
 
     Route::get('document-templates', [EventSuite::class, 'documentTemplates'])->middleware('access:documents');
+    Route::get('document-templates/{id}/preview', [EventSuite::class, 'previewDocumentTemplate'])->whereNumber('id')->middleware('access:documents');
+    Route::get('document-templates/{id}/download', [EventSuite::class, 'downloadDocumentTemplate'])->whereNumber('id')->middleware('access:documents');
+    Route::get('document-templates/{id}/download-md', [EventSuite::class, 'downloadDocumentTemplateMd'])->whereNumber('id')->middleware('access:documents');
     Route::post('document-templates/create', [EventSuite::class, 'createDocumentTemplate'])->middleware('role:Admin Sistem');
     Route::post('document-templates/{id}/update', [EventSuite::class, 'updateDocumentTemplate'])->middleware('role:Admin Sistem');
     Route::post('document-templates/{id}/delete', [EventSuite::class, 'deleteDocumentTemplate'])->middleware('role:Admin Sistem');
