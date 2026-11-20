@@ -109,6 +109,8 @@ class CrmRealtimeReportService
         }
 
         // 4. Group live leads by campus and events
+        $cutoff7d = $now->modify('-7 days')->format('Y-m-d H:i:s');
+        $cutoff24h = $now->modify('-24 hours')->format('Y-m-d H:i:s');
         $liveCampusAggregates = [];
         foreach ($liveLeads as $lead) {
             $cName = strtoupper(trim((string) ($lead->campus_name ?: 'CYBER UNIVERSITY')));
@@ -130,11 +132,27 @@ class CrmRealtimeReportService
                     't1' => 0,
                     't2' => 0,
                     't3' => 0,
+                    'newLeads7d' => 0,
+                    'newLeads24h' => 0,
+                    'latestLeadAt' => '',
                     'events' => [],
                     'agents' => [],
                     'schools' => [],
                     'reasons' => [],
                 ];
+            }
+
+            $createdAt = trim((string) ($lead->created_at ?? ''));
+            if ($createdAt !== '') {
+                if ($createdAt >= $cutoff7d) {
+                    $liveCampusAggregates[$cName]['newLeads7d']++;
+                }
+                if ($createdAt >= $cutoff24h) {
+                    $liveCampusAggregates[$cName]['newLeads24h']++;
+                }
+                if ($liveCampusAggregates[$cName]['latestLeadAt'] === '' || $createdAt > $liveCampusAggregates[$cName]['latestLeadAt']) {
+                    $liveCampusAggregates[$cName]['latestLeadAt'] = $createdAt;
+                }
             }
 
             $liveCampusAggregates[$cName]['total']++;
@@ -285,6 +303,10 @@ class CrmRealtimeReportService
         foreach ($baseCampuses as $base) {
             $cName = strtoupper(trim((string) $base['kampus']));
             $seenCampusNames[$cName] = true;
+            $base['newLeads7d'] = 0;
+            $base['newLeads24h'] = 0;
+            $base['latestLeadAt'] = '';
+            $base['latestLeadAgo'] = '';
 
             if (isset($liveCampusAggregates[$cName])) {
                 $live = $liveCampusAggregates[$cName];
@@ -303,6 +325,10 @@ class CrmRealtimeReportService
                 $base['t1'] += $live['t1'];
                 $base['t2'] += $live['t2'];
                 $base['t3'] += $live['t3'];
+                $base['newLeads7d'] = (int) ($live['newLeads7d'] ?? 0);
+                $base['newLeads24h'] = (int) ($live['newLeads24h'] ?? 0);
+                $base['latestLeadAt'] = (string) ($live['latestLeadAt'] ?? '');
+                $base['latestLeadAgo'] = $base['latestLeadAt'] !== '' ? $this->timeElapsedString($base['latestLeadAt']) : '';
 
                 // Merge events (prepend live events)
                 $mergedEvents = array_values($live['events']);
@@ -426,6 +452,10 @@ class CrmRealtimeReportService
                     't1' => $live['t1'],
                     't2' => $live['t2'],
                     't3' => $live['t3'],
+                    'newLeads7d' => (int) ($live['newLeads7d'] ?? 0),
+                    'newLeads24h' => (int) ($live['newLeads24h'] ?? 0),
+                    'latestLeadAt' => (string) ($live['latestLeadAt'] ?? ''),
+                    'latestLeadAgo' => !empty($live['latestLeadAt']) ? $this->timeElapsedString((string) $live['latestLeadAt']) : '',
                     'avgScore' => $avgScore,
                     'fuCount' => $live['total'] - $live['fresh'],
                     'logCount' => count($live['events']),
@@ -470,6 +500,10 @@ class CrmRealtimeReportService
                     't1' => 0,
                     't2' => 0,
                     't3' => 0,
+                    'newLeads7d' => 0,
+                    'newLeads24h' => 0,
+                    'latestLeadAt' => '',
+                    'latestLeadAgo' => '',
                     'avgScore' => 0.0,
                     'fuCount' => 0,
                     'logCount' => 0,

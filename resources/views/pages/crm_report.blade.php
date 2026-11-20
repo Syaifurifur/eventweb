@@ -259,6 +259,12 @@ $initialActiveTab = $canViewAllCrmCampuses
   html.dark .crm-report-wrapper .text-sky-700 { color: #93c5fd !important; }
   html.dark .crm-report-wrapper .text-emerald-900,
   html.dark .crm-report-wrapper .text-emerald-900\/80 { color: #6ee7b7 !important; }
+  html.dark .crm-report-wrapper .bg-cyan-100,
+  [data-theme="dark"] .crm-report-wrapper .bg-cyan-100 {
+    background-color: rgba(6, 182, 212, 0.22) !important;
+    color: #67e8f9 !important;
+    border-color: rgba(6, 182, 212, 0.45) !important;
+  }
   html.dark .crm-report-wrapper select,
   html.dark .crm-report-wrapper input,
   [data-theme="dark"] .crm-report-wrapper select,
@@ -511,6 +517,7 @@ $initialActiveTab = $canViewAllCrmCampuses
           <input id="adminCrmSearchInput" type="text" placeholder="Cari kampus..." class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none w-44">
           <select id="adminCrmClusterFilter" class="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 bg-slate-50">
             <option value="ALL">Semua Klaster Status</option>
+            <option value="NEW_DATA">🆕 Data Baru Masuk (7 Hari)</option>
             <option value="URGENT_UNASSIGNED">Darurat Belum Assign</option>
             <option value="STALLED_ASSIGNED">Fresh Tertahan di Agent</option>
             <option value="HIGH_NORESPONSE">Tidak Merespon Tinggi</option>
@@ -518,6 +525,7 @@ $initialActiveTab = $canViewAllCrmCampuses
           </select>
           <select id="adminCrmSortSelect" class="rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs text-slate-700 bg-slate-50">
             <option value="TOTAL_DESC">Urutkan: Total Leads Terbanyak</option>
+            <option value="NEW_DESC">Urutkan: Data Baru Masuk Terbanyak</option>
             <option value="CLOSING_DESC">Urutkan: Closing Terbanyak</option>
             <option value="UNASSIGNED_DESC">Urutkan: Unassigned Terbanyak</option>
             <option value="FRESH_DESC">Urutkan: Saldo Fresh Terbanyak</option>
@@ -1357,9 +1365,18 @@ $initialActiveTab = $canViewAllCrmCampuses
 
     let rows = CRM_CAMPUS_LIST.map((crm) => ({ crm, cluster: classifyCampusCluster(crm) }));
     if (q) rows = rows.filter((r) => r.crm.kampus.toLowerCase().includes(q));
-    if (clusterFilter !== 'ALL') rows = rows.filter((r) => r.cluster.code === clusterFilter);
+    if (clusterFilter === 'NEW_DATA') {
+      rows = rows.filter((r) => (r.crm.newLeads7d || 0) > 0);
+    } else if (clusterFilter !== 'ALL') {
+      rows = rows.filter((r) => r.cluster.code === clusterFilter);
+    }
 
     rows.sort((a, b) => {
+      if (sortVal === 'NEW_DESC' || (clusterFilter === 'NEW_DATA' && sortVal === 'TOTAL_DESC')) {
+        const diffNew = (b.crm.newLeads7d || 0) - (a.crm.newLeads7d || 0);
+        if (diffNew !== 0) return diffNew;
+        return String(b.crm.latestLeadAt || '').localeCompare(String(a.crm.latestLeadAt || ''));
+      }
       if (sortVal === 'TOTAL_DESC') return b.crm.total - a.crm.total;
       if (sortVal === 'CLOSING_DESC') return b.crm.closing - a.crm.closing;
       if (sortVal === 'UNASSIGNED_DESC') return b.crm.unassigned - a.crm.unassigned;
@@ -1369,6 +1386,10 @@ $initialActiveTab = $canViewAllCrmCampuses
     });
 
     tbody.innerHTML = '';
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="12" class="py-8 text-center text-xs text-slate-500">Tidak ada kampus pada klaster atau kata kunci yang dipilih.</td></tr>`;
+      return;
+    }
     rows.forEach(({ crm, cluster }, idx) => {
       const tr = document.createElement('tr');
       tr.className = 'hover:bg-indigo-50/40 transition cursor-pointer';
@@ -1376,6 +1397,10 @@ $initialActiveTab = $canViewAllCrmCampuses
       const unassPct = Math.round((crm.unassigned / safeTotal) * 100);
       const closePct = ((crm.closing / safeTotal) * 100).toFixed(1);
       const warm = (crm.minat || 0) + (crm.ragu || 0);
+      const new7d = Number(crm.newLeads7d || 0);
+      const newBadgeHtml = new7d > 0
+        ? `<span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border mb-1 mr-1 bg-cyan-100 text-cyan-800 border-cyan-300">🆕 +${new7d.toLocaleString('id-ID')} Data Baru${crm.latestLeadAgo ? ' • ' + escapeHtml(crm.latestLeadAgo) : ''}</span>`
+        : '';
 
       tr.innerHTML = `
         <td class="py-2.5 px-2.5 text-center font-medium text-slate-500">${idx + 1}</td>
@@ -1383,7 +1408,10 @@ $initialActiveTab = $canViewAllCrmCampuses
           <div>${crm.kampus}</div>
           <div class="text-[10px] font-semibold text-slate-400">${crm.events?.length || 0} Event Ber-Leads</div>
         </td>
-        <td class="py-2.5 px-2.5 text-center font-extrabold text-slate-900">${crm.total.toLocaleString('id-ID')}</td>
+        <td class="py-2.5 px-2.5 text-center font-extrabold text-slate-900">
+          ${crm.total.toLocaleString('id-ID')}
+          ${new7d > 0 ? `<span class="block text-[10px] font-bold text-cyan-700">+${new7d.toLocaleString('id-ID')} baru</span>` : ''}
+        </td>
         <td class="py-2.5 px-2.5 text-center font-bold ${crm.unassigned > 0 ? 'bg-rose-50/80 text-rose-800' : 'text-slate-400'}">
           ${crm.unassigned > 0 ? `${crm.unassigned.toLocaleString('id-ID')} <span class="text-[10px] block">(${unassPct}%)</span>` : '0'}
         </td>
@@ -1400,7 +1428,10 @@ $initialActiveTab = $canViewAllCrmCampuses
         </td>
         <td class="py-2.5 px-2 text-center font-bold text-indigo-700">${crm.avgScore || 0}</td>
         <td class="py-2.5 px-3">
-          <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border mb-1 ${cluster.badgeClass}">${cluster.badge}</span>
+          <div class="flex flex-wrap items-center gap-1">
+            ${newBadgeHtml}
+            <span class="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border mb-1 ${cluster.badgeClass}">${cluster.badge}</span>
+          </div>
           <p class="text-[11px] text-slate-600 leading-snug">${cluster.adminNote}</p>
         </td>
         <td class="py-2.5 px-2.5 text-center">
