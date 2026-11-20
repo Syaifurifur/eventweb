@@ -12,7 +12,7 @@ final class Gemini
     public function __construct()
     {
         $this->apiKey = self::readEnv('GEMINI_API_KEY', '');
-        $this->model = self::readEnv('GEMINI_MODEL', 'gemini-2.5-flash');
+        $this->model = self::readEnv('GEMINI_MODEL', 'gemini-3.8-flash');
         $this->baseURL = rtrim(self::readEnv('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'), '/');
         $this->timeout = (int) self::readEnv('GEMINI_TIMEOUT', '90');
     }

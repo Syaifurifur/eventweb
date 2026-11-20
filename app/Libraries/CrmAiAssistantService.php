@@ -20,7 +20,7 @@ class CrmAiAssistantService
 
     public function model(): string
     {
-        return $this->config->model ?: 'gemini-2.5-flash';
+        return $this->config->model ?: 'gemini-3.8-flash';
     }
 
     /**
