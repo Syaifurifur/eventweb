@@ -165,7 +165,7 @@ class CrmRealtimeReportService
             $liveLeads = collect([]);
         }
 
-        // 3. Fetch latest follow up logs
+        // 3. Fetch latest follow up logs (Admin: all data; Non-Admin: scoped to logged-in user)
         $recentLogs = [];
         try {
             $logQuery = DB::table('crm_lead_logs as lg')
@@ -173,6 +173,7 @@ class CrmRealtimeReportService
                 ->leftJoin('events as e', 'l.event_id', '=', 'e.id')
                 ->leftJoin('campuses as c', 'e.campus_id', '=', 'c.id')
                 ->leftJoin('crm_users as u', 'lg.user_id', '=', 'u.id')
+                ->leftJoin('crm_users as ag', 'l.agent_id', '=', 'ag.id')
                 ->select([
                     'lg.id',
                     'lg.lead_id',
@@ -189,6 +190,35 @@ class CrmRealtimeReportService
                     'u.full_name as agent_name',
                     'lg.created_at',
                 ]);
+
+            if (!$canViewAllCampuses) {
+                $eventHubUserId = (int) session('user.id');
+                $crmUserId = (int) session('crmUser.id');
+                $activeUserName = trim((string) (session('user.name') ?: session('crmUser.name') ?: ''));
+                $eventHubBridgeUsername = $eventHubUserId > 0 ? ('eventhub_' . $eventHubUserId) : '';
+
+                $logQuery->where(function ($q) use ($crmUserId, $eventHubBridgeUsername, $activeUserName) {
+                    $hasCondition = false;
+                    if ($crmUserId > 0) {
+                        $q->orWhere('lg.user_id', $crmUserId)
+                            ->orWhere('l.agent_id', $crmUserId);
+                        $hasCondition = true;
+                    }
+                    if ($eventHubBridgeUsername !== '') {
+                        $q->orWhere('u.username', $eventHubBridgeUsername)
+                            ->orWhere('ag.username', $eventHubBridgeUsername);
+                        $hasCondition = true;
+                    }
+                    if ($activeUserName !== '') {
+                        $q->orWhereRaw('LOWER(TRIM(u.full_name)) = ?', [strtolower($activeUserName)])
+                            ->orWhereRaw('LOWER(TRIM(ag.full_name)) = ?', [strtolower($activeUserName)]);
+                        $hasCondition = true;
+                    }
+                    if (!$hasCondition) {
+                        $q->whereRaw('1 = 0');
+                    }
+                });
+            }
 
             if ($pmbPeriod !== 'all') {
                 if ($pmbPeriod === 'September 2025 - September 2026') {

@@ -906,11 +906,28 @@ $initialActiveTab = $canViewAllCrmCampuses
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
             <h3 class="text-sm font-bold text-slate-900">4. Log Aktivitas Follow-Up CRM Real-Time Terbaru (Live Log Feed)</h3>
           </div>
-          <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-            Terhubung ke Database MySQL Real-Time
-          </span>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <?php if ($canViewAllCrmCampuses): ?>
+              <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                🔐 Mode Admin: Menampilkan Seluruh Data User
+              </span>
+            <?php else: ?>
+              <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                👤 Aktivitas User Login: <?= esc((string) (session('user.name') ?: session('crmUser.name') ?: 'User')) ?>
+              </span>
+            <?php endif; ?>
+            <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+              Terhubung ke Database MySQL Real-Time
+            </span>
+          </div>
         </div>
-        <p class="text-xs text-slate-500 mb-3">Rekaman interaksi terbaru oleh tim CRM terhadap calon mahasiswa secara real-time</p>
+        <p class="text-xs text-slate-500 mb-3">
+          <?php if ($canViewAllCrmCampuses): ?>
+            Rekaman seluruh interaksi follow-up terbaru oleh seluruh tim CRM lintas kampus secara real-time (Khusus Admin)
+          <?php else: ?>
+            Rekaman interaksi follow-up terbaru khusus sesuai akun Anda yang sedang login (<?= esc((string) (session('user.name') ?: session('crmUser.name') ?: 'User')) ?>)
+          <?php endif; ?>
+        </p>
 
         <div class="overflow-x-auto crm-custom-scrollbar rounded-xl border border-slate-200 max-h-72">
           <table class="w-full text-left border-collapse text-xs">
@@ -2075,7 +2092,10 @@ $initialActiveTab = $canViewAllCrmCampuses
 
     const logs = CRM_RECENT_LOGS || [];
     if (logs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">Belum ada rekaman log follow-up terbaru.</td></tr>`;
+      const emptyMsg = CAN_VIEW_ALL_CRM_CAMPUSES
+        ? 'Belum ada rekaman log follow-up terbaru.'
+        : 'Belum ada rekaman log aktivitas follow-up CRM untuk akun Anda.';
+      tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">${emptyMsg}</td></tr>`;
       return;
     }
 
