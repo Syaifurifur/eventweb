@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', env('email.protocol', 'log')),
 
     /*
     |--------------------------------------------------------------------------
@@ -39,12 +39,12 @@ return [
 
         'smtp' => [
             'transport' => 'smtp',
-            'scheme' => env('MAIL_SCHEME'),
+            'scheme' => env('MAIL_SCHEME', env('MAIL_ENCRYPTION', env('email.SMTPCrypto', 'tls'))),
             'url' => env('MAIL_URL'),
-            'host' => env('MAIL_HOST', '127.0.0.1'),
-            'port' => env('MAIL_PORT', 2525),
-            'username' => env('MAIL_USERNAME'),
-            'password' => env('MAIL_PASSWORD'),
+            'host' => env('MAIL_HOST', env('email.SMTPHost', '127.0.0.1')),
+            'port' => (int) env('MAIL_PORT', env('email.SMTPPort', 587)),
+            'username' => env('MAIL_USERNAME', env('email.SMTPUser')),
+            'password' => env('MAIL_PASSWORD', env('email.SMTPPass')),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
@@ -111,8 +111,8 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+        'address' => env('MAIL_FROM_ADDRESS', env('email.fromEmail', 'noreply@eventhub.local')),
+        'name' => env('MAIL_FROM_NAME', env('email.fromName', env('APP_NAME', 'EventHub'))),
     ],
 
 ];

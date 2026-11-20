@@ -10,7 +10,7 @@
     <!-- Flowbite UI js -->
     <script src="{{ asset('assets/js/flowbite.min.js') }}"></script>
     <!-- WowDash Main js -->
-    <script src="{{ asset('assets/js/wowdash.js') }}"></script>
+    <script src="<?= base_url('assets/js/wowdash.js?v=' . @filemtime(FCPATH . 'assets/js/wowdash.js')) ?>"></script>
     <!-- EventHub Application js -->
     <script src="<?= base_url('assets/js/app.js?v=' . @filemtime(FCPATH . 'assets/js/app.js')) ?>"></script>
     {!! $script ?? '' !!}

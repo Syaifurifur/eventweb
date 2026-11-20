@@ -31,20 +31,57 @@ final class LegacyMailer
     public function setAltMessage(string $message): self { $this->altMessage = $message; return $this; }
     public function setMailType(string $type): self { $this->mailType = $type; return $this; }
 
-    public function send(): bool
+    public function send(bool $autoClear = true): bool
     {
         try {
-            $host = (string) ($this->config['SMTPHost'] ?? 'localhost');
-            $port = (int) ($this->config['SMTPPort'] ?? 587);
-            $crypto = strtolower((string) ($this->config['SMTPCrypto'] ?? 'tls'));
-            $transport = new EsmtpTransport($host, $port, $crypto === 'ssl');
-            if (($this->config['SMTPUser'] ?? '') !== '') $transport->setUsername((string) $this->config['SMTPUser']);
-            if (($this->config['SMTPPass'] ?? '') !== '') $transport->setPassword((string) $this->config['SMTPPass']);
+            $host = trim((string) ($this->config['SMTPHost'] ?? ''));
+            if ($host === '') {
+                $host = trim((string) config('mail.mailers.smtp.host', '127.0.0.1'));
+            }
+
+            $port = (int) ($this->config['SMTPPort'] ?? 0);
+            if ($port <= 0) {
+                $port = (int) config('mail.mailers.smtp.port', 587);
+            }
+
+            $crypto = strtolower(trim((string) ($this->config['SMTPCrypto'] ?? '')));
+            if ($crypto === '') {
+                $crypto = strtolower(trim((string) config('mail.mailers.smtp.scheme', 'tls')));
+            }
+
+            $username = trim((string) ($this->config['SMTPUser'] ?? ''));
+            if ($username === '') {
+                $username = trim((string) config('mail.mailers.smtp.username', ''));
+            }
+
+            $password = (string) ($this->config['SMTPPass'] ?? '');
+            if ($password === '') {
+                $password = (string) config('mail.mailers.smtp.password', '');
+            }
+
+            $fromAddress = trim($this->from);
+            if ($fromAddress === '' || $fromAddress === 'noreply@eventhub.local') {
+                $configuredFrom = trim((string) config('mail.from.address', ''));
+                if ($configuredFrom !== '' && $configuredFrom !== 'hello@example.com') {
+                    $fromAddress = $configuredFrom;
+                } elseif ($username !== '' && filter_var($username, FILTER_VALIDATE_EMAIL)) {
+                    $fromAddress = $username;
+                }
+            }
+            $fromName = trim($this->fromName) !== '' ? trim($this->fromName) : (string) config('mail.from.name', 'EventHub');
+
+            $transport = new EsmtpTransport($host, $port, $crypto === 'ssl' || $crypto === 'smtps');
+            if ($username !== '') {
+                $transport->setUsername($username);
+            }
+            if ($password !== '') {
+                $transport->setPassword($password);
+            }
 
             $isHtml = ($this->mailType === 'html') || str_contains($this->message, '<html') || str_contains($this->message, '<table');
 
             $email = (new Email())
-                ->from($this->fromName !== '' ? sprintf('%s <%s>', $this->fromName, $this->from) : $this->from)
+                ->from($fromName !== '' ? sprintf('%s <%s>', $fromName, $fromAddress) : $fromAddress)
                 ->to($this->to)
                 ->subject($this->subject);
 

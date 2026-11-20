@@ -86,10 +86,16 @@ class AuthController extends BaseController
             'user_agent' => substr((string) $this->request->getUserAgent(), 0, 255),
         ]);
 
-        $this->sendPasswordResetEmail($user, $resetLink);
+        $sent = $this->sendPasswordResetEmail($user, $resetLink);
 
-        if (defined('ENVIRONMENT') && ENVIRONMENT !== 'production') {
+        if (config('app.env') !== 'production') {
             $redirect = $redirect->with('reset_link', $resetLink);
+        }
+
+        if (! $sent && config('app.env') === 'production') {
+            return redirect()->to(site_url('forgot-password'))
+                ->withInput()
+                ->with('error', 'Gagal mengirim email reset password ke ' . (string) $user['email'] . '. Silakan hubungi Admin Sistem untuk mengecek konfigurasi SMTP.');
         }
 
         return $redirect;
@@ -378,39 +384,69 @@ class AuthController extends BaseController
             ->first();
     }
 
-    private function sendPasswordResetEmail(array $user, string $resetLink): void
+    private function sendPasswordResetEmail(array $user, string $resetLink): bool
     {
         try {
             $config = [
-                'protocol' => env('email.protocol', 'mail'),
-                'SMTPHost' => env('email.SMTPHost', ''),
-                'SMTPUser' => env('email.SMTPUser', ''),
-                'SMTPPass' => env('email.SMTPPass', ''),
-                'SMTPPort' => (int) env('email.SMTPPort', 25),
-                'SMTPCrypto' => env('email.SMTPCrypto', 'tls'),
-                'mailType' => env('email.mailType', 'text'),
+                'protocol' => (string) config('mail.default', 'smtp'),
+                'SMTPHost' => (string) config('mail.mailers.smtp.host', ''),
+                'SMTPUser' => (string) config('mail.mailers.smtp.username', ''),
+                'SMTPPass' => (string) config('mail.mailers.smtp.password', ''),
+                'SMTPPort' => (int) config('mail.mailers.smtp.port', 587),
+                'SMTPCrypto' => (string) config('mail.mailers.smtp.scheme', 'tls'),
+                'mailType' => 'html',
                 'charset' => 'UTF-8',
                 'newline' => "\r\n",
                 'CRLF' => "\r\n",
             ];
 
-            $email = service('email', $config, false);
-            $email->setFrom(env('email.fromEmail', 'noreply@eventhub.local'), env('email.fromName', 'EventHub'));
-            $email->setTo((string) $user['email']);
-            $email->setSubject('Reset Password EventHub');
-            $email->setMessage(
-                "Halo " . (string) $user['name'] . ",\n\n"
+            $fromEmail = (string) config('mail.from.address', 'noreply@eventhub.local');
+            $fromName = (string) config('mail.from.name', 'EventHub');
+            $safeName = htmlspecialchars((string) ($user['name'] ?? 'Pengguna'), ENT_QUOTES, 'UTF-8');
+            $safeLink = htmlspecialchars($resetLink, ENT_QUOTES, 'UTF-8');
+
+            $htmlMessage = <<<HTML
+<!DOCTYPE html>
+<html lang="id">
+<body style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6; background: #f8fafc; padding: 24px;">
+  <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px;">
+    <h2 style="margin: 0 0 12px; color: #1d4ed8;">Reset Password EventHub</h2>
+    <p>Halo <strong>{$safeName}</strong>,</p>
+    <p>Kami menerima permintaan reset password untuk akun EventHub Anda. Klik tombol di bawah ini untuk membuat password baru (link berlaku selama <strong>1 jam</strong>):</p>
+    <p style="margin: 24px 0;">
+      <a href="{$safeLink}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; font-weight: 700; padding: 12px 22px; border-radius: 8px;">Reset Password Sekarang</a>
+    </p>
+    <p style="font-size: 13px; color: #475569;">Atau salin dan buka tautan berikut di browser Anda:<br><a href="{$safeLink}" style="color: #2563eb; word-break: break-all;">{$safeLink}</a></p>
+    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+    <p style="font-size: 12px; color: #64748b; margin: 0;">Jika Anda tidak meminta reset password, silakan abaikan email ini.</p>
+  </div>
+</body>
+</html>
+HTML;
+
+            $plainMessage = "Halo " . (string) ($user['name'] ?? 'Pengguna') . ",\n\n"
                 . "Kami menerima permintaan reset password untuk akun EventHub Anda.\n"
                 . "Klik link berikut untuk membuat password baru. Link berlaku selama 1 jam:\n\n"
                 . $resetLink . "\n\n"
-                . "Jika Anda tidak meminta reset password, abaikan email ini."
-            );
+                . "Jika Anda tidak meminta reset password, abaikan email ini.";
+
+            $email = service('email', $config, false);
+            $email->setFrom($fromEmail, $fromName);
+            $email->setTo((string) $user['email']);
+            $email->setSubject('Reset Password EventHub');
+            $email->setMailType('html');
+            $email->setMessage($htmlMessage);
+            $email->setAltMessage($plainMessage);
 
             if (! $email->send(false)) {
-                log_message('error', 'Gagal mengirim email reset password: ' . strip_tags($email->printDebugger(['headers', 'subject'])));
+                log_message('error', 'Gagal mengirim email reset password ke ' . (string) $user['email'] . ': ' . strip_tags($email->printDebugger(['headers', 'subject'])));
+                return false;
             }
-        } catch (Throwable) {
-            log_message('error', 'Gagal mengirim email reset password karena exception.');
+
+            return true;
+        } catch (Throwable $error) {
+            log_message('error', 'Gagal mengirim email reset password karena exception: ' . $error->getMessage());
+            return false;
         }
     }
 

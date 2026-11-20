@@ -325,8 +325,10 @@
     });
 
     passwordToggleButtons.forEach((button) => {
+        const selector = button.getAttribute('data-toggle');
         const field = button.closest('.password-field');
-        const input = field?.querySelector('input[type="password"], input[type="text"]');
+        const input = (selector ? document.querySelector(selector) : null)
+            || field?.querySelector('input[type="password"], input[type="text"]');
 
         if (!input) {
             return;
@@ -336,6 +338,10 @@
             const isHidden = input.type === 'password';
             input.type = isHidden ? 'text' : 'password';
             button.classList.toggle('is-visible', isHidden);
+            if (button.classList.contains('ri-eye-line') || button.classList.contains('ri-eye-off-line')) {
+                button.classList.toggle('ri-eye-off-line', isHidden);
+                button.classList.toggle('ri-eye-line', !isHidden);
+            }
             button.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
             button.setAttribute('aria-label', isHidden ? 'Sembunyikan password' : 'Lihat password');
         });

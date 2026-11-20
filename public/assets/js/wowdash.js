@@ -98,14 +98,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Password toggle support for WowDash .toggle-password
-  document.querySelectorAll(".toggle-password").forEach(function (toggle) {
+  // Password toggle support for WowDash .toggle-password (skip elements already managed by app.js [data-password-toggle])
+  document.querySelectorAll(".toggle-password:not([data-password-toggle])").forEach(function (toggle) {
     toggle.addEventListener("click", function () {
-      this.classList.toggle("ri-eye-off-line");
       var selector = this.getAttribute("data-toggle");
       var input = selector ? document.querySelector(selector) : this.parentElement.querySelector("input");
       if (input) {
-        input.setAttribute("type", input.getAttribute("type") === "password" ? "text" : "password");
+        var isHidden = input.getAttribute("type") === "password";
+        input.setAttribute("type", isHidden ? "text" : "password");
+        this.classList.toggle("ri-eye-off-line", isHidden);
+        this.classList.toggle("ri-eye-line", !isHidden);
       }
     });
   });
