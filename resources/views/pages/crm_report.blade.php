@@ -914,26 +914,16 @@ $initialActiveTab = $canViewAllCrmCampuses
             <h3 class="text-sm font-bold text-slate-900">4. Log Aktivitas Follow-Up CRM Real-Time Terbaru (Live Log Feed)</h3>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
-            <?php if ($canViewAllCrmCampuses): ?>
-              <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                🔐 Mode Admin: Menampilkan Seluruh Data User
-              </span>
-            <?php else: ?>
-              <span class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                👤 Aktivitas User Login: <?= esc((string) (session('user.name') ?: session('crmUser.name') ?: 'User')) ?>
-              </span>
-            <?php endif; ?>
+            <span id="crmRecentLogsCampusBadge" class="px-2.5 py-0.5 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              🏢 Kampus Terpilih: <?= esc($matchedCampus['kampus'] ?? $userCampusFullName) ?>
+            </span>
             <span class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
               Terhubung ke Database MySQL Real-Time
             </span>
           </div>
         </div>
         <p class="text-xs text-slate-500 mb-3">
-          <?php if ($canViewAllCrmCampuses): ?>
-            Rekaman seluruh interaksi follow-up terbaru oleh seluruh tim CRM lintas kampus secara real-time (Khusus Admin)
-          <?php else: ?>
-            Rekaman interaksi follow-up terbaru khusus sesuai akun Anda yang sedang login (<?= esc((string) (session('user.name') ?: session('crmUser.name') ?: 'User')) ?>)
-          <?php endif; ?>
+          Rekaman interaksi follow-up terbaru oleh tim CRM khusus pada kampus terpilih (<strong id="crmRecentLogsCampusSubtitle" class="text-slate-700"><?= esc($matchedCampus['kampus'] ?? $userCampusFullName) ?></strong>)
         </p>
 
         <div class="overflow-x-auto crm-custom-scrollbar rounded-xl border border-slate-200 max-h-72">
@@ -2097,11 +2087,27 @@ $initialActiveTab = $canViewAllCrmCampuses
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const logs = CRM_RECENT_LOGS || [];
+    const activeCampus = CRM_CAMPUS_LIST.find((x) => x.no === state.crmSelectedCampusNo) || CRM_CAMPUS_LIST[0];
+    const targetCampusName = (activeCampus && activeCampus.kampus ? String(activeCampus.kampus) : '').trim().toUpperCase();
+
+    const badgeEl = document.getElementById('crmRecentLogsCampusBadge');
+    if (badgeEl && targetCampusName) {
+      badgeEl.textContent = `🏢 Kampus Terpilih: ${targetCampusName}`;
+    }
+    const subEl = document.getElementById('crmRecentLogsCampusSubtitle');
+    if (subEl && targetCampusName) {
+      subEl.textContent = targetCampusName;
+    }
+
+    const allLogs = CRM_RECENT_LOGS || [];
+    const logs = targetCampusName
+      ? allLogs.filter((log) => String(log.campus_name || '').trim().toUpperCase() === targetCampusName)
+      : allLogs;
+
     if (logs.length === 0) {
-      const emptyMsg = CAN_VIEW_ALL_CRM_CAMPUSES
-        ? 'Belum ada rekaman log follow-up terbaru.'
-        : 'Belum ada rekaman log aktivitas follow-up CRM untuk akun Anda.';
+      const emptyMsg = targetCampusName
+        ? `Belum ada rekaman log aktivitas follow-up CRM pada kampus ${escapeHtml(targetCampusName)}.`
+        : 'Belum ada rekaman log follow-up terbaru.';
       tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">${emptyMsg}</td></tr>`;
       return;
     }

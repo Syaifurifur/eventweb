@@ -170,15 +170,16 @@ class CrmRealtimeReportService
             $liveLeads = collect([]);
         }
 
-        // 3. Fetch latest follow up logs (Admin: all data; Non-Admin: scoped to logged-in user)
+        // 3. Fetch latest follow up logs grouped by campus so View Kampus Pelaksana always matches the selected campus
         $recentLogs = [];
+        $campusLogsMap = [];
         try {
             $logQuery = DB::table('crm_lead_logs as lg')
                 ->leftJoin('crm_leads as l', 'lg.lead_id', '=', 'l.id')
                 ->leftJoin('events as e', 'l.event_id', '=', 'e.id')
                 ->leftJoin('campuses as c', 'e.campus_id', '=', 'c.id')
                 ->leftJoin('crm_users as u', 'lg.user_id', '=', 'u.id')
-                ->leftJoin('crm_users as ag', 'l.agent_id', '=', 'ag.id')
+                ->leftJoin('campuses as uc', 'u.campus_id', '=', 'uc.id')
                 ->select([
                     'lg.id',
                     'lg.lead_id',
@@ -186,7 +187,7 @@ class CrmRealtimeReportService
                     'e.code as event_code',
                     'e.title as event_title',
                     'c.id as campus_id',
-                    'c.name as campus_name',
+                    DB::raw('COALESCE(c.name, uc.name) as campus_name'),
                     'lg.action',
                     'lg.new_stage',
                     'lg.new_label',
@@ -196,33 +197,9 @@ class CrmRealtimeReportService
                     'lg.created_at',
                 ]);
 
-            if (!$canViewAllCampuses) {
-                $eventHubUserId = (int) session('user.id');
-                $crmUserId = (int) session('crmUser.id');
-                $activeUserName = trim((string) (session('user.name') ?: session('crmUser.name') ?: ''));
-                $eventHubBridgeUsername = $eventHubUserId > 0 ? ('eventhub_' . $eventHubUserId) : '';
-
-                $logQuery->where(function ($q) use ($crmUserId, $eventHubBridgeUsername, $activeUserName) {
-                    $hasCondition = false;
-                    if ($crmUserId > 0) {
-                        $q->orWhere('lg.user_id', $crmUserId)
-                            ->orWhere('l.agent_id', $crmUserId);
-                        $hasCondition = true;
-                    }
-                    if ($eventHubBridgeUsername !== '') {
-                        $q->orWhere('u.username', $eventHubBridgeUsername)
-                            ->orWhere('ag.username', $eventHubBridgeUsername);
-                        $hasCondition = true;
-                    }
-                    if ($activeUserName !== '') {
-                        $q->orWhereRaw('LOWER(TRIM(u.full_name)) = ?', [strtolower($activeUserName)])
-                            ->orWhereRaw('LOWER(TRIM(ag.full_name)) = ?', [strtolower($activeUserName)]);
-                        $hasCondition = true;
-                    }
-                    if (!$hasCondition) {
-                        $q->whereRaw('1 = 0');
-                    }
-                });
+            if (!$canViewAllCampuses && trim($userCampusFullName) !== '') {
+                $targetCampusUpper = strtoupper(trim($userCampusFullName));
+                $logQuery->whereRaw('UPPER(TRIM(COALESCE(c.name, uc.name))) = ?', [$targetCampusUpper]);
             }
 
             if ($pmbPeriod !== 'all') {
@@ -239,17 +216,21 @@ class CrmRealtimeReportService
 
             $logRows = $logQuery
                 ->orderByDesc('lg.created_at')
-                ->limit(35)
+                ->limit($canViewAllCampuses ? 600 : 60)
                 ->get();
 
             foreach ($logRows as $lg) {
-                $recentLogs[] = [
+                $cNameLog = strtoupper(trim((string) ($lg->campus_name ?: 'KAMPUS')));
+                if (count($campusLogsMap[$cNameLog] ?? []) >= 25) {
+                    continue;
+                }
+                $logItem = [
                     'id' => (int) $lg->id,
                     'lead_id' => (int) $lg->lead_id,
                     'student_name' => (string) ($lg->student_name ?: 'Calon Mahasiswa #' . $lg->lead_id),
                     'event_code' => (string) ($lg->event_code ?: '-'),
                     'event_title' => (string) ($lg->event_title ?: 'Kegiatan Kampus'),
-                    'campus_name' => strtoupper(trim((string) ($lg->campus_name ?: 'Kampus'))),
+                    'campus_name' => $cNameLog,
                     'agent_name' => (string) ($lg->agent_name ?: 'Tim CRM'),
                     'action' => (string) ($lg->action ?: 'update'),
                     'new_stage' => (string) ($lg->new_stage ?: '-'),
@@ -259,9 +240,12 @@ class CrmRealtimeReportService
                     'created_at' => (string) $lg->created_at,
                     'time_ago' => $this->timeElapsedString((string) $lg->created_at),
                 ];
+                $campusLogsMap[$cNameLog][] = $logItem;
+                $recentLogs[] = $logItem;
             }
         } catch (Throwable $e) {
             $recentLogs = [];
+            $campusLogsMap = [];
         }
 
         // 4. Group live leads by campus and events
