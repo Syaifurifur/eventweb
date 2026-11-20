@@ -2723,7 +2723,7 @@ class EventSuite extends BaseController
 
     public function documentTemplates()
     {
-        $activeDocType = trim((string) $this->request->getGet('type'));
+        $activeDocType = strtolower(trim((string) ($this->request->getGet('doc_type') ?: $this->request->getGet('type'))));
         if (! in_array($activeDocType, ['proposal', 'report'], true)) {
             $activeDocType = 'proposal';
         }
@@ -3759,7 +3759,7 @@ class EventSuite extends BaseController
 
         $documentTemplates = (new DocumentTemplateModel())
             ->where('doc_type', $type)
-            ->where('status', 'Aktif')
+            ->whereIn('status', ['active', 'Aktif', 'aktif'])
             ->orderBy('id', 'DESC')
             ->findAll();
 
@@ -9763,7 +9763,7 @@ class EventSuite extends BaseController
     {
         $type = strtolower(trim($type));
 
-        return $type === 'proposal' ? $type : null;
+        return in_array($type, ['proposal', 'report'], true) ? $type : null;
     }
 
     private function normalizeManagedDocumentType(string $type): ?string
@@ -10495,7 +10495,7 @@ class EventSuite extends BaseController
         // 3. Cari otomatis template Aktif di Menu Template Dokumen (prioritas kategori event sama, lalu Umum, lalu terbaru)
         $activeTemplates = (new DocumentTemplateModel())
             ->where('doc_type', $type)
-            ->where('status', 'Aktif')
+            ->whereIn('status', ['active', 'Aktif', 'aktif'])
             ->orderBy('id', 'DESC')
             ->findAll();
 
