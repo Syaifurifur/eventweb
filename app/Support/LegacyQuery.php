@@ -108,6 +108,12 @@ class LegacyQuery
 
     protected function splitOperator(string $field): array
     {
+        if (preg_match('/^(.+?)\s+(IS NOT)\s+NULL$/i', trim($field), $match)) {
+            return [trim($match[1]), 'IS NOT'];
+        }
+        if (preg_match('/^(.+?)\s+(IS)\s+NULL$/i', trim($field), $match)) {
+            return [trim($match[1]), 'IS'];
+        }
         if (preg_match('/^(.+?)\s+(IS NOT|IS|!=|<>|>=|<=|>|<|=)$/i', trim($field), $match)) {
             return [trim($match[1]), strtoupper($match[2])];
         }

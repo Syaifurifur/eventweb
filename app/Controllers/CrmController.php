@@ -1011,7 +1011,7 @@ class CrmController extends BaseController
                     ->groupStart()
                     ->where('crm_leads.pmb_period', $pmbPeriod)
                     ->orWhere('crm_leads.pmb_period', '')
-                    ->orWhere('crm_leads.pmb_period IS NULL', null, false)
+                    ->orWhere('crm_leads.pmb_period', null)
                     ->groupEnd();
             } else {
                 $builder->where('crm_leads.pmb_period', $pmbPeriod);
