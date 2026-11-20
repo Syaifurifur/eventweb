@@ -890,7 +890,7 @@ $dtIcon = static function (string $name, int $size = 18): string {
                     </div>
                     <input id="tpl-md-file" type="file" name="md_file" class="dt-input" accept=".md,.markdown,.txt,text/markdown,text/plain" onchange="handleMdFileSelected(this)" style="background:#fff; margin-bottom:8px;">
                     <label for="tpl-md-content" style="font-size:11.5px; font-weight:700; color:#065f46; display:block; margin-bottom:4px;">Isi Panduan Markdown (.md) — Instruksi Cara AI Mengisi Setiap Bagian:</label>
-                    <textarea id="tpl-md-content" name="md_content" class="dt-input" rows="6" style="height:auto; padding:10px; font-family:monospace; font-size:12px; background:#fff; line-height:1.45;" placeholder="# Panduan Instruksi AI (.md)&#10;Tuliskan aturan bab, variabel {{judul_event}}, format tabel rundown, RAB, dan instruksi pengisian bagi AI..."></textarea>
+                    <textarea id="tpl-md-content" name="md_content" class="dt-input" rows="6" style="height:auto; padding:10px; font-family:monospace; font-size:12px; background:#fff; line-height:1.45;" placeholder="# Panduan Instruksi AI (.md)&#10;Tuliskan aturan bab, variabel [JUDUL_EVENT], format tabel rundown, RAB, dan instruksi pengisian bagi AI..."></textarea>
                     <small style="color:#047857; font-size:11px; display:block; margin-top:4px;">Anda dapat mengunggah file <code>.md</code> atau menulis/mengedit langsung di kotak di atas. Panduan ini otomatis terbaca oleh AI di halaman Konfigurasi Generate Proposal &amp; Laporan.</small>
                 </div>
             </div>
@@ -906,12 +906,16 @@ $dtIcon = static function (string $name, int $size = 18): string {
 <script>
 function getDefaultMdGuideText(docType, tplName) {
     const name = tplName || (docType === 'report' ? 'Template Laporan (LPJ) Event UBSI' : 'Template Proposal Event UBSI');
+    const vJudul = '{' + '{judul_event}' + '}';
+    const vTanggal = '{' + '{tanggal}' + '}';
+    const vLokasi = '{' + '{lokasi}' + '}';
+    const vKampus = '{' + '{kampus}' + '}';
     if (docType === 'report') {
         return [
             '# Panduan Instruksi AI (.md) — ' + name,
             '',
             '## Aturan Pengisian Laporan Pertanggungjawaban (LPJ) untuk AI',
-            '1. **Halaman Cover & Identitas**: Isi judul laporan, nama event (`{{judul_event}}`), tanggal pelaksanaan (`{{tanggal}}`), lokasi (`{{lokasi}}`), kampus pelaksana (`{{kampus}}`), dan PIC.',
+            '1. **Halaman Cover & Identitas**: Isi judul laporan, nama event (`' + vJudul + '`), tanggal pelaksanaan (`' + vTanggal + '`), lokasi (`' + vLokasi + '`), kampus pelaksana (`' + vKampus + '`), dan PIC.',
             '2. **BAB I Pendahuluan**: Uraikan latar belakang pelaksanaan, tujuan yang tercapai, dan jumlah peserta hadir.',
             '3. **BAB II Pelaksanaan & Hasil Kegiatan**:',
             '   - Jelaskan jalannya acara dari pembukaan hingga penutupan.',
@@ -926,7 +930,7 @@ function getDefaultMdGuideText(docType, tplName) {
         '# Panduan Instruksi AI (.md) — ' + name,
         '',
         '## Aturan Pengisian Proposal Kegiatan untuk AI',
-        '1. **Halaman Cover & Identitas Proposal**: Isi judul proposal, nama kegiatan (`{{judul_event}}`), tanggal (`{{tanggal}}`), lokasi (`{{lokasi}}`), kampus pelaksana (`{{kampus}}`), dan PIC.',
+        '1. **Halaman Cover & Identitas Proposal**: Isi judul proposal, nama kegiatan (`' + vJudul + '`), tanggal (`' + vTanggal + '`), lokasi (`' + vLokasi + '`), kampus pelaksana (`' + vKampus + '`), dan PIC.',
         '2. **BAB I Pendahuluan**:',
         '   - **A. Latar Belakang**: Hubungkan urgensi kegiatan dengan literasi teknologi digital dan penjaringan calon mahasiswa baru UBSI.',
         '   - **B. Tujuan Kegiatan** & **C. Manfaat Kegiatan** (Bagi Siswa, Sekolah Mitra, dan Kampus).',
