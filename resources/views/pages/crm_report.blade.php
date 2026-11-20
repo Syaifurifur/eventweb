@@ -265,9 +265,16 @@ $initialActiveTab = $canViewAllCrmCampuses
     color: #67e8f9 !important;
     border-color: rgba(6, 182, 212, 0.45) !important;
   }
+  .crm-report-wrapper select,
+  .crm-report-wrapper select option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
   html.dark .crm-report-wrapper select,
+  html.dark .crm-report-wrapper select option,
   html.dark .crm-report-wrapper input,
   [data-theme="dark"] .crm-report-wrapper select,
+  [data-theme="dark"] .crm-report-wrapper select option,
   [data-theme="dark"] .crm-report-wrapper input {
     background-color: #111827 !important;
     color: #f3f4f6 !important;
@@ -311,10 +318,10 @@ $initialActiveTab = $canViewAllCrmCampuses
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <select id="topCrmPmbPeriodFilter" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 text-slate-100 border border-slate-700 focus:border-indigo-400 focus:outline-none" title="Pilih Klaster / Periode PMB">
-          <option value="all" <?= ($selectedPmbPeriod ?? 'all') === 'all' ? 'selected' : '' ?>>🎯 Semua Klaster / Periode PMB</option>
+        <select id="topCrmPmbPeriodFilter" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-white text-slate-900 border border-slate-300 focus:border-indigo-400 focus:outline-none shadow-xs" style="background-color: #ffffff; color: #0f172a; border-color: #cbd5e1;" title="Pilih Klaster / Periode PMB">
+          <option value="all" style="background-color: #ffffff; color: #0f172a;" <?= ($selectedPmbPeriod ?? 'all') === 'all' ? 'selected' : '' ?>>🎯 Semua Klaster / Periode PMB</option>
           <?php foreach (($availablePmbPeriods ?? []) as $pKey => $pLabel): ?>
-            <option value="<?= esc($pKey, 'attr') ?>" <?= ($selectedPmbPeriod ?? 'all') === $pKey ? 'selected' : '' ?>>
+            <option value="<?= esc($pKey, 'attr') ?>" style="background-color: #ffffff; color: #0f172a;" <?= ($selectedPmbPeriod ?? 'all') === $pKey ? 'selected' : '' ?>>
               🎯 <?= esc($pLabel) ?>
             </option>
           <?php endforeach; ?>
@@ -527,10 +534,10 @@ $initialActiveTab = $canViewAllCrmCampuses
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <input id="adminCrmSearchInput" type="text" placeholder="Cari kampus..." class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none w-44">
-          <select id="adminCrmPmbPeriodFilter" class="rounded-xl border border-indigo-200 px-2.5 py-1.5 text-xs text-indigo-800 bg-indigo-50/70 font-semibold" title="Filter Klaster / Periode PMB (Tahun Ini / Tahun Sebelumnya)">
-            <option value="all" <?= ($selectedPmbPeriod ?? 'all') === 'all' ? 'selected' : '' ?>>🎯 Semua Klaster / Periode PMB (<?= number_format((int) ($pmbPeriodCounts['all'] ?? 0), 0, ',', '.') ?> live)</option>
+          <select id="adminCrmPmbPeriodFilter" class="rounded-xl border border-indigo-200 px-2.5 py-1.5 text-xs text-slate-900 bg-indigo-50/70 font-bold" style="background-color: #eef2ff; color: #1e1b4b; border-color: #c7d2fe;" title="Filter Klaster / Periode PMB (Tahun Ini / Tahun Sebelumnya)">
+            <option value="all" style="background-color: #ffffff; color: #0f172a;" <?= ($selectedPmbPeriod ?? 'all') === 'all' ? 'selected' : '' ?>>🎯 Semua Klaster / Periode PMB (<?= number_format((int) ($pmbPeriodCounts['all'] ?? 0), 0, ',', '.') ?> live)</option>
             <?php foreach (($availablePmbPeriods ?? []) as $pKey => $pLabel): ?>
-              <option value="<?= esc($pKey, 'attr') ?>" <?= ($selectedPmbPeriod ?? 'all') === $pKey ? 'selected' : '' ?>>
+              <option value="<?= esc($pKey, 'attr') ?>" style="background-color: #ffffff; color: #0f172a;" <?= ($selectedPmbPeriod ?? 'all') === $pKey ? 'selected' : '' ?>>
                 🎯 <?= esc($pLabel) ?> (<?= number_format((int) ($pmbPeriodCounts[$pKey] ?? 0), 0, ',', '.') ?> live)
               </option>
             <?php endforeach; ?>
