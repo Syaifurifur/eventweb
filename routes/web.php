@@ -117,6 +117,7 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('documents/{code}/{type}/delete', [EventSuite::class, 'deleteDocumentLink'])->middleware('role:Admin Sistem');
 
     Route::get('document-templates', [EventSuite::class, 'documentTemplates'])->middleware('access:documents');
+    Route::get('document-templates/{id}/logo', [EventSuite::class, 'templateCoverLogo'])->whereNumber('id')->middleware('access:documents');
     Route::get('document-templates/{id}/preview', [EventSuite::class, 'previewDocumentTemplate'])->whereNumber('id')->middleware('access:documents');
     Route::get('document-templates/{id}/download', [EventSuite::class, 'downloadDocumentTemplate'])->whereNumber('id')->middleware('access:documents');
     Route::get('document-templates/{id}/download-md', [EventSuite::class, 'downloadDocumentTemplateMd'])->whereNumber('id')->middleware('access:documents');

@@ -2969,6 +2969,343 @@ class EventSuite extends BaseController
         return redirect()->to(site_url('document-templates?doc_type=' . $docType))->with('success', 'Template beserta panduan AI (.md) berhasil diperbarui.');
     }
 
+    public function templateCoverLogo($id)
+    {
+        $template = (new DocumentTemplateModel())->find((int) $id);
+        $raw = $this->extractTemplateLogoBinary($template);
+
+        return $this->response
+            ->setHeader('Content-Type', $raw['mime'])
+            ->setHeader('Cache-Control', 'public, max-age=3600')
+            ->setBody($raw['bytes']);
+    }
+
+    private function extractTemplateLogoBinary(?array $template = null): array
+    {
+        if (is_array($template) && ! empty($template['file_path']) && class_exists(\ZipArchive::class)) {
+            $relPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim((string) $template['file_path'], '/\\'));
+            foreach ([WRITEPATH . $relPath, public_path($relPath)] as $fullPath) {
+                if (is_file($fullPath)) {
+                    $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+                    if (in_array($ext, ['docx', 'dotx'], true)) {
+                        $zip = new \ZipArchive();
+                        if ($zip->open($fullPath) === true) {
+                            for ($i = 0; $i < $zip->numFiles; $i++) {
+                                $entry = (string) $zip->getNameIndex($i);
+                                if (preg_match('/^word\/media\/.+\.(png|jpe?g|gif)$/i', $entry, $m) === 1) {
+                                    $bytes = $zip->getFromIndex($i);
+                                    if (is_string($bytes) && $bytes !== '') {
+                                        $zip->close();
+                                        $imgExt = strtolower($m[1]);
+                                        $mime = $imgExt === 'png' ? 'image/png' : ($imgExt === 'gif' ? 'image/gif' : 'image/jpeg');
+                                        return ['bytes' => $bytes, 'mime' => $mime];
+                                    }
+                                }
+                            }
+                            $zip->close();
+                        }
+                    }
+                }
+            }
+        }
+
+        $fallbackLogo = public_path('assets/img/ubsi-logo.png');
+        if (is_file($fallbackLogo)) {
+            $bytes = (string) @file_get_contents($fallbackLogo);
+            if ($bytes !== '') {
+                return ['bytes' => $bytes, 'mime' => 'image/png'];
+            }
+        }
+
+        // 1x1 transparent PNG fallback
+        return [
+            'bytes' => (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='),
+            'mime' => 'image/png',
+        ];
+    }
+
+    private function getTemplateLogoDataUri(?array $template = null): string
+    {
+        $raw = $this->extractTemplateLogoBinary($template);
+        return 'data:' . $raw['mime'] . ';base64,' . base64_encode($raw['bytes']);
+    }
+
+    private function buildDocumentCoverHtml(string $type, array $event, ?array $template = null, string $customTheme = ''): string
+    {
+        $isProposal = $type === 'proposal';
+        $docTitle = $isProposal ? 'PROPOSAL KEGIATAN' : 'LAPORAN PERTANGGUNGJAWABAN (LPJ) KEGIATAN';
+        $eventTitle = htmlspecialchars((string) ($event['title'] ?? 'Kegiatan Resmi Kampus UBSI'));
+        $campus = trim((string) ($event['campus_name'] ?? $event['campus'] ?? ''));
+        if ($campus === '' || $campus === 'Belum ditentukan') {
+            $campus = 'UBSI Kampus Pelaksana';
+        }
+        $campusEsc = htmlspecialchars($campus);
+        $dateLabel = htmlspecialchars((string) ($event['date_range_label'] ?? $event['date'] ?? date('d F Y')));
+        $location = htmlspecialchars((string) ($event['location'] ?? 'Kampus Pelaksana UBSI'));
+        $category = (string) ($event['category'] ?? 'Sosialisasi');
+        $themeText = trim($customTheme) !== ''
+            ? $customTheme
+            : ('Kegiatan ' . $category . ' & Pengembangan Kompetensi Kampus');
+        $themeEsc = htmlspecialchars($themeText);
+        $year = date('Y', strtotime((string) ($event['date'] ?? 'now'))) ?: date('Y');
+        $logoDataUri = $this->getTemplateLogoDataUri($template);
+
+        $html = '<div class="doc-cover-page ai-doc-cover" style="page-break-after:always; border-bottom:2px solid #2563eb; padding:16px 12px 22px; margin-bottom:20px; text-align:center;">';
+        $html .= '  <div class="ai-doc-cover-brand" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #2563eb; padding-bottom:8px;">';
+        $html .= '    <strong style="font-size:12px; color:#1e3a8a; font-weight:900;">BSI GROUP</strong>';
+        $html .= '    <span style="font-size:9.5px; color:#2563eb; font-weight:700;">Kampus Digital Kreatif</span>';
+        $html .= '  </div>';
+        $html .= '  <div style="font-size:16px; font-weight:900; color:#0f172a; margin:8px 0 4px; text-transform:uppercase; letter-spacing:0.5px;">' . $docTitle . '</div>';
+        $html .= '  <div class="ai-doc-cover-event" style="font-size:13.5px; font-weight:800; color:#1d4ed8; margin:0 0 4px; line-height:1.35;">' . $eventTitle . '</div>';
+        $html .= '  <div style="font-size:11px; font-weight:700; color:#475569; font-style:italic; margin:0 0 8px;">&ldquo;' . $themeEsc . '&rdquo;</div>';
+        $html .= '  <div style="font-size:11px; font-weight:700; color:#0f172a; margin:0 0 14px;">' . $dateLabel . '</div>';
+        $html .= '  <div style="margin:14px auto; text-align:center;">';
+        $html .= '    <img class="doc-cover-logo-img" src="' . $logoDataUri . '" alt="Logo Cover" width="120" height="120" style="width:120px; height:120px; object-fit:contain; display:inline-block;">';
+        $html .= '  </div>';
+        $html .= '  <div class="ai-doc-cover-meta" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 14px; display:inline-block; text-align:left; font-size:10.5px; margin:8px auto 14px; min-width:240px;">';
+        $html .= '    <table style="width:100%; border-collapse:collapse; border:none;">';
+        $html .= '      <tr><td style="border:none; padding:2px 4px; color:#64748b; width:65px;">Tanggal</td><td style="border:none; padding:2px 4px; font-weight:700; color:#0f172a;">: ' . $dateLabel . '</td></tr>';
+        $html .= '      <tr><td style="border:none; padding:2px 4px; color:#64748b;">Lokasi</td><td style="border:none; padding:2px 4px; font-weight:700; color:#0f172a;">: ' . $location . '</td></tr>';
+        $html .= '      <tr><td style="border:none; padding:2px 4px; color:#64748b;">Kampus</td><td style="border:none; padding:2px 4px; font-weight:700; color:#0f172a;">: ' . $campusEsc . '</td></tr>';
+        $html .= '    </table>';
+        $html .= '  </div>';
+        $html .= '  <div style="margin-top:10px; padding-top:10px; border-top:1px solid #e2e8f0; text-align:center; line-height:1.4;">';
+        $html .= '    <div style="font-size:11.5px; font-weight:900; color:#0f172a; text-transform:uppercase;">UNIVERSITAS BINA SARANA INFORMATIKA</div>';
+        $html .= '    <div style="font-size:11px; font-weight:800; color:#1e40af; text-transform:uppercase;">' . $campusEsc . '</div>';
+        $html .= '    <div style="font-size:10.5px; font-weight:800; color:#475569;">' . htmlspecialchars((string) $year) . '</div>';
+        $html .= '  </div>';
+        $html .= '</div>';
+
+        return $html;
+    }
+
+    private function stripLeadingCoverFromAiMarkdown(string $rawAi): string
+    {
+        $trimmed = trim($rawAi);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        // If AI output contains KATA PENGANTAR, DAFTAR ISI, or BAB I within the first 1800 characters,
+        // strip any redundant plain-text cover block before it since we render the formatted Cover Page + Logo.
+        if (preg_match('/^(?:[\s\S]{1,1800}?)(?=(?:^|\R)\s*(?:#{1,3}\s*)?(?:\*\*)?(?:KATA\s+PENGANTAR|DAFTAR\s+ISI|BAB\s+I\b))/iu', $trimmed, $m) === 1) {
+            $prefix = $m[0];
+            if (preg_match('/\b(?:PROPOSAL|LAPORAN|UNIVERSITAS|BSI|TAHUN|\d{4})\b/iu', $prefix) === 1) {
+                $trimmed = ltrim(substr($trimmed, strlen($prefix)));
+            }
+        }
+
+        return $trimmed;
+    }
+
+    private function stripDocumentCoverFromHtml(string $html): string
+    {
+        $trimmed = trim($html);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        // Remove leading doc-cover-page div if present
+        if (str_contains($trimmed, 'doc-cover-page')) {
+            if (preg_match('/<div\s+class="doc-body-page"[^>]*>([\s\S]*)<\/div>\s*$/i', $trimmed, $m) === 1) {
+                return trim($m[1]);
+            }
+            $parts = preg_split('/<div\s+class="doc-body-page"[^>]*>/i', $trimmed, 2);
+            if (count($parts) === 2) {
+                return trim((string) preg_replace('/<\/div>\s*$/i', '', $parts[1]));
+            }
+        }
+
+        return $trimmed;
+    }
+
+    private function ensureDocumentCoverHtml(string $html, string $type, array $event, ?array $template = null): string
+    {
+        $trimmed = trim($html);
+        if ($trimmed === '') {
+            return $this->buildOfficialDocumentHtml($type, $event, (string) ($template['name'] ?? 'Template Resmi'), '', '', '', [], ['template' => $template]);
+        }
+
+        $hasCover = str_contains($trimmed, 'doc-cover-page') || str_contains($trimmed, 'ai-doc-cover');
+        if ($hasCover) {
+            // Ensure logo data URI is present inside the cover
+            if (! str_contains($trimmed, 'doc-cover-logo-img') && ! str_contains($trimmed, '<img')) {
+                $logoDataUri = $this->getTemplateLogoDataUri($template);
+                $logoTag = '<div style="margin:14px auto; text-align:center;"><img class="doc-cover-logo-img" src="' . $logoDataUri . '" alt="Logo Cover" width="120" height="120" style="width:120px; height:120px; object-fit:contain; display:inline-block;"></div>';
+                $trimmed = preg_replace('/(<div[^>]*class="[^"]*ai-doc-cover-meta[^"]*"[^>]*>)/i', $logoTag . '$1', $trimmed, 1) ?? ($logoTag . $trimmed);
+            } elseif (preg_match('/<img[^>]*class="[^"]*doc-cover-logo-img[^"]*"[^>]*src="([^"]+)"/i', $trimmed, $m) === 1) {
+                // Convert HTTP logo URL to data URI for offline Word/PDF portability
+                if (! str_starts_with($m[1], 'data:image/')) {
+                    $logoDataUri = $this->getTemplateLogoDataUri($template);
+                    $trimmed = str_replace($m[1], $logoDataUri, $trimmed);
+                }
+            }
+
+            return $trimmed;
+        }
+
+        return $this->buildDocumentCoverHtml($type, $event, $template) . "\n" . '<div class="doc-body-page">' . $trimmed . '</div>';
+    }
+
+    private function renderDocxTemplateRichHtml(string $docxPath, array $template): string
+    {
+        if (! class_exists(\ZipArchive::class) || ! is_file($docxPath)) {
+            return '';
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($docxPath) !== true) {
+            return '';
+        }
+
+        $xml = (string) $zip->getFromName('word/document.xml');
+        $relsXml = (string) $zip->getFromName('word/_rels/document.xml.rels');
+
+        $relsMap = [];
+        if ($relsXml !== '') {
+            $relsDom = new \DOMDocument();
+            if (@$relsDom->loadXML($relsXml)) {
+                foreach ($relsDom->getElementsByTagName('Relationship') as $relNode) {
+                    $rId = $relNode->getAttribute('Id');
+                    $target = $relNode->getAttribute('Target');
+                    if ($rId !== '' && $target !== '') {
+                        $entryPath = 'word/' . ltrim($target, '/');
+                        if (preg_match('/\.(png|jpe?g|gif)$/i', $entryPath, $m) === 1) {
+                            $imgBytes = $zip->getFromName($entryPath);
+                            if (is_string($imgBytes) && $imgBytes !== '') {
+                                $ext = strtolower($m[1]);
+                                $mime = $ext === 'png' ? 'image/png' : ($ext === 'gif' ? 'image/gif' : 'image/jpeg');
+                                $relsMap[$rId] = 'data:' . $mime . ';base64,' . base64_encode($imgBytes);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $zip->close();
+
+        if ($xml === '') {
+            return '';
+        }
+
+        $dom = new \DOMDocument();
+        if (! @$dom->loadXML($xml)) {
+            return '';
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+        $xpath->registerNamespace('a', 'http://schemas.openxmlformats.org/drawingml/2006/main');
+        $xpath->registerNamespace('r', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+
+        $coverItems = [];
+        $bodyItems = [];
+        $inCover = true;
+
+        foreach ($xpath->query('//w:body/*') as $node) {
+            if ($node->nodeName === 'w:p') {
+                $texts = [];
+                foreach ($xpath->query('.//w:t', $node) as $tNode) {
+                    $texts[] = $tNode->nodeValue;
+                }
+                $line = trim(implode('', $texts));
+
+                if ($inCover && preg_match('/^(?:KATA\s+PENGANTAR|DAFTAR\s+ISI|BAB\s+I\b)/iu', $line) === 1) {
+                    $inCover = false;
+                }
+
+                $blips = $xpath->query('.//a:blip/@r:embed', $node);
+                $imgHtml = '';
+                if ($blips && $blips->length > 0) {
+                    $rId = (string) $blips->item(0)->nodeValue;
+                    $dataUri = $relsMap[$rId] ?? $this->getTemplateLogoDataUri($template);
+                    $imgHtml = '<div style="margin:18px auto; text-align:center;"><img src="' . $dataUri . '" alt="Logo Template" width="140" height="140" style="width:140px; height:140px; object-fit:contain; display:inline-block;"></div>';
+                }
+
+                if ($line === '' && $imgHtml === '') {
+                    continue;
+                }
+
+                $jcNode = $xpath->query('.//w:pPr/w:jc/@w:val', $node)->item(0);
+                $jc = $jcNode ? (string) $jcNode->nodeValue : '';
+                $align = match ($jc) {
+                    'center' => 'center',
+                    'right' => 'right',
+                    'both' => 'justify',
+                    default => ($inCover ? 'center' : 'left'),
+                };
+
+                $isBold = $xpath->query('.//w:b', $node)->length > 0;
+                $szNode = $xpath->query('.//w:sz/@w:val', $node)->item(0);
+                $halfPts = $szNode ? (int) $szNode->nodeValue : 24;
+                $fontPx = max(12, min(24, (int) round($halfPts * 0.65)));
+
+                $escaped = htmlspecialchars($line);
+                $escaped = preg_replace('/(\{\{[^}]+\}\})/', '<span style="background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:4px; font-family:monospace; font-weight:700;">$1</span>', $escaped) ?? $escaped;
+                if (str_starts_with($line, '[AI]')) {
+                    $escaped = '<span style="display:block; background:#eff6ff; color:#1d4ed8; border-left:3px solid #2563eb; padding:6px 10px; border-radius:6px; font-size:12px;">' . $escaped . '</span>';
+                }
+
+                $pHtml = '';
+                if ($line !== '') {
+                    $style = 'margin:6px 0; text-align:' . $align . '; font-size:' . $fontPx . 'px;' . ($isBold ? ' font-weight:800; color:#0f172a;' : '');
+                    $pHtml .= '<p style="' . $style . '">' . $escaped . '</p>';
+                }
+                if ($imgHtml !== '') {
+                    $pHtml .= $imgHtml;
+                }
+
+                if ($inCover) {
+                    $coverItems[] = $pHtml;
+                } else {
+                    $bodyItems[] = $pHtml;
+                }
+            } elseif ($node->nodeName === 'w:tbl') {
+                $inCover = false;
+                $tblHtml = '<table style="width:100%; border-collapse:collapse; margin:12px 0; font-size:12px;">';
+                foreach ($xpath->query('./w:tr', $node) as $rIdx => $tr) {
+                    $tblHtml .= '<tr>';
+                    foreach ($xpath->query('./w:tc', $tr) as $tc) {
+                        $cellLines = [];
+                        foreach ($xpath->query('./w:p', $tc) as $cp) {
+                            $cTexts = [];
+                            foreach ($xpath->query('.//w:t', $cp) as $ct) {
+                                $cTexts[] = $ct->nodeValue;
+                            }
+                            $cLine = trim(implode('', $cTexts));
+                            if ($cLine !== '') {
+                                $cEsc = htmlspecialchars($cLine);
+                                $cEsc = preg_replace('/(\{\{[^}]+\}\})/', '<span style="background:#fef3c7; color:#92400e; padding:1px 4px; border-radius:4px; font-family:monospace; font-weight:700;">$1</span>', $cEsc) ?? $cEsc;
+                                $cellLines[] = $cEsc;
+                            }
+                        }
+                        $tag = $rIdx === 0 ? 'th' : 'td';
+                        $bg = $rIdx === 0 ? 'background:#f1f5f9; font-weight:700;' : '';
+                        $tblHtml .= '<' . $tag . ' style="border:1px solid #cbd5e1; padding:7px 9px; vertical-align:top; ' . $bg . '">' . implode('<br>', $cellLines) . '</' . $tag . '>';
+                    }
+                    $tblHtml .= '</tr>';
+                }
+                $tblHtml .= '</table>';
+                $bodyItems[] = $tblHtml;
+            }
+        }
+
+        if ($coverItems === [] && $bodyItems === []) {
+            return '';
+        }
+
+        $out = '';
+        if ($coverItems !== []) {
+            $out .= '<div class="doc-cover-page" style="border:2px solid #bfdbfe; background:#ffffff; border-radius:12px; padding:28px 20px; margin-bottom:24px; text-align:center; box-shadow:0 4px 12px rgba(37,99,235,0.06);">';
+            $out .= '<div style="font-size:10.5px; font-weight:800; color:#2563eb; text-transform:uppercase; letter-spacing:1px; margin-bottom:14px;">Halaman Cover Template (Format &amp; Logo Dipertahankan)</div>';
+            $out .= implode("\n", $coverItems);
+            $out .= '</div>';
+        }
+        $out .= '<div class="doc-body-page">' . implode("\n", $bodyItems) . '</div>';
+
+        return $out;
+    }
+
     public function previewDocumentTemplate($id)
     {
         $template = (new DocumentTemplateModel())->find((int) $id);
@@ -2979,7 +3316,6 @@ class EventSuite extends BaseController
         $enriched = $this->enrichDocumentTemplates([$template])[0];
         $docType = (string) ($enriched['doc_type'] ?? 'proposal');
         $docTypeLabel = $docType === 'report' ? 'Laporan (LPJ)' : 'Proposal';
-        $extractedDocText = $this->extractUploadedDocumentTemplateRecord($enriched);
         $mdContent = (string) ($enriched['md_content'] ?? '');
         if ($mdContent === '') {
             $mdContent = $this->defaultTemplateMarkdownGuide($docType, (string) ($enriched['name'] ?? 'Template'), (string) ($enriched['event_category'] ?? 'Semua'), (string) ($enriched['description'] ?? ''));
@@ -2996,9 +3332,28 @@ class EventSuite extends BaseController
             'pic_phone' => '0812-3456-7890',
         ];
 
-        $previewDocHtml = $extractedDocText !== ''
-            ? $this->markdownToWordHtml($extractedDocText)
-            : $this->buildOfficialDocumentHtml($docType, $sampleEvent, (string) ($enriched['name'] ?? 'Template Resmi'), '', '', '', [], ['md_guide' => $mdContent]);
+        $richDocxHtml = '';
+        $relPath = trim((string) ($enriched['file_path'] ?? ''));
+        if ($relPath !== '') {
+            $normRel = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($relPath, '/\\'));
+            foreach ([WRITEPATH . $normRel, public_path($normRel)] as $candPath) {
+                if (is_file($candPath)) {
+                    $richDocxHtml = $this->renderDocxTemplateRichHtml($candPath, $enriched);
+                    if ($richDocxHtml !== '') {
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($richDocxHtml !== '') {
+            $previewDocHtml = $richDocxHtml;
+        } else {
+            $extractedDocText = $this->extractUploadedDocumentTemplateRecord($enriched);
+            $previewDocHtml = $extractedDocText !== ''
+                ? ($this->buildDocumentCoverHtml($docType, $sampleEvent, $enriched) . $this->markdownToWordHtml($extractedDocText))
+                : $this->buildOfficialDocumentHtml($docType, $sampleEvent, (string) ($enriched['name'] ?? 'Template Resmi'), '', '', '', [], ['md_guide' => $mdContent, 'template' => $enriched]);
+        }
 
         $mdHtml = $this->markdownToWordHtml($mdContent);
         $tplNameEsc = htmlspecialchars((string) ($enriched['name'] ?? 'Template Dokumen'));
@@ -3044,7 +3399,7 @@ class EventSuite extends BaseController
         $html .= '</div>';
         $html .= '<div class="container">';
         $html .= '  <div class="panel">';
-        $html .= '    <div class="panel-head"><strong style="font-size:14px;">📄 Preview Struktur Dokumen Template (' . htmlspecialchars($docTypeLabel) . ')</strong><span class="badge">' . ($extractedDocText !== '' ? 'Diekstrak dari File Upload' : 'Layout Standar Template') . '</span></div>';
+        $html .= '    <div class="panel-head"><strong style="font-size:14px;">📄 Preview Cover, Logo &amp; Struktur Dokumen (' . htmlspecialchars($docTypeLabel) . ')</strong><span class="badge">' . ($richDocxHtml !== '' ? 'Cover & Logo File .DOCX' : 'Layout Standar Template') . '</span></div>';
         $html .= '    <div class="panel-body">' . $previewDocHtml . '</div>';
         $html .= '  </div>';
         $html .= '  <div class="panel md-column">';
@@ -3225,6 +3580,7 @@ class EventSuite extends BaseController
             $tpl['md_content'] = $mdContent !== '' ? $mdContent : $defaultMd;
             $tpl['md_name'] = (string) ($struct['md_name'] ?? ($mdContent !== '' ? ('panduan_' . $docType . '.md') : 'panduan_standar_' . $docType . '.md'));
             $tpl['has_file'] = $hasFile;
+            $tpl['cover_logo_url'] = site_url('document-templates/' . (int) ($tpl['id'] ?? 0) . '/logo');
         }
         unset($tpl);
 
@@ -3753,6 +4109,13 @@ class EventSuite extends BaseController
         $templates = $this->enrichDocumentTemplates($templates);
 
         $selectedTemplateId = (int) ($this->request->getGet('template_id') ?: ($templates[0]['id'] ?? 0));
+        $activeTemplate = $templates[0] ?? null;
+        foreach ($templates as $tplItem) {
+            if ((int) ($tplItem['id'] ?? 0) === $selectedTemplateId) {
+                $activeTemplate = $tplItem;
+                break;
+            }
+        }
 
         $eventId = (int) ($event['db_id'] ?? $event['id'] ?? 0);
         $existingDocument = null;
@@ -3761,6 +4124,17 @@ class EventSuite extends BaseController
         } else {
             $existingDocument = (new ProposalModel())->where('event_id', $eventId)->first();
         }
+
+        $rawExisting = trim((string) ($existingDocument['content'] ?? ''));
+        if ($rawExisting !== '' && (stripos($rawExisting, 'Proposal otomatis dibuat dari data event') !== false || mb_strlen(strip_tags($rawExisting)) < 100)) {
+            $rawExisting = '';
+        }
+
+        $coverHtml = $this->buildDocumentCoverHtml($type, $event, $activeTemplate);
+        $coverLogoDataUri = $this->getTemplateLogoDataUri($activeTemplate);
+        $initialBodyHtml = $rawExisting !== ''
+            ? $this->stripDocumentCoverFromHtml($this->markdownToWordHtml($rawExisting))
+            : '';
 
         $allEventsRaw = (new EventModel())->withCreator()->orderBy('id', 'DESC')->findAll();
         $allEvents = array_map(fn ($ev) => $this->normalizeEvent($ev), $allEventsRaw);
@@ -3774,7 +4148,10 @@ class EventSuite extends BaseController
             'selectedDocType' => $type,
             'selectedTemplateId' => $selectedTemplateId,
             'existingDocument' => $existingDocument,
-            'initialContent' => $existingDocument['content'] ?? '',
+            'initialContent' => $initialBodyHtml,
+            'initialBodyHtml' => $initialBodyHtml,
+            'coverHtml' => $coverHtml,
+            'coverLogoDataUri' => $coverLogoDataUri,
             'isAdminSystem' => session('user.role') === 'Admin Sistem',
         ]);
     }
@@ -3789,6 +4166,13 @@ class EventSuite extends BaseController
 
         $templateId = (int) ($this->request->getPost('template_id') ?: 0);
         $template = $templateId > 0 ? (new DocumentTemplateModel())->find($templateId) : null;
+        if (! $template) {
+            $template = (new DocumentTemplateModel())
+                ->where('doc_type', $type)
+                ->whereIn('status', ['active', 'Aktif', 'aktif'])
+                ->orderBy('id', 'DESC')
+                ->first();
+        }
         $templateName = $template['name'] ?? ($type === 'proposal' ? 'Template Proposal Standar' : 'Template Laporan Standar');
 
         $event = (new EventModel())->withCreator()->find($eventId);
@@ -3797,12 +4181,18 @@ class EventSuite extends BaseController
         }
         $event = $event ? $this->normalizeEvent($event) : [];
 
+        $postedCampus = trim((string) $this->request->getPost('campus'));
+        if ($postedCampus !== '') {
+            $event['campus'] = $postedCampus;
+            $event['campus_name'] = $postedCampus;
+        }
+
         $goals = trim((string) $this->request->getPost('goals'));
         $target = trim((string) $this->request->getPost('target_participants'));
         $customBrief = trim((string) $this->request->getPost('custom_brief'));
         $sections = (array) ($this->request->getPost('sections') ?: []);
 
-        $resolvedTemplate = $this->resolveDocumentTemplateForAi($type, $event, [], $templateId);
+        $resolvedTemplate = $this->resolveDocumentTemplateForAi($type, $event, [], (int) ($template['id'] ?? $templateId));
         if (! empty($resolvedTemplate['name'])) {
             $templateName = $resolvedTemplate['name'];
         }
@@ -3816,23 +4206,28 @@ class EventSuite extends BaseController
             $structure['Bagian dokumen yang wajib disertakan'] = implode(', ', $sections);
         }
 
+        $coverHtml = $this->buildDocumentCoverHtml($type, $event, $template);
         $service = new GeminiDocumentService();
-        $content = '';
+        $bodyHtml = '';
 
         if ($service->isConfigured()) {
             try {
                 $rawAi = $service->generateDocument($type, $event, (string) ($resolvedTemplate['content'] ?? ''), $structure, $resolvedTemplate);
-                $content = $this->markdownToWordHtml($rawAi);
+                $cleanedAi = $this->stripLeadingCoverFromAiMarkdown($rawAi);
+                $bodyHtml = $this->stripDocumentCoverFromHtml($this->markdownToWordHtml($cleanedAi));
             } catch (\Throwable $e) {
-                $content = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections, $resolvedTemplate);
+                $fullFallback = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections, $resolvedTemplate);
+                $bodyHtml = $this->stripDocumentCoverFromHtml($fullFallback);
             }
         } else {
-            $content = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections, $resolvedTemplate);
+            $fullFallback = $this->buildOfficialDocumentHtml($type, $event, $templateName, $goals, $target, $customBrief, $sections, $resolvedTemplate);
+            $bodyHtml = $this->stripDocumentCoverFromHtml($fullFallback);
         }
 
         return $this->response->setJSON([
             'ok' => true,
-            'content_html' => $content,
+            'cover_html' => $coverHtml,
+            'content_html' => $bodyHtml,
             'template_name' => $templateName,
             'has_md_guide' => ! empty($resolvedTemplate['md_guide']),
             'type' => $type,
@@ -3848,7 +4243,14 @@ class EventSuite extends BaseController
         }
 
         $templateId = (int) ($this->request->getPost('template_id') ?: 0);
-        $template = (new DocumentTemplateModel())->find($templateId);
+        $template = $templateId > 0 ? (new DocumentTemplateModel())->find($templateId) : null;
+        if (! $template) {
+            $template = (new DocumentTemplateModel())
+                ->where('doc_type', $type)
+                ->whereIn('status', ['active', 'Aktif', 'aktif'])
+                ->orderBy('id', 'DESC')
+                ->first();
+        }
         $templateName = $template['name'] ?? ($type === 'proposal' ? 'Template Proposal Standar' : 'Template Laporan Standar');
 
         $content = (string) $this->request->getPost('content');
@@ -3856,31 +4258,31 @@ class EventSuite extends BaseController
             return $this->response->setJSON(['ok' => false, 'message' => 'Konten dokumen kosong.']);
         }
 
-        $event = (new EventModel())->find($eventId);
-        if (! $event) {
+        $eventRaw = (new EventModel())->withCreator()->find($eventId);
+        if (! $eventRaw) {
+            $eventRaw = (new EventModel())->withCreator()->orderBy('id', 'DESC')->first();
+        }
+        if (! $eventRaw) {
             return $this->response->setJSON(['ok' => false, 'message' => 'Event tidak ditemukan.']);
         }
 
-        $code = (string) ($event['code'] ?? 'EVT-' . $eventId);
+        $normalizedEvent = $this->normalizeEvent($eventRaw);
+        $code = (string) ($eventRaw['code'] ?? 'EVT-' . $eventRaw['id']);
 
-        $generatedPath = $this->writeGeneratedDocument($type, $code, $content);
+        $fullContent = $this->ensureDocumentCoverHtml($content, $type, $normalizedEvent, $template);
+        $generatedPath = $this->writeGeneratedDocument($type, $code, $fullContent);
 
         if ($type === 'report') {
-            $report = $this->ensureReportRecord((int) $event['id']);
+            $report = $this->ensureReportRecord((int) $eventRaw['id']);
             (new ReportModel())->update($report['id'], [
-                'content' => $content,
-                'template_name' => $templateName,
-                'generated_path' => $generatedPath,
                 'document_link' => $generatedPath,
-                'generated_at' => date('Y-m-d H:i:s'),
-                'ai_model' => 'Gemini Document Generator',
-                'ai_notes' => 'Laporan dibuat menggunakan AI dengan ' . $templateName . ' pada ' . date('d M Y H:i'),
                 'realization_status' => 'Review Admin',
+                'notes' => 'Laporan (LPJ) dibuat menggunakan AI dengan ' . $templateName . ' pada ' . date('d M Y H:i'),
             ]);
         } else {
-            $doc = $this->ensureDocumentRecord('proposal', (int) $event['id']);
+            $doc = $this->ensureDocumentRecord('proposal', (int) $eventRaw['id']);
             (new ProposalModel())->update($doc['id'], [
-                'content' => $content,
+                'content' => $fullContent,
                 'template_name' => $templateName,
                 'generated_path' => $generatedPath,
                 'document_link' => $generatedPath,
@@ -3891,13 +4293,13 @@ class EventSuite extends BaseController
             ]);
         }
 
-        $this->syncChecklistDocumentUpload((int) $event['id'], $type, $generatedPath);
-        $this->updateEventProgressFromChecklist((int) $event['id']);
+        $this->syncChecklistDocumentUpload((int) $eventRaw['id'], $type, $generatedPath);
+        $this->updateEventProgressFromChecklist((int) $eventRaw['id']);
 
         return $this->response->setJSON([
             'ok' => true,
-            'message' => 'Dokumen ' . ucfirst($type) . ' berhasil disimpan ke Dokumen Event dengan status "Review Admin".',
-            'redirect_url' => site_url('documents'),
+            'message' => 'Dokumen ' . ($type === 'report' ? 'Laporan (LPJ)' : 'Proposal') . ' beserta format cover & logo berhasil disimpan ke Dokumen Event dengan status "Review Admin".',
+            'redirect_url' => site_url('documents?type=' . $type),
         ]);
     }
 
@@ -3908,9 +4310,22 @@ class EventSuite extends BaseController
         if (! in_array($type, ['proposal', 'report'], true)) {
             $type = 'proposal';
         }
+        $templateId = (int) ($this->request->getPost('template_id') ?: $this->request->getGet('template_id') ?: 0);
+        $template = $templateId > 0 ? (new DocumentTemplateModel())->find($templateId) : null;
+        if (! $template) {
+            $template = (new DocumentTemplateModel())
+                ->where('doc_type', $type)
+                ->whereIn('status', ['active', 'Aktif', 'aktif'])
+                ->orderBy('id', 'DESC')
+                ->first();
+        }
 
-        $event = (new EventModel())->find($eventId);
-        $code = (string) ($event['code'] ?? 'EVT-' . $eventId);
+        $eventRaw = (new EventModel())->withCreator()->find($eventId);
+        if (! $eventRaw) {
+            $eventRaw = (new EventModel())->withCreator()->orderBy('id', 'DESC')->first();
+        }
+        $normalizedEvent = $eventRaw ? $this->normalizeEvent($eventRaw) : [];
+        $code = (string) ($eventRaw['code'] ?? 'EVT-' . $eventId);
 
         $postedContent = trim((string) ($this->request->getPost('content') ?? ''));
         $content = $postedContent;
@@ -3922,8 +4337,10 @@ class EventSuite extends BaseController
             $content = (string) ($doc['content'] ?? '');
         }
 
-        if (trim($content) === '') {
-            $content = $this->buildOfficialDocumentHtml($type, $this->normalizeEvent($event ?: []), 'Template Resmi', '', '', '', []);
+        if (trim($content) === '' || stripos($content, 'Proposal otomatis dibuat dari data event') !== false) {
+            $content = $this->buildOfficialDocumentHtml($type, $normalizedEvent, (string) ($template['name'] ?? 'Template Resmi'), '', '', '', [], ['template' => $template]);
+        } else {
+            $content = $this->ensureDocumentCoverHtml($this->markdownToWordHtml($content), $type, $normalizedEvent, $template);
         }
 
         $wordHtml = $this->wordDocumentHtml($type, $code, $content);
@@ -3943,10 +4360,22 @@ class EventSuite extends BaseController
         if (! in_array($type, ['proposal', 'report'], true)) {
             $type = 'proposal';
         }
+        $templateId = (int) ($this->request->getPost('template_id') ?: $this->request->getGet('template_id') ?: 0);
+        $template = $templateId > 0 ? (new DocumentTemplateModel())->find($templateId) : null;
+        if (! $template) {
+            $template = (new DocumentTemplateModel())
+                ->where('doc_type', $type)
+                ->whereIn('status', ['active', 'Aktif', 'aktif'])
+                ->orderBy('id', 'DESC')
+                ->first();
+        }
 
-        $event = (new EventModel())->find($eventId);
-        $code = (string) ($event['code'] ?? 'EVT-' . $eventId);
-        $title = (string) ($event['title'] ?? 'Dokumen Event');
+        $eventRaw = (new EventModel())->withCreator()->find($eventId);
+        if (! $eventRaw) {
+            $eventRaw = (new EventModel())->withCreator()->orderBy('id', 'DESC')->first();
+        }
+        $normalizedEvent = $eventRaw ? $this->normalizeEvent($eventRaw) : [];
+        $title = (string) ($normalizedEvent['title'] ?? 'Dokumen Event');
 
         $postedContent = trim((string) ($this->request->getPost('content') ?? ''));
         $content = $postedContent;
@@ -3958,10 +4387,10 @@ class EventSuite extends BaseController
             $content = (string) ($doc['content'] ?? '');
         }
 
-        if (trim($content) === '') {
-            $content = $this->buildOfficialDocumentHtml($type, $this->normalizeEvent($event ?: []), 'Template Resmi', '', '', '', []);
+        if (trim($content) === '' || stripos($content, 'Proposal otomatis dibuat dari data event') !== false) {
+            $content = $this->buildOfficialDocumentHtml($type, $normalizedEvent, (string) ($template['name'] ?? 'Template Resmi'), '', '', '', [], ['template' => $template]);
         } else {
-            $content = $this->markdownToWordHtml($content);
+            $content = $this->ensureDocumentCoverHtml($this->markdownToWordHtml($content), $type, $normalizedEvent, $template);
         }
 
         $html = '<!DOCTYPE html><html><head><meta charset="utf-8">';
@@ -3971,9 +4400,10 @@ class EventSuite extends BaseController
         $html .= 'body { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; line-height: 1.6; color: #1e293b; background:#fff; margin:0; padding:20px; }';
         $html .= '.print-bar { background:#2563eb; color:#fff; padding:10px 16px; border-radius:6px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; }';
         $html .= '.print-btn { background:#fff; color:#2563eb; font-weight:700; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; }';
+        $html .= 'table { width:100%; border-collapse:collapse; margin:10px 0; } th, td { border:1px solid #cbd5e1; padding:6px 8px; } th { background:#f1f5f9; }';
         $html .= '@media print { .print-bar { display:none; } body { padding:0; } }';
         $html .= '</style></head><body>';
-        $html .= '<div class="print-bar"><span>Dokumen Resmi UBSI - Siap Cetak / Simpan PDF</span><button class="print-btn" onclick="window.print()">Cetak / Simpan PDF</button></div>';
+        $html .= '<div class="print-bar"><span>Dokumen Resmi UBSI - Siap Cetak / Simpan PDF (Format Cover &amp; Logo Dipertahankan)</span><button class="print-btn" onclick="window.print()">Cetak / Simpan PDF</button></div>';
         $html .= $content;
         $html .= '<script>window.onload = function() { setTimeout(function(){ window.print(); }, 600); };</script>';
         $html .= '</body></html>';
@@ -4005,42 +4435,9 @@ class EventSuite extends BaseController
 
         $html = '';
 
-        // Cover Page
-        $html .= '<div class="doc-cover-page" style="page-break-after:always; padding:40px 24px; text-align:center; min-height:850px; display:flex; flex-direction:column; justify-content:space-between; box-sizing:border-box;">';
-        $html .= '  <div>';
-        $html .= '    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #2563eb; padding-bottom:12px; margin-bottom:40px;">';
-        $html .= '      <div style="text-align:left;">';
-        $html .= '        <div style="font-size:22px; font-weight:800; color:#1e3a8a; letter-spacing:1px;">BSI GROUP</div>';
-        $html .= '        <div style="font-size:12px; color:#475569; font-weight:600;">Kampus Digital Kreatif</div>';
-        $html .= '      </div>';
-        $html .= '      <div style="text-align:right; font-size:11px; color:#64748b;">';
-        $html .= '        <div>Universitas Bina Sarana Informatika</div>';
-        $html .= '        <div>' . $campus . '</div>';
-        $html .= '      </div>';
-        $html .= '    </div>';
-
-        $html .= '    <div style="margin-top:60px; margin-bottom:30px;">';
-        $html .= '      <div style="font-size:15px; font-weight:700; color:#2563eb; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;">' . ($isProposal ? 'DOKUMEN PENGAJUAN RESMI' : 'DOKUMEN PERTANGGUNGJAWABAN RESMI') . '</div>';
-        $html .= '      <h1 style="font-size:26px; font-weight:800; color:#0f172a; margin:0 0 16px; line-height:1.3; text-transform:uppercase;">' . $docTitle . '</h1>';
-        $html .= '      <h2 style="font-size:18px; font-weight:700; color:#1e40af; margin:0; line-height:1.4;">' . $eventTitle . '</h2>';
-        $html .= '    </div>';
-
-        $html .= '    <div style="display:inline-block; margin:30px auto; padding:16px 28px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; text-align:left; max-width:480px; width:100%; box-sizing:border-box;">';
-        $html .= '      <table style="width:100%; font-size:13px; border-collapse:collapse;">';
-        $html .= '        <tr><td style="padding:6px 0; color:#64748b; width:120px; font-weight:600;">Tanggal Kegiatan</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $dateLabel . '</td></tr>';
-        $html .= '        <tr><td style="padding:6px 0; color:#64748b; font-weight:600;">Lokasi / Tempat</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $location . '</td></tr>';
-        $html .= '        <tr><td style="padding:6px 0; color:#64748b; font-weight:600;">Kampus Pelaksana</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $campus . '</td></tr>';
-        $html .= '        <tr><td style="padding:6px 0; color:#64748b; font-weight:600;">Jenis Event</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $category . '</td></tr>';
-        $html .= '        <tr><td style="padding:6px 0; color:#64748b; font-weight:600;">PIC Pelaksana</td><td style="padding:6px 0; font-weight:700; color:#0f172a;">: ' . $picName . ' (' . $picPhone . ')</td></tr>';
-        $html .= '      </table>';
-        $html .= '    </div>';
-        $html .= '  </div>';
-
-        $html .= '  <div style="border-top:1px solid #e2e8f0; padding-top:20px; font-size:12px; color:#64748b;">';
-        $html .= '    <div style="font-weight:700; color:#0f172a;">PANITIA PELAKSANA EVENT BSI GROUP</div>';
-        $html .= '    <div>Tahun Akademik ' . date('Y') . '/' . (date('Y') + 1) . ' • Digenerate otomatis dengan ' . htmlspecialchars($templateName) . '</div>';
-        $html .= '  </div>';
-        $html .= '</div>';
+        // Cover Page (Preserves cover format & logo)
+        $tplForCover = $resolvedTemplate['template'] ?? null;
+        $html .= $this->buildDocumentCoverHtml($type, $event, is_array($tplForCover) ? $tplForCover : null);
 
         // Content Pages
         $html .= '<div class="doc-body-page" style="padding:20px 24px; font-size:13px; line-height:1.7; color:#1e293b;">';
@@ -10678,7 +11075,7 @@ class EventSuite extends BaseController
     private function uploadedDocumentAbsolutePath(string $relativePath): ?string
     {
         $relativePath = trim(str_replace('\\', '/', $relativePath), '/');
-        if (! str_starts_with($relativePath, 'uploads/event_documents/')) {
+        if (! str_starts_with($relativePath, 'uploads/event_documents/') && ! str_starts_with($relativePath, 'uploads/generated_documents/')) {
             return null;
         }
 
@@ -11063,9 +11460,53 @@ class EventSuite extends BaseController
             return '';
         }
 
-        $xml = preg_replace('/<\/w:p>/', "\n", $xml) ?? $xml;
-        $xml = preg_replace('/<\/w:tr>/', "\n", $xml) ?? $xml;
-        $text = html_entity_decode(strip_tags($xml), ENT_QUOTES | ENT_XML1, 'UTF-8');
+        // Remove drawing/shape nodes so coordinate offsets (e.g. 149479025400) don't leak into extracted text
+        $xmlClean = preg_replace('/<w:drawing\b[\s\S]*?<\/w:drawing>/i', '', $xml) ?? $xml;
+        $xmlClean = preg_replace('/<v:shape\b[\s\S]*?<\/v:shape>/i', '', $xmlClean) ?? $xmlClean;
+
+        $dom = new \DOMDocument();
+        if (@$dom->loadXML($xmlClean)) {
+            $xpath = new \DOMXPath($dom);
+            $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+            $outLines = [];
+            foreach ($xpath->query('//w:body/*') as $node) {
+                if ($node->nodeName === 'w:p') {
+                    $tParts = [];
+                    foreach ($xpath->query('.//w:t', $node) as $tNode) {
+                        $tParts[] = $tNode->nodeValue;
+                    }
+                    $line = trim(implode('', $tParts));
+                    if ($line !== '') {
+                        $outLines[] = $line;
+                    }
+                } elseif ($node->nodeName === 'w:tbl') {
+                    $rows = $xpath->query('./w:tr', $node);
+                    foreach ($rows as $rIdx => $tr) {
+                        $cells = [];
+                        foreach ($xpath->query('./w:tc', $tr) as $tc) {
+                            $cParts = [];
+                            foreach ($xpath->query('.//w:t', $tc) as $ct) {
+                                $cParts[] = $ct->nodeValue;
+                            }
+                            $cells[] = trim(preg_replace('/\s+/', ' ', implode(' ', $cParts)) ?? '');
+                        }
+                        if ($cells !== []) {
+                            $outLines[] = '| ' . implode(' | ', $cells) . ' |';
+                            if ($rIdx === 0) {
+                                $outLines[] = '| ' . implode(' | ', array_fill(0, count($cells), '---')) . ' |';
+                            }
+                        }
+                    }
+                }
+            }
+            if ($outLines !== []) {
+                return $this->cleanExtractedTemplateText(implode("\n\n", $outLines));
+            }
+        }
+
+        $xmlClean = preg_replace('/<\/w:p>/', "\n", $xmlClean) ?? $xmlClean;
+        $xmlClean = preg_replace('/<\/w:tr>/', "\n", $xmlClean) ?? $xmlClean;
+        $text = html_entity_decode(strip_tags($xmlClean), ENT_QUOTES | ENT_XML1, 'UTF-8');
 
         return $this->cleanExtractedTemplateText($text);
     }
@@ -11117,11 +11558,17 @@ class EventSuite extends BaseController
     {
         $targetDir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'generated_documents';
         if (! is_dir($targetDir)) {
-            mkdir($targetDir, 0775, true);
+            @mkdir($targetDir, 0775, true);
+        }
+        $publicDir = public_path('uploads/generated_documents');
+        if (! is_dir($publicDir)) {
+            @mkdir($publicDir, 0775, true);
         }
 
         $fileName = $type . '-' . $code . '-' . date('YmdHis') . '.doc';
-        file_put_contents($targetDir . DIRECTORY_SEPARATOR . $fileName, $this->wordDocumentHtml($type, $code, $content));
+        $wordContent = $this->wordDocumentHtml($type, $code, $content);
+        file_put_contents($targetDir . DIRECTORY_SEPARATOR . $fileName, $wordContent);
+        @file_put_contents($publicDir . DIRECTORY_SEPARATOR . $fileName, $wordContent);
 
         return 'uploads/generated_documents/' . $fileName;
     }
@@ -11129,8 +11576,29 @@ class EventSuite extends BaseController
     private function wordDocumentHtml(string $type, string $code, string $content): string
     {
         $title = strtoupper($type) . ' ' . $code;
+        $bodyHtml = $this->markdownToWordHtml($content);
 
-        return implode("\n", [
+        // Extract any data:image/...;base64,... images into MHTML MIME parts so Microsoft Word embeds the cover logo natively
+        $mimeParts = [];
+        $imgCounter = 0;
+        $bodyHtml = preg_replace_callback(
+            '/src=["\']data:(image\/(?:png|jpeg|jpg|gif));base64,([A-Za-z0-9+\/=\r\n]+)["\']/i',
+            static function (array $m) use (&$mimeParts, &$imgCounter): string {
+                $imgCounter++;
+                $mime = strtolower($m[1]);
+                $ext = str_contains($mime, 'png') ? 'png' : (str_contains($mime, 'gif') ? 'gif' : 'jpg');
+                $loc = 'file:///C:/EventHubDoc/cover_logo_' . $imgCounter . '.' . $ext;
+                $mimeParts[] = [
+                    'location' => $loc,
+                    'mime' => $mime,
+                    'base64' => chunk_split(preg_replace('/\s+/', '', $m[2]) ?? '', 76, "\r\n"),
+                ];
+                return 'src="' . $loc . '"';
+            },
+            $bodyHtml
+        ) ?? $bodyHtml;
+
+        $htmlDoc = implode("\r\n", [
             '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">',
             '<head>',
             '<meta charset="utf-8">',
@@ -11141,11 +11609,12 @@ class EventSuite extends BaseController
             '@page Section1 { size: 21cm 29.7cm; margin: 2.5cm 2.5cm 2.5cm 2.5cm; }',
             'div.Section1 { page: Section1; }',
             'body { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.5; color: #111111; }',
+            '.doc-cover-page { page-break-after: always; text-align: center; padding: 12pt 0 24pt; margin-bottom: 18pt; }',
             'h1 { font-size: 16pt; text-align: center; text-transform: uppercase; margin: 0 0 18pt; font-weight: bold; }',
             'h1.page-heading { page-break-before: always; margin-top: 0; }',
             'h1.first-heading { page-break-before: auto; }',
             'h2 { font-size: 13pt; margin: 14pt 0 6pt; font-weight: bold; }',
-            'h3 { font-size: 12pt; margin: 10pt 0 4pt; font-weight: bold; }',
+            'h3, h4 { font-size: 12pt; margin: 10pt 0 4pt; font-weight: bold; }',
             'p { margin: 0 0 8pt; text-align: justify; }',
             'p.center { text-align: center; }',
             'p.signature-line { margin-top: 28pt; text-align: center; }',
@@ -11160,11 +11629,43 @@ class EventSuite extends BaseController
             '</head>',
             '<body>',
             '<div class="Section1">',
-            $this->markdownToWordHtml($content),
+            $bodyHtml,
             '</div>',
             '</body>',
             '</html>',
         ]);
+
+        if ($mimeParts === []) {
+            return $htmlDoc;
+        }
+
+        $boundary = '----=_NextPart_EventHub_Doc_001';
+        $mhtml = [];
+        $mhtml[] = 'MIME-Version: 1.0';
+        $mhtml[] = 'Content-Type: multipart/related; boundary="' . $boundary . '"';
+        $mhtml[] = '';
+        $mhtml[] = '--' . $boundary;
+        $mhtml[] = 'Content-Location: file:///C:/EventHubDoc/document.htm';
+        $mhtml[] = 'Content-Transfer-Encoding: 8bit';
+        $mhtml[] = 'Content-Type: text/html; charset="utf-8"';
+        $mhtml[] = '';
+        $mhtml[] = $htmlDoc;
+
+        foreach ($mimeParts as $part) {
+            $mhtml[] = '';
+            $mhtml[] = '--' . $boundary;
+            $mhtml[] = 'Content-Location: ' . $part['location'];
+            $mhtml[] = 'Content-Transfer-Encoding: base64';
+            $mhtml[] = 'Content-Type: ' . $part['mime'];
+            $mhtml[] = '';
+            $mhtml[] = rtrim($part['base64']);
+        }
+
+        $mhtml[] = '';
+        $mhtml[] = '--' . $boundary . '--';
+        $mhtml[] = '';
+
+        return implode("\r\n", $mhtml);
     }
 
     private function markdownToWordHtml(string $content): string

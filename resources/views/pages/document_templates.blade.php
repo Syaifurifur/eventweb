@@ -978,7 +978,7 @@ function editTemplateModal(tpl) {
     const modal = document.getElementById('templateModal');
     const form = document.getElementById('templateForm');
     document.getElementById('modalTitle').textContent = 'Edit Template: ' + (tpl.name || '');
-    form.action = '<?= site_url('document-templates/') ?>' + tpl.id + '/update';
+    form.action = '<?= site_url('document-templates') ?>/' + tpl.id + '/update';
     
     document.getElementById('tpl-name').value = tpl.name || '';
     document.getElementById('tpl-doc-type').value = tpl.doc_type || 'proposal';

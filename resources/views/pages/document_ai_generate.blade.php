@@ -1067,68 +1067,100 @@ $allSections = [
                 </div>
             </div>
 
+<?php
+$coverLogoSrc = $coverLogoDataUri ?? ($selectedTemplateId > 0 ? site_url('document-templates/' . $selectedTemplateId . '/logo') : base_url('assets/img/ubsi-logo.png'));
+$eventYear = date('Y', strtotime($event['date'] ?? 'now')) ?: date('Y');
+$defaultCoverHtml = '<div class="doc-cover-page ai-doc-cover" style="page-break-after:always; border-bottom:2px solid #2563eb; padding:14px 10px 20px; margin-bottom:18px; text-align:center;">'
+    . '<div class="ai-doc-cover-brand" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1.5px solid #2563eb; padding-bottom:8px;">'
+    . '<strong style="font-size:12px; color:#1e3a8a; font-weight:900;">BSI GROUP</strong>'
+    . '<span style="font-size:9.5px; color:#2563eb; font-weight:700;">Kampus Digital Kreatif</span>'
+    . '</div>'
+    . '<div style="font-size:16px; font-weight:900; color:#0f172a; margin:8px 0 4px; text-transform:uppercase; letter-spacing:0.5px;">' . strtoupper(esc($docTitleLabel)) . ' KEGIATAN</div>'
+    . '<div class="ai-doc-cover-event" style="font-size:13.5px; font-weight:800; color:#1d4ed8; margin:0 0 4px; line-height:1.35;">' . esc($eventTitle) . '</div>'
+    . '<div style="font-size:11px; font-weight:700; color:#475569; font-style:italic; margin:0 0 8px;">&ldquo;Kegiatan ' . esc($eventCategory) . ' &amp; Pengembangan Kompetensi Kampus&rdquo;</div>'
+    . '<div style="font-size:11px; font-weight:700; color:#0f172a; margin:0 0 14px;">' . esc($eventDate) . '</div>'
+    . '<div style="margin:14px auto; text-align:center;">'
+    . '<img class="doc-cover-logo-img" src="' . esc($coverLogoSrc) . '" alt="Logo Cover" width="115" height="115" style="width:115px; height:115px; object-fit:contain; display:inline-block;">'
+    . '</div>'
+    . '<div class="ai-doc-cover-meta" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 14px; display:inline-block; text-align:left; font-size:10.5px; margin:8px auto 14px; min-width:240px;">'
+    . '<table style="width:100%; border-collapse:collapse; border:none;">'
+    . '<tr><td style="border:none; padding:2px 4px; color:#64748b; width:65px;">Tanggal</td><td style="border:none; padding:2px 4px; font-weight:700; color:#0f172a;">: ' . esc($eventDate) . '</td></tr>'
+    . '<tr><td style="border:none; padding:2px 4px; color:#64748b;">Lokasi</td><td style="border:none; padding:2px 4px; font-weight:700; color:#0f172a;">: ' . esc($eventLocation) . '</td></tr>'
+    . '<tr><td style="border:none; padding:2px 4px; color:#64748b;">Kampus</td><td style="border:none; padding:2px 4px; font-weight:700; color:#0f172a;">: ' . esc($eventCampus) . '</td></tr>'
+    . '</table>'
+    . '</div>'
+    . '<div style="margin-top:10px; padding-top:10px; border-top:1px solid #e2e8f0; text-align:center; line-height:1.4;">'
+    . '<div style="font-size:11.5px; font-weight:900; color:#0f172a; text-transform:uppercase;">UNIVERSITAS BINA SARANA INFORMATIKA</div>'
+    . '<div style="font-size:11px; font-weight:800; color:#1e40af; text-transform:uppercase;">' . esc($eventCampus) . '</div>'
+    . '<div style="font-size:10.5px; font-weight:800; color:#475569;">' . esc((string) $eventYear) . '</div>'
+    . '</div>'
+    . '</div>';
+$renderedCoverHtml = ! empty($coverHtml) ? $coverHtml : $defaultCoverHtml;
+$cleanInitialBody = trim((string) ($initialBodyHtml ?? $initialContent ?? ''));
+if ($cleanInitialBody === '' || stripos($cleanInitialBody, 'Proposal otomatis dibuat dari data event') !== false || mb_strlen(strip_tags($cleanInitialBody)) < 100) {
+    $cleanInitialBody = '';
+}
+?>
             <!-- Canvas View -->
             <div class="ai-doc-canvas" id="docCanvasWrap">
                 <!-- Rendered Visual Sheet -->
                 <div class="ai-doc-sheet" id="renderedSheet">
                     <div id="sheetContent">
-                        <!-- Cover Page -->
-                        <div class="ai-doc-cover">
-                            <div class="ai-doc-cover-brand">
-                                <strong>BSI GROUP</strong>
-                                <span style="font-size:9.5px; color:#2563eb; font-weight:700;">Kampus Digital Kreatif</span>
-                            </div>
-                            <h3 class="ai-doc-cover-title"><?= strtoupper(esc($docTitleLabel)) ?> KEGIATAN</h3>
-                            <div class="ai-doc-cover-event"><?= esc($eventTitle) ?></div>
-                            <div class="ai-doc-cover-meta">
-                                <table>
-                                    <tr><td>Tanggal</td><td>: <?= esc($eventDate) ?></td></tr>
-                                    <tr><td>Lokasi</td><td>: <?= esc($eventLocation) ?></td></tr>
-                                    <tr><td>Kampus</td><td>: <?= esc($eventCampus) ?></td></tr>
-                                </table>
-                            </div>
-                        </div>
+                        <!-- Cover Page (Preserves format & logo from template) -->
+                        <div id="sheetCoverBox"><?= $renderedCoverHtml ?></div>
 
                         <!-- Content Body -->
                         <div class="ai-doc-body" id="sheetBodyText">
-                            <?php if (! empty($initialContent)): ?>
-                                <?= $initialContent ?>
+                            <?php if ($cleanInitialBody !== ''): ?>
+                                <?= $cleanInitialBody ?>
                             <?php else: ?>
-                                <h4>BAB I PENDAHULUAN</h4>
-                                <p><strong>1.1 Latar Belakang</strong><br>
-                                Pendidikan tinggi memegang peranan krusial dalam membentuk generasi profesional yang kompetitif di era digital. Dalam rangka mendukung program sosialisasi pendidikan dan penjaringan calon mahasiswa berprestasi, Universitas Bina Sarana Informatika menyelenggarakan kegiatan ini.</p>
+                                <h4 style="text-align:center;">KATA PENGANTAR</h4>
+                                <p>Puji syukur kami panjatkan ke hadirat Tuhan Yang Maha Esa karena atas rahmat dan karunia-Nya, <?= strtolower(esc($docTitleLabel)) ?> kegiatan <strong><?= esc($eventTitle) ?></strong> di lingkungan <strong><?= esc($eventCampus) ?></strong> ini dapat disusun dengan baik.</p>
+                                <p>Dokumen ini disusun sebagai pedoman pelaksanaan dan acuan resmi dalam menyelenggarakan kegiatan guna memberikan wawasan serta manfaat optimal bagi <?= esc($defaultTarget) ?></p>
+
+                                <h4 style="text-align:center;">BAB I PENDAHULUAN</h4>
+                                <p><strong>1.1. Latar Belakang</strong><br>
+                                Pendidikan tinggi memegang peranan krusial dalam membentuk generasi profesional yang kompetitif di era transformasi digital. Dalam rangka mendukung peningkatan literasi teknologi, pengembangan potensi generasi muda, serta sosialisasi program unggulan kampus, Universitas Bina Sarana Informatika (<?= esc($eventCampus) ?>) menyelenggarakan kegiatan <strong><?= esc($eventTitle) ?></strong>.</p>
                                 
-                                <p><strong>1.2 Tujuan Kegiatan</strong><br>
+                                <p><strong>1.2. Tujuan Kegiatan</strong><br>
                                 <?= esc($defaultGoals) ?></p>
 
-                                <h4>BAB II SUSUNAN PANITIA &amp; RUNDOWN</h4>
+                                <p><strong>1.3. Manfaat Kegiatan</strong><br>
+                                Memberikan pemahaman aplikatif kepada peserta, mempererat kemitraan institusi, serta meningkatkan brand awareness Universitas Bina Sarana Informatika sebagai Kampus Digital Kreatif.</p>
+
+                                <h4 style="text-align:center;">BAB II PELAKSANAAN KEGIATAN</h4>
+                                <p><strong>2.1. Waktu &amp; Tempat Pelaksanaan</strong><br>
+                                Tanggal: <?= esc($eventDate) ?><br>
+                                Lokasi: <?= esc($eventLocation) ?><br>
+                                Penyelenggara: <?= esc($eventCampus) ?> (PIC: <?= esc($eventPic) ?>)</p>
+
+                                <p><strong>2.2. Susunan Acara (Rundown)</strong></p>
                                 <table>
                                     <thead>
-                                        <tr><th>Waktu</th><th>Sesi Acara</th><th>Pengisi Acara</th></tr>
+                                        <tr><th>No</th><th>Waktu</th><th>Sub Acara / Agenda</th><th>Keterangan / PIC</th></tr>
                                     </thead>
                                     <tbody>
-                                        <tr><td>08.30 - 09.00</td><td>Registrasi &amp; Pembukaan</td><td>Tim Panitia</td></tr>
-                                        <tr><td>09.00 - 10.30</td><td>Penyampaian Materi Sosialisasi</td><td>Narasumber PMB</td></tr>
-                                        <tr><td>10.30 - 11.30</td><td>Tanya Jawab &amp; Konsultasi</td><td>Guru BK &amp; Siswa</td></tr>
-                                        <tr><td>11.30 - 12.00</td><td>Penutupan &amp; Foto Bersama</td><td>Seluruh Peserta</td></tr>
+                                        <tr><td>1</td><td>08.30 - 09.00</td><td>Registrasi &amp; Pembukaan Acara</td><td>Panitia Pelaksana</td></tr>
+                                        <tr><td>2</td><td>09.00 - 11.00</td><td>Sesi Materi Inti: <?= esc($eventTitle) ?></td><td>Narasumber &amp; Moderator</td></tr>
+                                        <tr><td>3</td><td>11.00 - 12.00</td><td>Tanya Jawab, Evaluasi &amp; Penutupan</td><td>Seluruh Peserta</td></tr>
                                     </tbody>
                                 </table>
 
-                                <h4>BAB III RENCANA ANGGARAN BIAYA (RAB)</h4>
+                                <p><strong>2.3. Perencanaan Anggaran Biaya (RAB)</strong></p>
                                 <table>
                                     <thead>
-                                        <tr><th>Keterangan</th><th>Vol</th><th>Total (Rp)</th></tr>
+                                        <tr><th>No</th><th>Uraian Kebutuhan</th><th>Biaya</th><th>Jumlah</th><th>Total (Rp)</th></tr>
                                     </thead>
                                     <tbody>
-                                        <tr><td>Konsumsi Peserta &amp; Panitia</td><td>1 Paket</td><td>1.500.000</td></tr>
-                                        <tr><td>Kit Sosialisasi &amp; Brosur PMB</td><td>1 Paket</td><td>750.000</td></tr>
-                                        <tr><td>Dokumentasi &amp; Sertifikat</td><td>1 Paket</td><td>500.000</td></tr>
-                                        <tr><th colspan="2">Total Estimasi Anggaran</th><th>2.750.000</th></tr>
+                                        <tr><td>1</td><td>Konsumsi Peserta, Narasumber &amp; Panitia</td><td>Rp. 1.500.000</td><td>1 Paket</td><td>Rp. 1.500.000</td></tr>
+                                        <tr><td>2</td><td>Perlengkapan, Modul &amp; Media Promosi</td><td>Rp. 750.000</td><td>1 Paket</td><td>Rp. 750.000</td></tr>
+                                        <tr><td>3</td><td>Dokumentasi &amp; Sertifikat Kegiatan</td><td>Rp. 500.000</td><td>1 Paket</td><td>Rp. 500.000</td></tr>
+                                        <tr><th colspan="4">TOTAL ANGGARAN</th><th>Rp. 2.750.000</th></tr>
                                     </tbody>
                                 </table>
 
-                                <h4>BAB IV PENUTUP</h4>
-                                <p>Demikian proposal ini kami susun sebagai acuan pelaksanaan kegiatan. Dukungan dan kerjasama dari seluruh pihak sangat kami harapkan demi kelancaran kegiatan ini.</p>
+                                <h4 style="text-align:center;">BAB III PENUTUP</h4>
+                                <p>Demikian <?= strtolower(esc($docTitleLabel)) ?> kegiatan <strong><?= esc($eventTitle) ?></strong> ini kami buat dengan sebenarnya. Semoga kegiatan ini dapat berjalan lancar, mencapai tujuan yang ditetapkan, dan memberikan manfaat bagi seluruh peserta.</p>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1140,7 +1172,7 @@ $allSections = [
                     class="ai-textarea"
                     style="width:100%; max-width:440px; height:580px; display:none; font-family:monospace; font-size:11.5px; line-height:1.5; padding:16px;"
                     oninput="document.getElementById('sheetBodyText').innerHTML = this.value;"
-                ><?= esc($initialContent) ?></textarea>
+                ><?= esc($cleanInitialBody) ?></textarea>
             </div>
 
             <!-- Hasil Generate Action Footer -->
@@ -1287,6 +1319,22 @@ function filterEventList(q) {
     });
 }
 
+// Ambil gabungan HTML Cover (beserta Logo) + Isi Dokumen sesuai Preview
+function getFullPreviewDocumentHtml() {
+    const coverBox = document.getElementById('sheetCoverBox');
+    const editor = document.getElementById('rawEditorText');
+    const sheet = document.getElementById('sheetBodyText');
+    const coverPart = coverBox ? coverBox.innerHTML.trim() : '';
+    const bodyPart = (editor && editor.style.display !== 'none')
+        ? editor.value.trim()
+        : (sheet ? sheet.innerHTML.trim() : '');
+
+    if (bodyPart.indexOf('doc-cover-page') !== -1 || bodyPart.indexOf('ai-doc-cover') !== -1) {
+        return bodyPart;
+    }
+    return coverPart + '\n<div class="doc-body-page">' + bodyPart + '</div>';
+}
+
 // Proses Generate dengan AI
 function processGenerateAi() {
     const btn = document.getElementById('btnGenerate');
@@ -1296,11 +1344,15 @@ function processGenerateAi() {
 
     const form = document.getElementById('aiGenerateForm');
     const formData = new FormData(form);
+    if (!formData.has('_token')) {
+        formData.append('_token', '<?= csrf_token() ?>');
+    }
 
     fetch('<?= site_url('documents/generate/process') ?>', {
         method: 'POST',
         headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': '<?= csrf_token() ?>'
         },
         body: formData
     })
@@ -1310,8 +1362,12 @@ function processGenerateAi() {
         btn.innerHTML = origText;
 
         if (data.ok) {
-            document.getElementById('sheetBodyText').innerHTML = data.content_html || data.content;
-            document.getElementById('rawEditorText').value = data.content_html || data.content;
+            if (data.cover_html && document.getElementById('sheetCoverBox')) {
+                document.getElementById('sheetCoverBox').innerHTML = data.cover_html;
+            }
+            const bodyHtml = data.content_html || data.content || '';
+            document.getElementById('sheetBodyText').innerHTML = bodyHtml;
+            document.getElementById('rawEditorText').value = bodyHtml;
             
             document.getElementById('genBadge').textContent = '✓ Berhasil dibuat oleh AI';
             document.getElementById('genBadge').style.background = '#dcfce7';
@@ -1332,36 +1388,60 @@ function processGenerateAi() {
 }
 
 // Simpan Dokumen ke Dokumen Event
-function saveToEventDocument() {
-    const content = document.getElementById('sheetBodyText').innerHTML;
+function saveToEventDocument(btnEl) {
+    const fullContent = getFullPreviewDocumentHtml();
     const templateInput = document.querySelector('input[name="template_id"]:checked');
-    const templateId = templateInput ? templateInput.value : '<?= esc($selectedTemplateId) ?>';
+    const templateId = templateInput ? templateInput.value : '<?= esc((string) $selectedTemplateId) ?>';
+
+    const saveBtn = btnEl || document.querySelector('button[onclick*="saveToEventDocument"]');
+    const origLabel = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '⏳ Menyimpan ke Dokumen Event...';
+    }
 
     const formData = new FormData();
-    formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+    formData.append('_token', '<?= csrf_token() ?>');
     formData.append('event_id', '<?= esc((string) $eventDbId) ?>');
     formData.append('type', '<?= esc($selectedDocType) ?>');
     formData.append('template_id', templateId);
-    formData.append('content', content);
+    formData.append('content', fullContent);
 
     fetch('<?= site_url('documents/generate/save') ?>', {
         method: 'POST',
         headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': '<?= csrf_token() ?>',
+            'Accept': 'application/json'
         },
         body: formData
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.ok) {
-            alert('✓ Sukses! ' + data.message);
-            window.location.href = '<?= site_url('documents') ?>';
-        } else {
-            alert('Gagal menyimpan: ' + (data.message || 'Unknown error'));
+    .then(async (r) => {
+        const text = await r.text();
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            throw new Error('Server status ' + r.status);
         }
     })
-    .catch(() => {
-        alert('Gagal menyimpan ke Dokumen Event.');
+    .then(data => {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origLabel;
+        }
+        if (data && data.ok) {
+            alert('✓ Sukses! ' + data.message);
+            window.location.href = data.redirect_url || '<?= site_url('documents') ?>';
+        } else {
+            alert('Gagal menyimpan: ' + ((data && data.message) || 'Unknown error'));
+        }
+    })
+    .catch((err) => {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origLabel;
+        }
+        alert('Gagal menyimpan ke Dokumen Event (' + (err && err.message ? err.message : 'Koneksi') + ').');
     });
 }
 
@@ -1374,11 +1454,9 @@ function downloadPdfDoc() {
 }
 
 function submitExportForm(actionUrl, targetWindow) {
-    const editor = document.getElementById('rawEditorText');
-    const sheet = document.getElementById('sheetBodyText');
-    const currentContent = (editor && editor.style.display !== 'none')
-        ? editor.value
-        : (sheet ? sheet.innerHTML : '');
+    const fullContent = getFullPreviewDocumentHtml();
+    const templateInput = document.querySelector('input[name="template_id"]:checked');
+    const templateId = templateInput ? templateInput.value : '<?= esc((string) $selectedTemplateId) ?>';
 
     const form = document.createElement('form');
     form.method = 'POST';
@@ -1387,10 +1465,11 @@ function submitExportForm(actionUrl, targetWindow) {
     form.style.display = 'none';
 
     const fields = {
-        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        '_token': '<?= csrf_token() ?>',
         'event_id': '<?= esc((string) $eventDbId) ?>',
         'type': '<?= esc($selectedDocType) ?>',
-        'content': currentContent
+        'template_id': templateId,
+        'content': fullContent
     };
 
     Object.keys(fields).forEach((k) => {
@@ -1403,7 +1482,11 @@ function submitExportForm(actionUrl, targetWindow) {
 
     document.body.appendChild(form);
     form.submit();
-    document.body.removeChild(form);
+    setTimeout(() => {
+        if (form.parentNode) {
+            form.parentNode.removeChild(form);
+        }
+    }, 500);
 }
 
 const AI_TEMPLATES_MAP = <?= json_encode(array_column($templates, null, 'id'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1423,6 +1506,10 @@ function selectAiTemplateCard(tplId, radioEl) {
     if (prevLink) prevLink.href = '<?= site_url('document-templates') ?>/' + encodeURIComponent(tplId) + '/preview';
     const dlMdLink = document.getElementById('activeTplDownloadMdLink');
     if (dlMdLink) dlMdLink.href = '<?= site_url('document-templates') ?>/' + encodeURIComponent(tplId) + '/download-md';
+    const logoImg = document.querySelector('#sheetCoverBox .doc-cover-logo-img');
+    if (logoImg) {
+        logoImg.src = tpl.cover_logo_url || ('<?= site_url('document-templates') ?>/' + encodeURIComponent(tplId) + '/logo');
+    }
 }
 </script>
 
