@@ -824,13 +824,9 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                                 ⭐ Jadikan Default
                             </button>
                         </form>
-                        <form action="<?= site_url('crm/pmb-clusters/delete') ?>" method="post" style="display: inline-block;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus klaster PMB \'<?= esc($selectedPmbPeriod, 'js') ?>\'?\n\nProspek di dalam klaster ini akan dialihkan ke klaster default aktif.')">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="pmb_period" value="<?= esc($selectedPmbPeriod, 'attr') ?>">
-                            <button type="submit" class="ghost-button compact-button" style="border-color: #ef4444; color: #dc2626; background: #fef2f2; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Hapus klaster '<?= esc($selectedPmbPeriod, 'attr') ?>'">
-                                🗑️ Hapus Klaster
-                            </button>
-                        </form>
+                        <button type="button" class="ghost-button compact-button" onclick="openDeleteCrmPmbClusterModal(<?= esc(json_encode($selectedPmbPeriod), 'attr') ?>)" style="border-color: #ef4444; color: #dc2626; background: #fef2f2; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Hapus klaster '<?= esc($selectedPmbPeriod, 'attr') ?>'">
+                            🗑️ Hapus Klaster
+                        </button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -2458,24 +2454,120 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
             <span style="display: block; font-size: 0.82rem; font-weight: 700; color: #dc2626; margin-bottom: 6px;">
                 🗑️ Hapus Klaster Masa PMB CRM:
             </span>
-            <form action="<?= site_url('crm/pmb-clusters/delete') ?>" method="post" style="display: flex; gap: 8px; align-items: center;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus klaster PMB CRM yang dipilih?\n\nData prospek pada klaster tersebut akan dipindahkan ke klaster default aktif.')">
-                <?= csrf_field() ?>
-                <select name="pmb_period" class="control" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;" required>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="crm-delete-cluster-picker" class="control" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
                     <option value="">Pilih klaster PMB yang ingin dihapus...</option>
                     <?php foreach ($availablePmbPeriods as $pKey => $pLabel): ?>
                         <?php if ($defaultPmbPeriod === $pKey) continue; ?>
-                        <option value="<?= esc($pKey, 'attr') ?>"><?= esc($pKey) ?></option>
+                        <option value="<?= esc($pKey, 'attr') ?>">
+                            <?= esc($pKey) ?> (<?= esc((string) ($pmbPeriodCounts[$pKey] ?? 0)) ?> data)
+                        </option>
                     <?php endforeach; ?>
                 </select>
-                <button type="submit" class="primary-button compact-button" style="background: #dc2626; border-color: #dc2626; color: #ffffff; font-weight: 700;">
+                <button type="button" class="primary-button compact-button" style="background: #dc2626; border-color: #dc2626; color: #ffffff; font-weight: 700;" onclick="const sel = document.getElementById('crm-delete-cluster-picker'); if (!sel || !sel.value) { alert('Pilih klaster PMB yang ingin dihapus terlebih dahulu.'); return; } openDeleteCrmPmbClusterModal(sel.value);">
                     Hapus Klaster
                 </button>
-            </form>
+            </div>
             <span style="display: block; font-size: 0.74rem; color: var(--muted, #64748b); margin-top: 4px;">
                 * Klaster default aktif tidak dapat dihapus sebelum Anda mengganti klaster default ke periode lain.
             </span>
         </div>
     </dialog>
+
+    <!-- ==================== MODAL: KONFIRMASI HAPUS & PINDAH DATA KLASTER PMB CRM ==================== -->
+    <dialog id="dialog-delete-crm-pmb-cluster" class="panel" style="max-width: 480px; width: 92%; border-radius: 12px; background: var(--surface, #ffffff); color: var(--ink, #1e293b); border: 1px solid var(--line, #cbd5e1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line, #e2e8f0);">
+            <h3 style="margin: 0; font-size: 1.02rem; font-weight: 700; color: #dc2626; display: flex; align-items: center; gap: 6px;">
+                <span>🗑️</span> Konfirmasi Hapus Klaster PMB
+            </h3>
+            <button type="button" class="ghost-button compact-button" onclick="document.getElementById('dialog-delete-crm-pmb-cluster').close()">✕</button>
+        </div>
+        <form action="<?= site_url('crm/pmb-clusters/delete') ?>" method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="pmb_period" id="deleteCrmPmbPeriodInput" value="">
+            <p style="font-size: 0.85rem; margin-top: 0; margin-bottom: 12px;">
+                Anda akan menghapus klaster: <strong id="deleteCrmPmbClusterName" style="color: #0f172a;">-</strong>
+            </p>
+
+            <div id="deleteCrmPmbHasDataBox" style="display: none; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                <div style="font-size: 0.82rem; font-weight: 700; color: #92400e; margin-bottom: 6px;">
+                    ⚠️ Klaster ini masih memiliki <span id="deleteCrmPmbLeadCountText">0</span> data prospek!
+                </div>
+                <p style="font-size: 0.79rem; color: #78350f; margin: 0 0 10px 0;">
+                    Pilih klaster tujuan untuk memindahkan seluruh data prospek tersebut sebelum klaster dihapus:
+                </p>
+                <label style="display: block;">
+                    <span style="display: block; font-size: 0.78rem; font-weight: 700; color: #78350f; margin-bottom: 4px;">Pindahkan Data ke Klaster Tujuan:</span>
+                    <select name="target_pmb_period" id="deleteCrmPmbTargetSelect" class="control" style="width: 100%; padding: 7px 10px; font-size: 0.84rem;">
+                    </select>
+                </label>
+            </div>
+
+            <div id="deleteCrmPmbEmptyBox" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.81rem; color: #475569;">
+                ✓ Klaster ini tidak memiliki data prospek (0 data) dan dapat langsung dihapus.
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="ghost-button" onclick="document.getElementById('dialog-delete-crm-pmb-cluster').close()">Batal</button>
+                <button type="submit" id="deleteCrmPmbSubmitBtn" class="primary-button" style="background: #dc2626; border-color: #dc2626; color: #ffffff; font-weight: 700;">
+                    🗑️ Ya, Hapus Klaster
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <script>
+    (function() {
+        const CRM_PMB_COUNTS = <?= json_encode($pmbPeriodCounts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const CRM_PMB_PERIODS = <?= json_encode(array_keys($availablePmbPeriods), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const CRM_DEFAULT_PMB = <?= json_encode($defaultPmbPeriod, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+        window.openDeleteCrmPmbClusterModal = function(periodKey) {
+            if (!periodKey) return;
+            const addDlg = document.getElementById('dialog-add-crm-pmb-cluster');
+            if (addDlg && addDlg.open) addDlg.close();
+
+            const dlg = document.getElementById('dialog-delete-crm-pmb-cluster');
+            const inputEl = document.getElementById('deleteCrmPmbPeriodInput');
+            const nameEl = document.getElementById('deleteCrmPmbClusterName');
+            const hasDataBox = document.getElementById('deleteCrmPmbHasDataBox');
+            const emptyBox = document.getElementById('deleteCrmPmbEmptyBox');
+            const countText = document.getElementById('deleteCrmPmbLeadCountText');
+            const targetSel = document.getElementById('deleteCrmPmbTargetSelect');
+            const submitBtn = document.getElementById('deleteCrmPmbSubmitBtn');
+
+            const count = Number(CRM_PMB_COUNTS[periodKey] || 0);
+            if (inputEl) inputEl.value = periodKey;
+            if (nameEl) nameEl.textContent = periodKey;
+
+            if (targetSel) {
+                targetSel.innerHTML = '';
+                CRM_PMB_PERIODS.filter((p) => p !== periodKey).forEach((p) => {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p + (p === CRM_DEFAULT_PMB ? ' (Default Aktif)' : '') + ` (${Number(CRM_PMB_COUNTS[p] || 0).toLocaleString('id-ID')} data)`;
+                    if (p === CRM_DEFAULT_PMB) opt.selected = true;
+                    targetSel.appendChild(opt);
+                });
+            }
+
+            if (count > 0) {
+                if (countText) countText.textContent = count.toLocaleString('id-ID');
+                if (hasDataBox) hasDataBox.style.display = 'block';
+                if (emptyBox) emptyBox.style.display = 'none';
+                if (targetSel) targetSel.required = true;
+                if (submitBtn) submitBtn.textContent = '📦 Pindahkan Data & Hapus Klaster';
+            } else {
+                if (hasDataBox) hasDataBox.style.display = 'none';
+                if (emptyBox) emptyBox.style.display = 'block';
+                if (targetSel) targetSel.required = false;
+                if (submitBtn) submitBtn.textContent = '🗑️ Ya, Hapus Klaster';
+            }
+
+            if (dlg) dlg.showModal();
+        };
+    })();
+    </script>
     <?php endif; ?>
 
     <x-script />

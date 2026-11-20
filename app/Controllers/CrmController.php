@@ -2241,6 +2241,23 @@ class CrmController extends BaseController
                 ->with('error', 'Klaster default berjalan aktif tidak dapat dihapus. Silakan setel klaster lain sebagai default terlebih dahulu.');
         }
 
+        $db = db_connect();
+        $leadCount = 0;
+        if ($db->tableExists('crm_leads') && $db->fieldExists('pmb_period', 'crm_leads')) {
+            $leadCount = (int) $db->table('crm_leads')->where('pmb_period', $period)->countAllResults();
+        }
+
+        $targetPeriod = trim((string) $this->request->getPost('target_pmb_period'));
+        $availablePeriods = $this->getAvailableCrmPmbPeriods();
+        if ($leadCount > 0) {
+            if ($targetPeriod === '' || $targetPeriod === 'all' || $targetPeriod === $period || ! isset($availablePeriods[$targetPeriod])) {
+                return redirect()->to(site_url('crm?pmb_period=' . urlencode($period)))
+                    ->with('error', 'Klaster "' . $period . '" masih memiliki ' . number_format($leadCount, 0, ',', '.') . ' data prospek. Silakan pilih klaster tujuan untuk memindahkan data terlebih dahulu.');
+            }
+        } elseif ($targetPeriod === '' || $targetPeriod === 'all' || $targetPeriod === $period || ! isset($availablePeriods[$targetPeriod])) {
+            $targetPeriod = $defaultPeriod;
+        }
+
         // 1. Hapus dari crm_custom_pmb_periods jika terdaftar
         $customJson = \App\Models\SystemSettingModel::getSetting('crm_custom_pmb_periods', '');
         $customs = $customJson !== '' ? json_decode($customJson, true) : [];
@@ -2260,21 +2277,24 @@ class CrmController extends BaseController
             \App\Models\SystemSettingModel::setSetting('crm_deleted_pmb_periods', json_encode(array_values($deleted)));
         }
 
-        // 3. Pindahkan data leads / batch di klaster yang dihapus ke klaster default aktif agar tidak yatim
-        $db = db_connect();
-        if ($db->tableExists('crm_leads') && $db->fieldExists('pmb_period', 'crm_leads')) {
+        // 3. Pindahkan data leads / batch di klaster yang dihapus ke klaster tujuan yang dipilih
+        if ($leadCount > 0 && $db->tableExists('crm_leads') && $db->fieldExists('pmb_period', 'crm_leads')) {
             $db->table('crm_leads')
                 ->where('pmb_period', $period)
-                ->update(['pmb_period' => $defaultPeriod]);
+                ->update(['pmb_period' => $targetPeriod]);
         }
         if ($db->tableExists('crm_upload_batches') && $db->fieldExists('pmb_period', 'crm_upload_batches')) {
             $db->table('crm_upload_batches')
                 ->where('pmb_period', $period)
-                ->update(['pmb_period' => $defaultPeriod]);
+                ->update(['pmb_period' => $targetPeriod]);
         }
 
-        return redirect()->to(site_url('crm?pmb_period=' . urlencode($defaultPeriod)))
-            ->with('success', 'Klaster Masa PMB CRM "' . $period . '" berhasil dihapus (prospek terkait dialihkan ke klaster default "' . $defaultPeriod . '").');
+        $successMsg = $leadCount > 0
+            ? 'Klaster Masa PMB CRM "' . $period . '" berhasil dihapus dan ' . number_format($leadCount, 0, ',', '.') . ' data prospek telah dipindahkan ke klaster "' . $targetPeriod . '".'
+            : 'Klaster Masa PMB CRM "' . $period . '" berhasil dihapus.';
+
+        return redirect()->to(site_url('crm?pmb_period=' . urlencode($targetPeriod)))
+            ->with('success', $successMsg);
     }
 
     private function requireCrmAdmin(): void
