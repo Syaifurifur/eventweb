@@ -2196,35 +2196,40 @@ $initialActiveTab = $canViewAllCrmCampuses
       }
 
       // 3. Bukti Screenshot Chat & Log Perubahan
-      const logsWithImg = logs.filter((l) => !!l.image_url);
+      const logsWithImg = logs.filter((l) => !!l.image_url || !!l.has_image_record);
       let imgHtml = '';
       if (logsWithImg.length === 0) {
         imgHtml = `<div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500">Belum ada gambar screenshot bukti chat WhatsApp yang diunggah pada log follow-up siswa ini.</div>`;
       } else {
         imgHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">` +
-          logsWithImg.map((l) => `
-            <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 space-y-2">
-              <a href="${escapeHtml(l.image_url)}" target="_blank" class="block overflow-hidden rounded-lg border border-slate-200 bg-white">
-                <img src="${escapeHtml(l.image_url)}" alt="Bukti Chat Follow-Up" class="w-full h-44 object-contain bg-slate-100 hover:scale-[1.02] transition">
-              </a>
-              <div class="text-[11px] text-slate-700 font-semibold">${escapeHtml(l.actor_name || 'Tim CRM')} • ${escapeHtml(l.formatted_time || '-')}</div>
-              <div class="text-[11px] text-slate-500">${escapeHtml(l.summary || '')}</div>
-            </div>
-          `).join('') +
+          logsWithImg.map((l) => {
+            const mediaBox = l.image_url
+              ? `<a href="${escapeHtml(l.image_url)}" target="_blank" class="block overflow-hidden rounded-lg border border-slate-200 bg-white">
+                   <img src="${escapeHtml(l.image_url)}" alt="Bukti Chat Follow-Up" class="w-full h-44 object-contain bg-slate-100 hover:scale-[1.02] transition" onerror="this.parentElement.outerHTML='<div class=&quot;p-3 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800&quot;>⚠️ File gambar bukti chat tidak ditemukan di server.</div>'">
+                 </a>`
+              : `<div class="p-3 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800">⚠️ Bukti gambar pernah diunggah, namun file fisiknya tidak ditemukan di server.</div>`;
+            return `
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5 space-y-2">
+                ${mediaBox}
+                <div class="text-[11px] text-slate-700 font-semibold">${escapeHtml(l.actor_name || 'Tim CRM')} • ${escapeHtml(l.formatted_time || '-')}</div>
+                <div class="text-[11px] text-slate-500">${escapeHtml(l.summary || '')}</div>
+              </div>
+            `;
+          }).join('') +
           `</div>`;
       }
 
       bodyEl.innerHTML = `
         <div class="space-y-2">
-          <h4 class="font-extrabold text-slate-900 flex items-center gap-1.5"><span>1. 💬 Riwayat Chat CRM</span><span class="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200">${messages.length} pesan</span></h4>
+          <h4 class="font-extrabold text-slate-900 flex items-center gap-1.5" style="font-size: 0.875rem; line-height: 1.25rem;"><span>1. 💬 Riwayat Chat CRM</span><span class="px-2 py-0.5 rounded-full text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-200">${messages.length} pesan</span></h4>
           ${chatHtml}
         </div>
         <div class="space-y-2">
-          <h4 class="font-extrabold text-slate-900">2. 📝 Catatan Follow-Up Agent</h4>
+          <h4 class="font-extrabold text-slate-900" style="font-size: 0.875rem; line-height: 1.25rem;">2. 📝 Catatan Follow-Up Agent</h4>
           ${notesHtml}
         </div>
         <div class="space-y-2">
-          <h4 class="font-extrabold text-slate-900 flex items-center gap-1.5"><span>3. 🖼️ Bukti Screenshot Chat WhatsApp</span><span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">${logsWithImg.length} gambar</span></h4>
+          <h4 class="font-extrabold text-slate-900 flex items-center gap-1.5" style="font-size: 0.875rem; line-height: 1.25rem;"><span>3. 🖼️ Bukti Screenshot Chat WhatsApp</span><span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">${logsWithImg.length} gambar</span></h4>
           ${imgHtml}
         </div>
       `;

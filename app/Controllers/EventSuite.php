@@ -606,6 +606,12 @@ class EventSuite extends BaseController
                 ->get();
             foreach ($logRows as $lg) {
                 $createdAt = (string) ($lg->created_at ?? '');
+                $relImg = str_replace('\\', '/', trim((string) ($lg->follow_up_image ?? '')));
+                $imgExists = false;
+                if ($relImg !== '' && str_starts_with($relImg, 'uploads/crm_follow_up/') && ! str_contains($relImg, '..')) {
+                    $imgFullPath = WRITEPATH . str_replace('/', DIRECTORY_SEPARATOR, $relImg);
+                    $imgExists = is_file($imgFullPath);
+                }
                 $logs[] = [
                     'id' => (int) ($lg->id ?? 0),
                     'action' => (string) ($lg->action ?? 'update'),
@@ -613,7 +619,8 @@ class EventSuite extends BaseController
                     'new_label' => (string) ($lg->new_label ?? ''),
                     'summary' => (string) ($lg->summary ?? ''),
                     'actor_name' => (string) ($lg->actor_name ?: 'Tim CRM'),
-                    'image_url' => ! empty($lg->follow_up_image) ? site_url('laporan-crm/log-image/' . $lg->id) : null,
+                    'has_image_record' => $relImg !== '',
+                    'image_url' => ($relImg !== '' && $imgExists) ? site_url('laporan-crm/log-image/' . $lg->id) : null,
                     'formatted_time' => $createdAt !== '' ? date('d M Y, H:i', strtotime($createdAt)) : '-',
                 ];
             }
