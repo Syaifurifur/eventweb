@@ -5147,7 +5147,25 @@ class EventSuite extends BaseController
             $filteredSchoolReports = $campusSchoolReports;
         }
 
-        // Fasilitas sortir: banyak ke sedikit (pmb_desc), sedikit ke banyak (pmb_asc), nama (name_asc / name_desc)
+        // Hitung & kumpulkan daftar sekolah yang sudah upload dokumen MoU (untuk notifikasi di halaman & filter)
+        $hasMouFn = static fn (array $s): bool => trim((string) ($s['mou_file'] ?? '')) !== '' || trim((string) ($s['mou_drive_link'] ?? '')) !== '';
+        $mouUploadedSchools = array_values(array_filter($filteredSchoolReports, $hasMouFn));
+        usort($mouUploadedSchools, static function (array $a, array $b): int {
+            $tA = strtotime((string) ($a['mou_uploaded_at'] ?: $a['updated_at'] ?: $a['created_at'] ?: '1970-01-01')) ?: 0;
+            $tB = strtotime((string) ($b['mou_uploaded_at'] ?: $b['updated_at'] ?: $b['created_at'] ?: '1970-01-01')) ?: 0;
+            return $tB <=> $tA;
+        });
+        $mouUploadedCount = count($mouUploadedSchools);
+
+        // Filter khusus Dokumen MoU yang sudah diupload
+        $selectedMouFilter = trim((string) ($this->request->getGet('mou_filter') ?? ''));
+        if ($selectedMouFilter === 'uploaded') {
+            $filteredSchoolReports = array_values(array_filter($filteredSchoolReports, $hasMouFn));
+        } else {
+            $selectedMouFilter = '';
+        }
+
+        // Fasilitas sortir: banyak ke sedikit (pmb_desc), sedikit ke banyak (pmb_asc), nama (name_asc / name_desc), atau sudah upload MoU (mou_uploaded)
         $selectedSort = trim((string) ($this->request->getGet('sort') ?? ''));
         if ($selectedSort === 'pmb_desc') {
             usort($filteredSchoolReports, fn($a, $b) => ((int) ($b['pmb_count'] ?? 0)) <=> ((int) ($a['pmb_count'] ?? 0)));
@@ -5157,6 +5175,17 @@ class EventSuite extends BaseController
             usort($filteredSchoolReports, fn($a, $b) => strcasecmp((string) ($a['school_name'] ?? ''), (string) ($b['school_name'] ?? '')));
         } elseif ($selectedSort === 'name_desc') {
             usort($filteredSchoolReports, fn($a, $b) => strcasecmp((string) ($b['school_name'] ?? ''), (string) ($a['school_name'] ?? '')));
+        } elseif ($selectedSort === 'mou_uploaded') {
+            usort($filteredSchoolReports, static function (array $a, array $b) use ($hasMouFn): int {
+                $aHas = $hasMouFn($a) ? 1 : 0;
+                $bHas = $hasMouFn($b) ? 1 : 0;
+                if ($bHas !== $aHas) {
+                    return $bHas <=> $aHas;
+                }
+                $tA = strtotime((string) ($a['mou_uploaded_at'] ?: $a['updated_at'] ?: $a['created_at'] ?: '1970-01-01')) ?: 0;
+                $tB = strtotime((string) ($b['mou_uploaded_at'] ?: $b['updated_at'] ?: $b['created_at'] ?: '1970-01-01')) ?: 0;
+                return $tB <=> $tA;
+            });
         }
 
         $folderUrl = \App\Models\SystemSettingModel::getSetting('gdrive_mou_folder_url', 'https://drive.google.com/drive/folders/1MOU-BJS-SEKOLAH-BSI-GROUP');
@@ -5195,6 +5224,9 @@ class EventSuite extends BaseController
             'defaultPmbPeriod' => $defaultPmbPeriod,
             'selectedPmbPeriod' => $selectedPmbPeriod,
             'selectedSort' => $selectedSort,
+            'selectedMouFilter' => $selectedMouFilter,
+            'mouUploadedSchools' => $mouUploadedSchools,
+            'mouUploadedCount' => $mouUploadedCount,
             'availablePmbPeriods' => $availablePmbPeriods,
             'pmbPeriodCounts' => $pmbPeriodCounts,
             'gdriveSettings' => $gdriveSettings,
@@ -5532,24 +5564,27 @@ class EventSuite extends BaseController
 
         (new OneCampusSchoolReportModel())->insert($schoolData);
 
-        // Ambil info penginput dan kampus
-        $submitter = (new UserModel())->withDeleted()->find($currentUserId);
-        $submitterName = (string) ($submitter['name'] ?? session('user.name') ?? 'Admin');
-        $submitterEmail = (string) ($submitter['email'] ?? session('user.email') ?? '-');
+        $hasMouUploaded = ($mouFile !== null || $mouDriveLink !== '');
+        if ($hasMouUploaded) {
+            // Ambil info penginput dan kampus — notifikasi & email HANYA dikirim saat upload dokumen MoU
+            $submitter = (new UserModel())->withDeleted()->find($currentUserId);
+            $submitterName = (string) ($submitter['name'] ?? session('user.name') ?? 'Admin');
+            $submitterEmail = (string) ($submitter['email'] ?? session('user.email') ?? '-');
 
-        $campusName = 'Semua Kampus';
-        if ($campusId !== null) {
-            $campusRecord = (new CampusModel())->find($campusId);
-            if ($campusRecord) {
-                $campusName = $campusRecord['name'] . (! empty($campusRecord['kode_kampus']) ? ' (' . $campusRecord['kode_kampus'] . ')' : '');
+            $campusName = 'Semua Kampus';
+            if ($campusId !== null) {
+                $campusRecord = (new CampusModel())->find($campusId);
+                if ($campusRecord) {
+                    $campusName = $campusRecord['name'] . (! empty($campusRecord['kode_kampus']) ? ' (' . $campusRecord['kode_kampus'] . ')' : '');
+                }
             }
+
+            // 1. Kirim Email Notifikasi Upload MoU ke syaifur.syl@bsi.ac.id dan markom851@bsi.ac.id
+            $this->sendOneCampusSchoolNotificationEmail($schoolData, $campusName, $submitterName, $submitterEmail);
+
+            // 2. Masukkan ke lonceng notifikasi (In-App Notification)
+            $this->notifyOneCampusSchoolRegistered($schoolData, $submitterName, $currentUserId);
         }
-
-        // 1. Kirim Email Notifikasi ke markom851@bsi.ac.id
-        $this->sendOneCampusSchoolNotificationEmail($schoolData, $campusName, $submitterName, $submitterEmail);
-
-        // 2. Masukkan ke lonceng notifikasi (In-App Notification)
-        $this->notifyOneCampusSchoolRegistered($schoolData, $submitterName, $currentUserId);
 
         return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod)))
             ->with('success', 'Data sekolah penerima BJS berhasil disimpan ke tahun PMB ' . $pmbPeriod . '.' . $driveNotice);
@@ -5639,11 +5674,14 @@ class EventSuite extends BaseController
         }
 
         $mouFile = $report['mou_file'] ?? null;
+        $autoDriveUrl = null;
+        $uploadedNewMouFile = false;
         $driveNotice = '';
         try {
             $newMou = $this->uploadedSchoolMouFromRequest('mou_file', $npsn ?: $schoolName);
             if ($newMou !== null) {
                 $mouFile = $newMou;
+                $uploadedNewMouFile = true;
 
                 // Upload langsung ke Google Drive jika diunggah file baru
                 if (\App\Libraries\GoogleDriveUploadService::isConfigured() && \App\Libraries\GoogleDriveUploadService::isAutoUploadEnabled()) {
@@ -5651,7 +5689,7 @@ class EventSuite extends BaseController
                     $safeName = 'MOU-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', ($npsn ?: $schoolName)) . '-' . date('YmdHis') . '.pdf';
                     $driveRes = \App\Libraries\GoogleDriveUploadService::uploadFile($fullPath, $safeName);
                     if ($driveRes['success'] && ! empty($driveRes['drive_url'])) {
-                        $mouDriveLink = $driveRes['drive_url'];
+                        $autoDriveUrl = $driveRes['drive_url'];
                         $driveNotice = ' Dokumen MOU baru otomatis diunggah langsung ke Google Drive Admin.';
                     } else {
                         $driveNotice = ' (Info Google Drive: ' . ($driveRes['message'] ?? 'gagal sinkron') . ').';
@@ -5662,11 +5700,13 @@ class EventSuite extends BaseController
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
 
-        $mouDriveLink = trim((string) $this->request->getPost('mou_drive_link'));
-        if ($mouDriveLink === '') {
-            $mouDriveLink = $report['mou_drive_link'] ?? null;
-        }
-        $mouUploadedAt = ($mouFile !== null || $mouDriveLink !== null) ? ($report['mou_uploaded_at'] ?? date('Y-m-d H:i:s')) : null;
+        $submittedDriveLink = trim((string) $this->request->getPost('mou_drive_link'));
+        $uploadedNewDriveLink = ($submittedDriveLink !== '' && $submittedDriveLink !== trim((string) ($report['mou_drive_link'] ?? '')));
+        $mouDriveLink = $submittedDriveLink !== '' ? $submittedDriveLink : ($autoDriveUrl ?: ($report['mou_drive_link'] ?? null));
+        $hasNewMouUpload = $uploadedNewMouFile || $uploadedNewDriveLink || ($autoDriveUrl !== null);
+        $mouUploadedAt = $hasNewMouUpload
+            ? date('Y-m-d H:i:s')
+            : (($mouFile !== null || $mouDriveLink !== null) ? ($report['mou_uploaded_at'] ?? date('Y-m-d H:i:s')) : null);
 
         $bjsStatus = trim((string) $this->request->getPost('bjs_status'));
         $bjsVerifiedAt = $report['bjs_verified_at'] ?? null;
@@ -5679,8 +5719,9 @@ class EventSuite extends BaseController
             $bjsVerifiedBy = null;
         }
 
-        $model->update($id, [
-            'campus_id' => $this->oneCampusInputCampusId($report['campus_id'] ?? null),
+        $resolvedCampusId = $this->oneCampusInputCampusId($report['campus_id'] ?? null);
+        $updatePayload = [
+            'campus_id' => $resolvedCampusId,
             'npsn' => $npsn !== '' ? $npsn : null,
             'school_name' => $schoolName,
             'city' => trim((string) $this->request->getPost('city')) ?: null,
@@ -5705,7 +5746,27 @@ class EventSuite extends BaseController
             'mou_drive_link' => $mouDriveLink,
             'mou_uploaded_at' => $mouUploadedAt,
             'notes' => trim((string) $this->request->getPost('notes')) ?: null,
-        ]);
+        ];
+
+        $model->update($id, $updatePayload);
+
+        if ($hasNewMouUpload) {
+            $currentUserId = (int) session('user.id');
+            $submitter = (new UserModel())->withDeleted()->find($currentUserId);
+            $submitterName = (string) ($submitter['name'] ?? session('user.name') ?? 'Admin');
+            $submitterEmail = (string) ($submitter['email'] ?? session('user.email') ?? '-');
+
+            $campusName = 'Semua Kampus';
+            if ($resolvedCampusId !== null) {
+                $campusRecord = (new CampusModel())->find($resolvedCampusId);
+                if ($campusRecord) {
+                    $campusName = $campusRecord['name'] . (! empty($campusRecord['kode_kampus']) ? ' (' . $campusRecord['kode_kampus'] . ')' : '');
+                }
+            }
+
+            $this->sendOneCampusSchoolNotificationEmail($updatePayload, $campusName, $submitterName, $submitterEmail);
+            $this->notifyOneCampusSchoolRegistered($updatePayload, $submitterName, $currentUserId);
+        }
 
         return redirect()->to(site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod)))
             ->with('success', 'Data sekolah penerima BJS berhasil diperbarui.' . $driveNotice);
@@ -13212,7 +13273,7 @@ class EventSuite extends BaseController
         $pmbPeriod = (string) ($schoolData['pmb_period'] ?? '');
 
         $locationPart = $city !== '' ? ' (' . $city . ')' : '';
-        $message = 'Data sekolah baru Sixty School: ' . $schoolName . $locationPart . ' untuk ' . $pmbPeriod . ' oleh ' . $submitterName . '.';
+        $message = 'Upload Dokumen MoU Sixty School: ' . $schoolName . $locationPart . ' [' . $pmbPeriod . '] oleh ' . $submitterName . '.';
         if (mb_strlen($message) > 250) {
             $message = mb_substr($message, 0, 247) . '...';
         }
@@ -13245,7 +13306,8 @@ class EventSuite extends BaseController
 
     private function sendOneCampusSchoolNotificationEmail(array $schoolData, string $campusName, string $submitterName, string $submitterEmail): bool
     {
-        $recipient = 'markom851@bsi.ac.id';
+        $recipients = ['syaifur.syl@bsi.ac.id', 'markom851@bsi.ac.id'];
+        $recipientsLabel = implode(', ', $recipients);
         $schoolName = (string) ($schoolData['school_name'] ?? '-');
         $city = (string) ($schoolData['city'] ?? '-');
         $npsn = (string) ($schoolData['npsn'] ?? '-');
@@ -13260,11 +13322,14 @@ class EventSuite extends BaseController
         $contactEmail = (string) ($schoolData['contact_email'] ?? '-');
         $pmbCount = (int) ($schoolData['pmb_count'] ?? 0);
         $bjsStatus = (string) ($schoolData['bjs_status'] ?? '-');
+        $mouFile = trim((string) ($schoolData['mou_file'] ?? ''));
+        $mouDriveLink = trim((string) ($schoolData['mou_drive_link'] ?? ''));
+        $mouStatusText = $mouFile !== '' ? 'File PDF MoU Terunggah' : ($mouDriveLink !== '' ? 'Link Google Drive MoU Tersedia' : 'Dokumen MoU');
         $notes = (string) ($schoolData['notes'] ?? '-');
-        $detailUrl = site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod));
+        $detailUrl = site_url('one-campus/schools?pmb_period=' . urlencode($pmbPeriod) . '&mou_filter=uploaded');
         $now = date('d F Y, H:i') . ' WIB';
 
-        $subject = '[One Campus Sixty School] Data Sekolah Baru: ' . $schoolName . ' (' . $city . ')';
+        $subject = '[One Campus Sixty School] Upload Dokumen MoU Baru: ' . $schoolName . ' (' . $city . ')';
 
         $htmlMessage = '
 <!DOCTYPE html>
@@ -13275,7 +13340,7 @@ class EventSuite extends BaseController
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 24px; }
         .email-card { max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
-        .email-hdr { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; padding: 26px 28px; }
+        .email-hdr { background: linear-gradient(135deg, #0d9488 0%, #0284c7 100%); color: #ffffff; padding: 26px 28px; }
         .email-hdr h1 { margin: 0; font-size: 20px; font-weight: 700; }
         .email-hdr p { margin: 6px 0 0; font-size: 13px; opacity: 0.9; }
         .email-body { padding: 24px 28px; }
@@ -13286,34 +13351,36 @@ class EventSuite extends BaseController
         .table-data th, .table-data td { padding: 9px 12px; border-bottom: 1px solid #f1f5f9; text-align: left; vertical-align: top; }
         .table-data th { width: 34%; color: #64748b; font-weight: 600; background: #f8fafc; }
         .table-data td { color: #0f172a; font-weight: 500; }
-        .sec-title { font-size: 13px; font-weight: 700; color: #0284c7; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 6px; border-left: 3px solid #0284c7; padding-left: 8px; }
-        .btn-link { display: inline-block; background: #0284c7; color: #ffffff !important; text-decoration: none; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 13px; margin-top: 22px; }
+        .sec-title { font-size: 13px; font-weight: 700; color: #0d9488; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 6px; border-left: 3px solid #0d9488; padding-left: 8px; }
+        .btn-link { display: inline-block; background: #0d9488; color: #ffffff !important; text-decoration: none; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 13px; margin-top: 22px; }
         .email-ftr { background: #f8fafc; padding: 16px 28px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; }
     </style>
 </head>
 <body>
     <div class="email-card">
         <div class="email-hdr">
-            <h1>Notifikasi One Campus Sixty School</h1>
-            <p>Pengisian data sekolah mitra baru telah berhasil disimpan ke sistem.</p>
+            <h1>Notifikasi Upload Dokumen MoU — Sixty School</h1>
+            <p>Dokumen MoU sekolah mitra baru saja diunggah ke sistem EventHub.</p>
         </div>
         <div class="email-body">
             <p style="margin-top:0; font-size: 13.5px; line-height: 1.55;">
-                Halo Tim Marketing Komunikasi (Markom),<br>
-                Terdapat penambahan data sekolah baru pada program <strong>One Campus Sixty School</strong> oleh <strong>' . htmlspecialchars($submitterName, ENT_QUOTES, 'UTF-8') . '</strong> (' . htmlspecialchars($submitterEmail, ENT_QUOTES, 'UTF-8') . ').
+                Halo Tim Marketing Komunikasi (Markom) &amp; Admin,<br>
+                Terdapat <strong>upload dokumen MoU</strong> pada program <strong>One Campus Sixty School</strong> oleh <strong>' . htmlspecialchars($submitterName, ENT_QUOTES, 'UTF-8') . '</strong> (' . htmlspecialchars($submitterEmail, ENT_QUOTES, 'UTF-8') . ').
             </p>
 
-            <div class="sec-title">Informasi Sekolah</div>
+            <div class="sec-title">Informasi Sekolah &amp; Dokumen MoU</div>
             <table class="table-data">
                 <tr><th>Nama Sekolah</th><td><strong>' . htmlspecialchars($schoolName, ENT_QUOTES, 'UTF-8') . '</strong></td></tr>
                 <tr><th>NPSN</th><td>' . htmlspecialchars($npsn, ENT_QUOTES, 'UTF-8') . '</td></tr>
                 <tr><th>Kota / Kabupaten</th><td>' . htmlspecialchars($city, ENT_QUOTES, 'UTF-8') . '</td></tr>
                 <tr><th>Bentuk / Status</th><td>' . htmlspecialchars($schoolType . ' (' . $schoolStatus . ')', ENT_QUOTES, 'UTF-8') . '</td></tr>
+                <tr><th>Status Dokumen MoU</th><td><span class="badge badge-green">' . htmlspecialchars($mouStatusText, ENT_QUOTES, 'UTF-8') . '</span></td></tr>' .
+                ($mouDriveLink !== '' ? '<tr><th>Link Google Drive MoU</th><td><a href="' . htmlspecialchars($mouDriveLink, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($mouDriveLink, ENT_QUOTES, 'UTF-8') . '</a></td></tr>' : '') . '
                 <tr><th>Kepala Sekolah</th><td>' . htmlspecialchars($headmaster, ENT_QUOTES, 'UTF-8') . '</td></tr>
                 <tr><th>Kontak Sekolah</th><td>' . htmlspecialchars($schoolPhone . ' / ' . $schoolEmail, ENT_QUOTES, 'UTF-8') . '</td></tr>
             </table>
 
-            <div class="sec-title">Detail Kampus & Program PMB</div>
+            <div class="sec-title">Detail Kampus &amp; Program PMB</div>
             <table class="table-data">
                 <tr><th>Kampus Pengusul</th><td>' . htmlspecialchars($campusName, ENT_QUOTES, 'UTF-8') . '</td></tr>
                 <tr><th>Periode PMB</th><td><span class="badge badge-cyan">' . htmlspecialchars($pmbPeriod, ENT_QUOTES, 'UTF-8') . '</span></td></tr>
@@ -13321,36 +13388,36 @@ class EventSuite extends BaseController
                 <tr><th>Target / Perolehan Mhs</th><td>' . $pmbCount . ' Mahasiswa</td></tr>
                 <tr><th>PIC / Kontak Guru</th><td>' . htmlspecialchars($contactName, ENT_QUOTES, 'UTF-8') . ' (' . htmlspecialchars($contactPhone . ' / ' . $contactEmail, ENT_QUOTES, 'UTF-8') . ')</td></tr>
                 <tr><th>Catatan</th><td>' . nl2br(htmlspecialchars($notes, ENT_QUOTES, 'UTF-8')) . '</td></tr>
-                <tr><th>Waktu Pendaftaran</th><td>' . $now . '</td></tr>
+                <tr><th>Waktu Upload MoU</th><td>' . $now . '</td></tr>
             </table>
 
             <div style="text-align: center;">
-                <a href="' . $detailUrl . '" class="btn-link">Lihat Selengkapnya di EventHub &rarr;</a>
+                <a href="' . $detailUrl . '" class="btn-link">Lihat Daftar Dokumen MoU di EventHub &rarr;</a>
             </div>
         </div>
         <div class="email-ftr">
             &copy; ' . date('Y') . ' EventHub &bull; Markom Universitas Bina Sarana Informatika.<br>
-            Pemberitahuan otomatis ini dikirim ke ' . htmlspecialchars($recipient, ENT_QUOTES, 'UTF-8') . '.
+            Pemberitahuan otomatis ini dikirim ke ' . htmlspecialchars($recipientsLabel, ENT_QUOTES, 'UTF-8') . '.
         </div>
     </div>
 </body>
 </html>';
 
         $plainTextMessage = implode("\n", [
-            'PENGISIAN DATA BARU ONE CAMPUS SIXTY SCHOOL',
-            '==========================================',
+            'NOTIFIKASI UPLOAD DOKUMEN MOU - ONE CAMPUS SIXTY SCHOOL',
+            '=======================================================',
             'Nama Sekolah   : ' . $schoolName,
             'NPSN           : ' . $npsn,
             'Kota           : ' . $city,
-            'Bentuk/Status  : ' . $schoolType . ' (' . $schoolStatus . ')',
-            'Kepala Sekolah : ' . $headmaster,
+            'Status MoU     : ' . $mouStatusText,
+            'Link Drive MoU : ' . ($mouDriveLink !== '' ? $mouDriveLink : '-'),
             'Kampus         : ' . $campusName,
             'Periode PMB    : ' . $pmbPeriod,
             'Status BJS     : ' . $bjsStatus,
             'Perolehan Mhs  : ' . $pmbCount . ' Mahasiswa',
             'PIC Guru       : ' . $contactName . ' (' . $contactPhone . ' / ' . $contactEmail . ')',
-            'Penginput      : ' . $submitterName . ' (' . $submitterEmail . ')',
-            'Waktu Input    : ' . $now,
+            'Pengupload     : ' . $submitterName . ' (' . $submitterEmail . ')',
+            'Waktu Upload   : ' . $now,
             'Tautan         : ' . $detailUrl,
         ]);
 
@@ -13367,36 +13434,39 @@ class EventSuite extends BaseController
             'CRLF' => "\r\n",
         ];
 
-        try {
-            $email = service('email', $config, false);
-            $email->setFrom(env('email.fromEmail', 'noreply@eventhub.local'), env('email.fromName', 'EventHub Markom'));
-            $email->setTo($recipient);
-            $email->setSubject($subject);
-            $email->setMessage($htmlMessage);
-            if (is_object($email) && method_exists($email, 'setAltMessage')) {
-                $email->setAltMessage($plainTextMessage);
-            }
-
-            $sent = $email->send(false);
-            if (! $sent) {
-                $headers = "MIME-Version: 1.0\r\n" .
-                           "Content-type: text/html; charset=UTF-8\r\n" .
-                           "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
-                @mail($recipient, $subject, $htmlMessage, $headers);
-            }
-
-            return true;
-        } catch (\Throwable $error) {
-            log_message('error', 'Gagal mengirim email Sixty School: ' . $error->getMessage());
+        $anySent = false;
+        foreach ($recipients as $recipient) {
             try {
-                $headers = "MIME-Version: 1.0\r\n" .
-                           "Content-type: text/html; charset=UTF-8\r\n" .
-                           "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
-                @mail($recipient, $subject, $htmlMessage, $headers);
-            } catch (\Throwable) {}
+                $email = service('email', $config, false);
+                $email->setFrom(env('email.fromEmail', 'noreply@eventhub.local'), env('email.fromName', 'EventHub Markom'));
+                $email->setTo($recipient);
+                $email->setSubject($subject);
+                $email->setMessage($htmlMessage);
+                if (is_object($email) && method_exists($email, 'setAltMessage')) {
+                    $email->setAltMessage($plainTextMessage);
+                }
 
-            return false;
+                $sent = $email->send(false);
+                if (! $sent) {
+                    $headers = "MIME-Version: 1.0\r\n" .
+                               "Content-type: text/html; charset=UTF-8\r\n" .
+                               "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
+                    @mail($recipient, $subject, $htmlMessage, $headers);
+                } else {
+                    $anySent = true;
+                }
+            } catch (\Throwable $error) {
+                log_message('error', 'Gagal mengirim email MoU Sixty School ke ' . $recipient . ': ' . $error->getMessage());
+                try {
+                    $headers = "MIME-Version: 1.0\r\n" .
+                               "Content-type: text/html; charset=UTF-8\r\n" .
+                               "From: " . env('email.fromEmail', 'noreply@eventhub.local') . "\r\n";
+                    @mail($recipient, $subject, $htmlMessage, $headers);
+                } catch (\Throwable) {}
+            }
         }
+
+        return $anySent;
     }
 
     private function calendarIntegrationsByEvent(array $items): array

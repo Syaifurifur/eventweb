@@ -272,6 +272,68 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
         </div>
     </div>
 
+    <?php
+        $mouUploadedSchools = $mouUploadedSchools ?? [];
+        $mouUploadedCount = (int) ($mouUploadedCount ?? count($mouUploadedSchools));
+        $selectedMouFilter = $selectedMouFilter ?? '';
+        $baseSortUrl = site_url('one-campus/schools?pmb_period=' . urlencode($selectedPmbPeriod) . ($selectedOneCampusId ? '&campus_id=' . urlencode((string) $selectedOneCampusId) : ''));
+        $baseSortWithMouFilterUrl = $baseSortUrl . ($selectedMouFilter === 'uploaded' ? '&mou_filter=uploaded' : '');
+    ?>
+
+    <!-- Notifikasi Halaman: Sekolah yang Sudah Mengupload Dokumen MoU -->
+    <?php if ($mouUploadedCount > 0): ?>
+    <div id="mou-upload-notification-banner" style="background: linear-gradient(135deg, #ecfdf5 0%, #f0f9ff 100%); border: 1px solid #6ee7b7; border-left: 5px solid #0d9488; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.08);">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: #0d9488; color: #ffffff; font-size: 1rem;">&#128276;</span>
+                <div>
+                    <strong style="display: block; font-size: 0.94rem; color: #0f172a;">
+                        Notifikasi Dokumen MoU: <?= esc((string) $mouUploadedCount) ?> Sekolah Sudah Mengupload Dokumen MoU
+                    </strong>
+                    <span style="font-size: 0.8rem; color: #475569;">
+                        Email notifikasi otomatis dikirim ke <code>syaifur.syl@bsi.ac.id</code> &amp; <code>markom851@bsi.ac.id</code> setiap kali ada upload dokumen MoU baru.
+                    </span>
+                </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                <?php if ($selectedMouFilter === 'uploaded'): ?>
+                    <a href="<?= $baseSortUrl . (! empty($selectedSort) ? '&sort=' . urlencode($selectedSort) : '') ?>" class="ghost-button compact-button" style="border-color: #0d9488; color: #0f766e; background: #ffffff; font-weight: 700;">
+                        Tampilkan Semua Sekolah
+                    </a>
+                <?php else: ?>
+                    <a href="<?= $baseSortUrl . '&mou_filter=uploaded' . (! empty($selectedSort) ? '&sort=' . urlencode($selectedSort) : '') ?>" class="primary-button compact-button" style="background: #0d9488; border-color: #0d9488; color: #ffffff; font-weight: 700;">
+                        &#128196; Filter Hanya Sudah Upload MoU (<?= esc((string) $mouUploadedCount) ?>)
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <?php foreach (array_slice($mouUploadedSchools, 0, 5) as $mouRow): ?>
+                <?php
+                $mouTimeRaw = (string) ($mouRow['mou_uploaded_at'] ?: $mouRow['updated_at'] ?: $mouRow['created_at'] ?: '');
+                $mouTimeLabel = $mouTimeRaw !== '' ? date('d M Y H:i', strtotime($mouTimeRaw)) : '';
+                ?>
+                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 10px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 8px;">
+                    <span style="color: #0d9488; font-weight: 800;">&#10004;</span>
+                    <div>
+                        <strong style="color: #0f172a;"><?= esc($mouRow['school_name'] ?? '-') ?></strong>
+                        <span style="color: #64748b;">(<?= esc($mouRow['campus_name'] ?? 'Semua Kampus') ?>)</span>
+                        <?php if ($mouTimeLabel !== ''): ?>
+                            <span style="color: #94a3b8; font-size: 0.72rem;">&bull; <?= esc($mouTimeLabel) ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <?php if (! empty($mouRow['mou_file'])): ?>
+                        <a href="<?= site_url('one-campus/schools/' . $mouRow['id'] . '/mou') ?>" target="_blank" style="color: #dc2626; font-weight: 700; text-decoration: none;">[PDF]</a>
+                    <?php endif; ?>
+                    <?php if (! empty($mouRow['mou_drive_link'])): ?>
+                        <a href="<?= esc($mouRow['mou_drive_link']) ?>" target="_blank" rel="noopener noreferrer" style="color: #0284c7; font-weight: 700; text-decoration: none;">[Drive]</a>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- Panel Pengaturan Google Drive Admin Akun MOU & Upload Otomatis (Khusus Admin & Superadmin) -->
     <?php if (in_array((string) session('user.role'), ['Admin Sistem', 'Super Admin'], true)): ?>
     <details class="panel management-drawer one-campus-drawer" style="margin-bottom: 16px; border-left: 4px solid #0d9488;">
@@ -615,23 +677,34 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             </a>
         </div>
 
-        <!-- Kontrol Sortir Ranking PMB: Banyak ke Sedikit -->
+        <!-- Kontrol Filter Dokumen MoU & Sortir Ranking PMB -->
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 0.82rem;">
-            <span style="color: var(--text-muted, #64748b); font-weight: 600;">Urutkan:</span>
+            <span style="color: var(--text-muted, #64748b); font-weight: 600;">Filter &amp; Urutkan:</span>
             <?php
             $baseSortUrl = site_url('one-campus/schools?pmb_period=' . urlencode($selectedPmbPeriod) . ($selectedOneCampusId ? '&campus_id=' . urlencode((string) $selectedOneCampusId) : ''));
+            $sortKeepFilter = ($selectedMouFilter === 'uploaded') ? '&mou_filter=uploaded' : '';
+            $sortKeepSort = ! empty($selectedSort) ? '&sort=' . urlencode($selectedSort) : '';
             ?>
-            <a href="<?= $baseSortUrl ?>&sort=pmb_desc" class="<?= ($selectedSort === 'pmb_desc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'pmb_desc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>" title="Urutkan dari perolehan PMB terbanyak ke tersedikit">
+            <a href="<?= $baseSortUrl . ($selectedMouFilter === 'uploaded' ? $sortKeepSort : '&mou_filter=uploaded' . $sortKeepSort) ?>"
+               class="<?= ($selectedMouFilter === 'uploaded') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>"
+               style="<?= ($selectedMouFilter === 'uploaded') ? 'background: #0284c7; border-color: #0284c7; color: #fff; font-weight: 700;' : 'border-color: #0284c7; color: #0284c7; font-weight: 700;' ?>"
+               title="Filter hanya sekolah yang sudah upload dokumen MoU">
+                &#128196; Sudah Upload MoU (<?= esc((string) ($mouUploadedCount ?? 0)) ?>)
+            </a>
+            <a href="<?= $baseSortUrl . $sortKeepFilter ?>&sort=mou_uploaded" class="<?= ($selectedSort === 'mou_uploaded') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'mou_uploaded') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>" title="Urutkan sekolah yang sudah upload MoU paling atas">
+                &#8645; Prioritas MoU Terupload
+            </a>
+            <a href="<?= $baseSortUrl . $sortKeepFilter ?>&sort=pmb_desc" class="<?= ($selectedSort === 'pmb_desc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'pmb_desc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>" title="Urutkan dari perolehan PMB terbanyak ke tersedikit">
                 &#8645; PMB Terbanyak (Banyak ke Sedikit)
             </a>
-            <a href="<?= $baseSortUrl ?>&sort=pmb_asc" class="<?= ($selectedSort === 'pmb_asc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'pmb_asc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>" title="Urutkan dari perolehan PMB terkecil">
+            <a href="<?= $baseSortUrl . $sortKeepFilter ?>&sort=pmb_asc" class="<?= ($selectedSort === 'pmb_asc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'pmb_asc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>" title="Urutkan dari perolehan PMB terkecil">
                 &#8645; PMB Tersedikit
             </a>
-            <a href="<?= $baseSortUrl ?>&sort=name_asc" class="<?= ($selectedSort === 'name_asc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'name_asc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>">
+            <a href="<?= $baseSortUrl . $sortKeepFilter ?>&sort=name_asc" class="<?= ($selectedSort === 'name_asc') ? 'primary-button compact-button' : 'ghost-button compact-button' ?>" style="<?= ($selectedSort === 'name_asc') ? 'background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 700;' : '' ?>">
                 Nama Sekolah (A-Z)
             </a>
-            <?php if (! empty($selectedSort)): ?>
-                <a href="<?= $baseSortUrl ?>" class="ghost-button compact-button" style="color: var(--text-muted, #64748b);" title="Reset Pengurutan">
+            <?php if (! empty($selectedSort) || $selectedMouFilter === 'uploaded'): ?>
+                <a href="<?= $baseSortUrl ?>" class="ghost-button compact-button" style="color: var(--text-muted, #64748b);" title="Reset Filter &amp; Pengurutan">
                     Reset
                 </a>
             <?php endif; ?>
