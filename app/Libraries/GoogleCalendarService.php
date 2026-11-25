@@ -391,7 +391,13 @@ class GoogleCalendarService
                     $details[] = $firstErr['message'];
                 }
             }
-            $suffix = $details !== [] ? ' (' . implode(', ', $details) . ')' : '';
+            if ($details === []) {
+                $rawSnippet = trim(preg_replace('/\s+/', ' ', substr($body, 0, 260)) ?? '');
+                if ($rawSnippet !== '') {
+                    $details[] = $rawSnippet;
+                }
+            }
+            $suffix = $details !== [] ? ' [' . $statusCode . ': ' . implode(', ', $details) . ']' : ' [' . $statusCode . ']';
             throw new \RuntimeException((string) $message . $suffix);
         }
 
