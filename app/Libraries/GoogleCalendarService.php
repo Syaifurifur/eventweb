@@ -172,6 +172,23 @@ class GoogleCalendarService
         return '08:00:00';
     }
 
+    private function resolvedTimeZoneName(): string
+    {
+        $tzName = trim((string) $this->config->timezone);
+        $upper = strtoupper($tzName);
+        if ($tzName === '' || $upper === 'WIB' || $upper === 'ASIA/JAKARTA') {
+            return 'Asia/Jakarta';
+        }
+        if ($upper === 'WITA') {
+            return 'Asia/Makassar';
+        }
+        if ($upper === 'WIT') {
+            return 'Asia/Jayapura';
+        }
+
+        return $tzName;
+    }
+
     private function calendarEventResource(array $event): array
     {
         $eventDate = trim((string) ($event['event_date'] ?? ''));
@@ -179,31 +196,40 @@ class GoogleCalendarService
             $eventDate = date('Y-m-d');
         }
         $eventTime = $this->normalizeEventTimeString($event['event_time'] ?? null);
-        $tz = new \DateTimeZone($this->config->timezone);
+        $tzName = $this->resolvedTimeZoneName();
+        $tz = new \DateTimeZone($tzName);
         $start = new \DateTimeImmutable($eventDate . ' ' . $eventTime, $tz);
         $endDate = trim((string) ($event['event_end_date'] ?? ''));
         $end = $endDate !== '' && $endDate >= $eventDate
             ? (new \DateTimeImmutable($endDate . ' ' . $eventTime, $tz))->modify('+2 hours')
             : $start->modify('+2 hours');
 
+        if ($end <= $start) {
+            $end = $start->modify('+2 hours');
+        }
+
+        $cleanStr = static function (string $val): string {
+            $val = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', ' ', $val) ?? $val;
+            if (function_exists('mb_convert_encoding')) {
+                $val = mb_convert_encoding($val, 'UTF-8', 'UTF-8');
+            }
+            return trim($val);
+        };
+
         return [
-            'summary' => (string) ($event['title'] ?? 'Event EventHub'),
-            'location' => (string) ($event['location'] ?? ''),
-            'description' => trim((string) ($event['description'] ?? '') . "\n\nEventHub code: " . (string) ($event['code'] ?? '')),
+            'summary' => $cleanStr((string) ($event['title'] ?? 'Event EventHub')),
+            'location' => $cleanStr((string) ($event['location'] ?? '')),
+            'description' => $cleanStr((string) ($event['description'] ?? '') . "\n\nEventHub code: " . (string) ($event['code'] ?? '')),
             'start' => [
                 'dateTime' => $start->format('c'),
-                'timeZone' => $this->config->timezone,
+                'timeZone' => $tzName,
             ],
             'end' => [
                 'dateTime' => $end->format('c'),
-                'timeZone' => $this->config->timezone,
+                'timeZone' => $tzName,
             ],
             'reminders' => [
-                'useDefault' => false,
-                'overrides' => [
-                    ['method' => 'email', 'minutes' => 24 * 60],
-                    ['method' => 'popup', 'minutes' => 30],
-                ],
+                'useDefault' => true,
             ],
         ];
     }
@@ -352,7 +378,21 @@ class GoogleCalendarService
 
         if ($statusCode < 200 || $statusCode >= 300) {
             $message = $payload['error_description'] ?? $payload['error']['message'] ?? $payload['error'] ?? 'Google API request gagal.';
-            throw new \RuntimeException((string) $message);
+            $details = [];
+            if (! empty($payload['error']['errors']) && is_array($payload['error']['errors'])) {
+                $firstErr = $payload['error']['errors'][0] ?? [];
+                if (! empty($firstErr['reason'])) {
+                    $details[] = 'reason=' . $firstErr['reason'];
+                }
+                if (! empty($firstErr['location'])) {
+                    $details[] = 'field=' . $firstErr['location'];
+                }
+                if (! empty($firstErr['message']) && $firstErr['message'] !== $message) {
+                    $details[] = $firstErr['message'];
+                }
+            }
+            $suffix = $details !== [] ? ' (' . implode(', ', $details) . ')' : '';
+            throw new \RuntimeException((string) $message . $suffix);
         }
 
         return $payload;
