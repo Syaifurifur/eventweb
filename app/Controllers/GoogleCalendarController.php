@@ -130,6 +130,9 @@ class GoogleCalendarController extends BaseController
                 $this->markCalendarFailed((int) $event['id']);
                 $failed++;
                 $msg = trim($error->getMessage());
+                if (stripos($msg, 'invalid_grant') !== false || stripos($msg, 'belum terhubung') !== false) {
+                    return redirect()->to(site_url('calendar?month=' . $month))->with('error', $msg);
+                }
                 if ($msg !== '' && ! in_array($msg, $errorReasons, true) && count($errorReasons) < 3) {
                     $errorReasons[] = $msg;
                 }

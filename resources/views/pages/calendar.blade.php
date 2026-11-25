@@ -18,6 +18,7 @@
     <div class="button-row">
         <?php if (($googleCalendar['connected'] ?? false) === true): ?>
             <span class="status status-disetujui">Google connected</span>
+            <a class="ghost-button" href="<?= site_url('google-calendar/connect') ?>" title="Login ulang jika token Google kedaluwarsa">Hubungkan Ulang</a>
             <form action="<?= site_url('google-calendar/import') ?>" method="post" class="inline-form">
                 <?= csrf_field() ?>
                 <input type="hidden" name="month" value="<?= esc($calendarMonth['key']) ?>">

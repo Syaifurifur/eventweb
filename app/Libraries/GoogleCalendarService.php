@@ -357,7 +357,7 @@ class GoogleCalendarService
             ],
         ]);
 
-        $payload = $this->decodeResponse($response->getStatusCode(), (string) $response->getBody());
+        $payload = $this->decodeResponse($response->getStatusCode(), (string) $response->getBody(), $userId);
         $this->tokens->update($token['id'], [
             'access_token' => $payload['access_token'],
             'expires_at' => date('Y-m-d H:i:s', time() + (int) ($payload['expires_in'] ?? 3600) - 60),
@@ -368,7 +368,7 @@ class GoogleCalendarService
         return $payload['access_token'];
     }
 
-    private function decodeResponse(int $statusCode, string $body): array
+    private function decodeResponse(int $statusCode, string $body, ?int $revokeUserIdOnInvalidGrant = null): array
     {
         $payload = json_decode($body, true);
 
@@ -377,6 +377,17 @@ class GoogleCalendarService
         }
 
         if ($statusCode < 200 || $statusCode >= 300) {
+            $errorCode = is_string($payload['error'] ?? null) ? $payload['error'] : '';
+            if ($errorCode === 'invalid_grant') {
+                if ($revokeUserIdOnInvalidGrant !== null && $revokeUserIdOnInvalidGrant > 0) {
+                    $this->tokens
+                        ->where('user_id', $revokeUserIdOnInvalidGrant)
+                        ->where('provider', 'google_calendar')
+                        ->delete();
+                }
+                throw new \RuntimeException('Sesi token Google Calendar sudah kedaluwarsa atau dicabut (invalid_grant). Silakan klik "Connect Google Calendar" / "Hubungkan Ulang" untuk login ulang akun Google Anda.');
+            }
+
             $message = $payload['error_description'] ?? $payload['error']['message'] ?? $payload['error'] ?? 'Google API request gagal.';
             $details = [];
             if (! empty($payload['error']['errors']) && is_array($payload['error']['errors'])) {
