@@ -92,19 +92,48 @@ class GoogleCalendarController extends BaseController
     {
         $month = $this->selectedCalendarMonth();
         $events = $this->approvedEventsForMonth($month);
+        $userId = (int) session('user.id');
 
         $synced = 0;
         $failed = 0;
+        $errorReasons = [];
+        $googleCodeMap = [];
+        $importError = null;
+
+        // Pre-fetch existing Google Calendar events once for the month to avoid N+1 API calls & rate limits
+        try {
+            $timezone = new \DateTimeZone('Asia/Jakarta');
+            $start = new \DateTimeImmutable($month . '-01 00:00:00', $timezone);
+            $end = $start->modify('first day of next month');
+            foreach ($this->google->listEvents($userId, $start->modify('-1 day'), $end->modify('+1 day')) as $gItem) {
+                if (($gItem['status'] ?? '') === 'cancelled' || empty($gItem['id'])) {
+                    continue;
+                }
+                if (preg_match('/EventHub code:\s*([A-Z]+-\d+)\b/i', (string) ($gItem['description'] ?? ''), $m) === 1) {
+                    $googleCodeMap[strtoupper($m[1])] = (string) $gItem['id'];
+                }
+            }
+        } catch (\Throwable $e) {
+            // Non-fatal: fallback to calendar_integrations table or per-event lookup
+            log_message('warning', 'Google Calendar pre-fetch warning: ' . $e->getMessage());
+        }
 
         foreach ($events as $event) {
             try {
                 $calendarIntegration = $this->calendarIntegrationForEvent((int) $event['id']);
-                $googleEvent = $this->google->syncEvent($event, (int) session('user.id'), $calendarIntegration['external_event_id'] ?? null);
+                $eventCodeUpper = strtoupper((string) ($event['code'] ?? ''));
+                $knownExternalId = $calendarIntegration['external_event_id'] ?? ($googleCodeMap[$eventCodeUpper] ?? null);
+                $googleEvent = $this->google->syncEvent($event, $userId, $knownExternalId, $googleCodeMap !== []);
                 $this->upsertCalendarIntegration((int) $event['id'], $googleEvent['id'] ?? null, $googleEvent['htmlLink'] ?? null);
                 $synced++;
             } catch (\Throwable $error) {
                 $this->markCalendarFailed((int) $event['id']);
                 $failed++;
+                $msg = trim($error->getMessage());
+                if ($msg !== '' && ! in_array($msg, $errorReasons, true) && count($errorReasons) < 3) {
+                    $errorReasons[] = $msg;
+                }
+                log_message('error', 'Google Calendar syncEvent failed for ' . ($event['code'] ?? $event['id']) . ': ' . $msg);
             }
         }
 
@@ -113,10 +142,19 @@ class GoogleCalendarController extends BaseController
         } catch (\Throwable $error) {
             $imported = 0;
             $failed++;
+            $importError = trim($error->getMessage());
+            if ($importError !== '' && ! in_array($importError, $errorReasons, true) && count($errorReasons) < 3) {
+                $errorReasons[] = $importError;
+            }
+            log_message('error', 'Google Calendar importGoogleEventsForMonth failed: ' . $importError);
         }
 
         if ($failed > 0) {
-            return redirect()->to(site_url('calendar?month=' . $month))->with('error', "Sync selesai sebagian: {$synced} event lokal berhasil, data Google Calendar diperbarui, {$failed} proses gagal.");
+            $reasonText = $errorReasons !== [] ? ' Penyebab: ' . implode(' | ', $errorReasons) : '';
+            if (stripos($reasonText, 'insufficient') !== false || stripos($reasonText, 'permission') !== false || stripos($reasonText, 'scope') !== false) {
+                $reasonText .= ' (Silakan klik hubungkan ulang Google Calendar agar izin tulis diberikan).';
+            }
+            return redirect()->to(site_url('calendar?month=' . $month))->with('error', "Sync selesai sebagian: {$synced} event lokal berhasil, data Google Calendar diperbarui, {$failed} proses gagal.{$reasonText}");
         }
 
         return redirect()->to(site_url('calendar?month=' . $month))->with('success', "{$synced} event lokal terkirim dan data Google Calendar diperbarui.");

@@ -108,13 +108,13 @@ class GoogleCalendarService
         return $token ? (int) $token['user_id'] : null;
     }
 
-    public function syncEvent(array $event, int $userId, ?string $googleEventId = null): array
+    public function syncEvent(array $event, int $userId, ?string $googleEventId = null, bool $skipLookup = false): array
     {
         $accessToken = $this->validAccessToken($userId);
         $resource = $this->calendarEventResource($event);
         $existingEventId = trim((string) $googleEventId);
 
-        if ($existingEventId === '') {
+        if ($existingEventId === '' && ! $skipLookup) {
             $existingGoogleEvent = $this->findExistingEventHubEvent($event, $accessToken);
             $existingEventId = (string) ($existingGoogleEvent['id'] ?? '');
         }
@@ -133,7 +133,11 @@ class GoogleCalendarService
                 ],
             );
 
-            return $this->decodeResponse($response->getStatusCode(), (string) $response->getBody());
+            $status = $response->getStatusCode();
+            if ($status !== 404 && $status !== 410) {
+                return $this->decodeResponse($status, (string) $response->getBody());
+            }
+            // Event was deleted on Google Calendar — fall through to re-create it
         }
 
         $response = $this->client->post(
@@ -151,18 +155,41 @@ class GoogleCalendarService
         return $this->decodeResponse($response->getStatusCode(), (string) $response->getBody());
     }
 
+    private function normalizeEventTimeString(?string $rawTime): string
+    {
+        $raw = trim((string) $rawTime);
+        if ($raw === '') {
+            return '08:00:00';
+        }
+        $normalized = str_replace('.', ':', $raw);
+        if (preg_match('/(\d{1,2}):(\d{2})(?::(\d{2}))?/', $normalized, $m) === 1) {
+            $hh = min(23, max(0, (int) $m[1]));
+            $mm = min(59, max(0, (int) $m[2]));
+            $ss = isset($m[3]) ? min(59, max(0, (int) $m[3])) : 0;
+            return sprintf('%02d:%02d:%02d', $hh, $mm, $ss);
+        }
+
+        return '08:00:00';
+    }
+
     private function calendarEventResource(array $event): array
     {
-        $start = new \DateTimeImmutable($event['event_date'] . ' ' . $event['event_time'], new \DateTimeZone($this->config->timezone));
+        $eventDate = trim((string) ($event['event_date'] ?? ''));
+        if ($eventDate === '') {
+            $eventDate = date('Y-m-d');
+        }
+        $eventTime = $this->normalizeEventTimeString($event['event_time'] ?? null);
+        $tz = new \DateTimeZone($this->config->timezone);
+        $start = new \DateTimeImmutable($eventDate . ' ' . $eventTime, $tz);
         $endDate = trim((string) ($event['event_end_date'] ?? ''));
-        $end = $endDate !== '' && $endDate >= (string) $event['event_date']
-            ? (new \DateTimeImmutable($endDate . ' ' . $event['event_time'], new \DateTimeZone($this->config->timezone)))->modify('+2 hours')
+        $end = $endDate !== '' && $endDate >= $eventDate
+            ? (new \DateTimeImmutable($endDate . ' ' . $eventTime, $tz))->modify('+2 hours')
             : $start->modify('+2 hours');
 
         return [
-            'summary' => $event['title'],
-            'location' => $event['location'],
-            'description' => trim(($event['description'] ?? '') . "\n\nEventHub code: " . $event['code']),
+            'summary' => (string) ($event['title'] ?? 'Event EventHub'),
+            'location' => (string) ($event['location'] ?? ''),
+            'description' => trim((string) ($event['description'] ?? '') . "\n\nEventHub code: " . (string) ($event['code'] ?? '')),
             'start' => [
                 'dateTime' => $start->format('c'),
                 'timeZone' => $this->config->timezone,
