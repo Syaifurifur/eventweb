@@ -5528,6 +5528,9 @@ class EventSuite extends BaseController
             'Status MOU PDF',
             'Link Dokumen MOU',
             'Status Sekolah',
+            'Status Verifikasi BJS',
+            'Diverifikasi Oleh',
+            'Tanggal Verifikasi',
             'Perolehan PMB',
             'Keterangan',
             'Tanggal Input',
@@ -5538,6 +5541,10 @@ class EventSuite extends BaseController
             $mouUrl = ! empty($item['mou_file'])
                 ? site_url('one-campus/schools/' . $item['id'] . '/mou')
                 : (string) ($item['mou_drive_link'] ?? '-');
+            $isBjsActive = ($item['bjs_status'] ?? '') === 'Aktif';
+            $bjsVerificationLabel = $isBjsActive ? 'Sudah Diverifikasi (BJS Aktif)' : 'Belum Diverifikasi (Belum Aktif)';
+            $bjsVerifierName = $isBjsActive ? (string) (($item['bjs_verifier_name'] ?? '') ?: '-') : '-';
+            $bjsVerifiedAt = $isBjsActive ? (string) (($item['bjs_verified_at'] ?? '') ?: '-') : '-';
 
             $rows[] = [
                 (string) ($idx + 1),
@@ -5557,6 +5564,9 @@ class EventSuite extends BaseController
                 $mouStatus,
                 $mouUrl,
                 (string) ($item['status'] ?? 'Aktif'),
+                $bjsVerificationLabel,
+                $bjsVerifierName,
+                $bjsVerifiedAt,
                 (string) ((int) ($item['pmb_count'] ?? 0)),
                 (string) ($item['notes'] ?? '-'),
                 (string) ($item['created_at'] ?? '-'),
