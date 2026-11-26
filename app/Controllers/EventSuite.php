@@ -7098,23 +7098,27 @@ class EventSuite extends BaseController
         $month = $this->selectedAnalyticsMonth() ?: date('m');
         $date = new \DateTimeImmutable($year . '-' . $month . '-01');
         $data = $this->applicationData();
-        $schoolReports = $this->filterOneCampusAnalyticsRows(
-            (new OneCampusSchoolReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll(),
-            null,
-            '',
-            '',
-            'created_at'
-        );
+
+        // One Campus Sixty School (OCTS): hitung berdasarkan klaster PMB yang sedang aktif
+        $activePmbPeriod = \App\Models\SystemSettingModel::getSetting('one_campus_default_pmb_period', 'Agustus 2026 - September 2027');
+        $allSchoolReports = (new OneCampusSchoolReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll();
+        $schoolReports = array_values(array_filter(
+            $allSchoolReports,
+            static fn (array $row): bool => (trim((string) ($row['pmb_period'] ?? '')) ?: $activePmbPeriod) === $activePmbPeriod
+        ));
+
         $ojtReports = $this->filterOjtReportsActiveInMonth(
             (new OneCampusOjtReportModel())->withCampus()->orderBy('created_at', 'DESC')->findAll(),
             $year,
             $month
         );
+
+        // One Campus Five Spanduk (OCFS): pastikan jumlah sesuai bulan pemasangan spanduknya (installed_at)
         $bannerReports = $this->filterOneCampusAnalyticsRows(
             (new OneCampusBannerReportModel())->withCampus()->orderBy('installed_at', 'DESC')->findAll(),
             null,
-            '',
-            '',
+            $year,
+            $month,
             'installed_at'
         );
         $rows = $this->specialStrategyReportRows(
@@ -7131,7 +7135,7 @@ class EventSuite extends BaseController
         return $this->response
             ->setHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
             ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->setBody($this->specialStrategyExcelHtml($rows, $date));
+            ->setBody($this->specialStrategyExcelHtml($rows, $date, $activePmbPeriod));
     }
 
     public function notifications(): string
@@ -12596,7 +12600,7 @@ class EventSuite extends BaseController
         return $counts;
     }
 
-    private function specialStrategyExcelHtml(array $rows, \DateTimeImmutable $period): string
+    private function specialStrategyExcelHtml(array $rows, \DateTimeImmutable $period, string $activePmbPeriod = ''): string
     {
         $columns = [
             'octh' => 'OCTH',
@@ -12676,6 +12680,9 @@ class EventSuite extends BaseController
         $html[] = '<tr><td colspan="7">&nbsp;</td></tr>';
         $html[] = '<tr><td colspan="7">Target bulanan: OCTH 2, OCTE 2, OCTS 60, OCFO 5, OCFS 5.</td></tr>';
         $html[] = '<tr><td colspan="7">OCTH = One Campus Two Hangout/Open House; OCTE = One Campus Two Event; OCTS = One Campus Sixty School; OCFO = One Campus Five OJT; OCFS = One Campus Five Spanduk.</td></tr>';
+        if ($activePmbPeriod !== '') {
+            $html[] = '<tr><td colspan="7">Keterangan: OCTS dihitung berdasarkan klaster PMB aktif (' . esc($activePmbPeriod) . '); OCFS dihitung berdasarkan bulan pemasangan spanduk (' . esc($period->format('M Y')) . ').</td></tr>';
+        }
         $html[] = '</table>';
         $html[] = '</body></html>';
 
