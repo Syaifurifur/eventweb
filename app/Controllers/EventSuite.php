@@ -5385,9 +5385,11 @@ class EventSuite extends BaseController
         $items = $this->oneCampusFilteredEventRows($programKey, $selectedCampusId, $eventMonth);
 
         $rows = [
-            ['No', 'Kode Event', 'Kampus', 'Judul Kegiatan', 'Kategori', 'Tanggal Mulai', 'Tanggal Selesai', 'Waktu', 'Lokasi', 'PIC', 'Status'],
+            ['No', 'Kode Event', 'Kampus', 'Judul Kegiatan', 'Kategori', 'Tanggal Mulai', 'Tanggal Selesai', 'Waktu', 'Lokasi', 'PIC', 'Kelengkapan Dokumen', 'Status'],
         ];
         foreach ($items as $index => $ev) {
+            $docsCount = (int) ($ev['docs_count'] ?? 0);
+            $effStatus = (string) ($ev['effective_status'] ?? $ev['status'] ?? 'disetujui');
             $rows[] = [
                 (string) ($index + 1),
                 (string) ($ev['id'] ?? '-'),
@@ -5399,7 +5401,8 @@ class EventSuite extends BaseController
                 (string) ($ev['time'] ?? '-'),
                 (string) ($ev['location'] ?? '-'),
                 (string) ($ev['pic_name'] ?? '-'),
-                ucfirst((string) ($ev['status'] ?? '-')),
+                $docsCount . '/4 ' . ($docsCount === 4 ? 'Lengkap' : 'Dokumen'),
+                ucfirst($effStatus),
             ];
         }
 
