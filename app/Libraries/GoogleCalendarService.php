@@ -228,9 +228,6 @@ class GoogleCalendarService
                 'dateTime' => $end->format('c'),
                 'timeZone' => $tzName,
             ],
-            'reminders' => [
-                'useDefault' => true,
-            ],
         ];
     }
 
