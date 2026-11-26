@@ -7020,12 +7020,11 @@ class EventSuite extends BaseController
             $selectedMonth,
             'created_at'
         );
-        $ojtReports = $this->filterOneCampusAnalyticsRows(
+        $ojtReports = $this->filterOjtReportsActiveInPeriod(
             $allOjtReports,
             $selectedCampusId,
             $selectedYear,
-            $selectedMonth,
-            'created_at'
+            $selectedMonth
         );
         $bannerReports = $this->filterOneCampusAnalyticsRows(
             $allBannerReports,
@@ -12681,7 +12680,7 @@ class EventSuite extends BaseController
         $html[] = '<tr><td colspan="7">Target bulanan: OCTH 2, OCTE 2, OCTS 60, OCFO 5, OCFS 5.</td></tr>';
         $html[] = '<tr><td colspan="7">OCTH = One Campus Two Hangout/Open House; OCTE = One Campus Two Event; OCTS = One Campus Sixty School; OCFO = One Campus Five OJT; OCFS = One Campus Five Spanduk.</td></tr>';
         if ($activePmbPeriod !== '') {
-            $html[] = '<tr><td colspan="7">Keterangan: OCTS dihitung berdasarkan klaster PMB aktif (' . esc($activePmbPeriod) . '); OCFS dihitung berdasarkan bulan pemasangan spanduk (' . esc($period->format('M Y')) . ').</td></tr>';
+            $html[] = '<tr><td colspan="7">Keterangan: OCTS dihitung berdasarkan klaster PMB aktif (' . esc($activePmbPeriod) . '); OCFO dihitung berdasarkan masa aktif periode bulan OJT Magang pada ' . esc($period->format('M Y')) . '; OCFS dihitung berdasarkan bulan pemasangan spanduk (' . esc($period->format('M Y')) . ').</td></tr>';
         }
         $html[] = '</table>';
         $html[] = '</body></html>';
@@ -12963,28 +12962,51 @@ class EventSuite extends BaseController
         }));
     }
 
+    private function filterOjtReportsActiveInPeriod(array $rows, ?int $campusId, string $year, string $month): array
+    {
+        return array_values(array_filter($rows, function (array $row) use ($campusId, $year, $month): bool {
+            if ($campusId !== null && (int) ($row['campus_id'] ?? 0) !== $campusId) {
+                return false;
+            }
+
+            if ($year === '' && $month === '') {
+                return true;
+            }
+
+            [$startMonth, $endMonth] = $this->resolveOjtMonthRange($row, $year !== '' ? $year . '-' . ($month !== '' ? $month : '01') : date('Y-m'));
+            if ($startMonth === '' || $endMonth === '') {
+                return false;
+            }
+
+            if ($year !== '' && $month !== '') {
+                $targetMonth = $year . '-' . $month;
+                return $startMonth <= $targetMonth && $endMonth >= $targetMonth;
+            }
+
+            if ($year !== '') {
+                return substr($startMonth, 0, 4) <= $year && substr($endMonth, 0, 4) >= $year;
+            }
+
+            // Hanya bulan tanpa tahun
+            $mNum = (int) $month;
+            $sM = (int) substr($startMonth, 5, 2);
+            $eM = (int) substr($endMonth, 5, 2);
+            if ($sM <= $eM) {
+                return $mNum >= $sM && $mNum <= $eM;
+            }
+
+            return $mNum >= $sM || $mNum <= $eM;
+        }));
+    }
+
     private function filterOjtReportsActiveInMonth(array $rows, string $year, string $month): array
     {
-        $targetMonth = $year . '-' . $month;
-
-        return array_values(array_filter($rows, function (array $row) use ($targetMonth): bool {
-            return $this->isOjtReportActiveInMonth($row, $targetMonth);
-        }));
+        return $this->filterOjtReportsActiveInPeriod($rows, null, $year, $month);
     }
 
     private function isOjtReportActiveInMonth(array $row, string $targetMonth): bool
     {
-        $startMonth = $this->monthKeyFromDate((string) ($row['ojt_start_month'] ?? ''));
-        $endMonth = $this->monthKeyFromDate((string) ($row['ojt_end_month'] ?? ''));
-
-        if ($startMonth === '' || $endMonth === '') {
-            [$startMonth, $endMonth] = $this->legacyOjtPeriodMonthRange(
-                (string) ($row['ojt_period'] ?? ''),
-                (string) ($row['created_at'] ?? ''),
-                $targetMonth
-            );
-        }
-
+        [$startMonth, $endMonth] = $this->resolveOjtMonthRange($row, $targetMonth);
         if ($startMonth === '' || $endMonth === '') {
             return false;
         }
@@ -12992,13 +13014,70 @@ class EventSuite extends BaseController
         return $startMonth <= $targetMonth && $endMonth >= $targetMonth;
     }
 
+    private function resolveOjtMonthRange(array $row, string $fallbackTargetMonth): array
+    {
+        $startMonth = $this->monthKeyFromDate((string) ($row['ojt_start_month'] ?? ''));
+        $endMonth = $this->monthKeyFromDate((string) ($row['ojt_end_month'] ?? ''));
+
+        if ($startMonth === '' || $endMonth === '') {
+            [$legacyStart, $legacyEnd] = $this->legacyOjtPeriodMonthRange(
+                (string) ($row['ojt_period'] ?? ''),
+                (string) ($row['created_at'] ?? ''),
+                $fallbackTargetMonth
+            );
+            if ($startMonth === '') {
+                $startMonth = $legacyStart;
+            }
+            if ($endMonth === '') {
+                $endMonth = $legacyEnd;
+            }
+        }
+
+        if ($startMonth !== '' && $endMonth === '') {
+            $endMonth = $startMonth;
+        } elseif ($endMonth !== '' && $startMonth === '') {
+            $startMonth = $endMonth;
+        }
+
+        return [$startMonth, $endMonth];
+    }
+
     private function monthKeyFromDate(string $date): string
     {
-        return preg_match('/^\d{4}-\d{2}/', $date, $matches) === 1 ? $matches[0] : '';
+        if (preg_match('/^(\d{4})-(\d{2})/', trim($date), $matches) === 1 && (int) $matches[1] >= 2000) {
+            return $matches[1] . '-' . $matches[2];
+        }
+
+        return '';
     }
 
     private function legacyOjtPeriodMonthRange(string $period, string $createdAt, string $targetMonth): array
     {
+        $period = trim($period);
+        if ($period === '') {
+            return ['', ''];
+        }
+
+        // 1. Cek format YYYY-MM-DD atau YYYY-MM
+        if (preg_match_all('/\b(20\d{2})-(\d{2})(?:-\d{2})?\b/', $period, $isoMatches, PREG_SET_ORDER) > 0) {
+            $first = $isoMatches[0];
+            $last = $isoMatches[count($isoMatches) - 1];
+            return [
+                sprintf('%04d-%02d', (int) $first[1], (int) $first[2]),
+                sprintf('%04d-%02d', (int) $last[1], (int) $last[2]),
+            ];
+        }
+
+        // 2. Cek format DD/MM/YYYY atau DD-MM-YYYY
+        if (preg_match_all('/\b\d{1,2}[\/\-](\d{1,2})[\/\-](20\d{2})\b/', $period, $dmyMatches, PREG_SET_ORDER) > 0) {
+            $first = $dmyMatches[0];
+            $last = $dmyMatches[count($dmyMatches) - 1];
+            return [
+                sprintf('%04d-%02d', (int) $first[2], (int) $first[1]),
+                sprintf('%04d-%02d', (int) $last[2], (int) $last[1]),
+            ];
+        }
+
         $monthNames = [
             'januari' => 1,
             'jan' => 1,
@@ -13045,10 +13124,19 @@ class EventSuite extends BaseController
 
         $first = $matches[0];
         $last = $matches[count($matches) - 1];
-        $startYear = (string) ($first[2] ?? '') ?: $fallbackYear;
+        $startMonthNum = $monthNames[strtolower($first[1])] ?? 0;
+        $endMonthNum = $monthNames[strtolower($last[1])] ?? 0;
+        $startYear = (string) ($first[2] ?? '');
         $endYear = (string) ($last[2] ?? '') ?: $fallbackYear;
-        $startMonth = sprintf('%04d-%02d', (int) $startYear, $monthNames[strtolower($first[1])] ?? 0);
-        $endMonth = sprintf('%04d-%02d', (int) $endYear, $monthNames[strtolower($last[1])] ?? 0);
+
+        if ($startYear === '') {
+            $startYear = ($startMonthNum > $endMonthNum && (int) $endYear > 2000)
+                ? (string) ((int) $endYear - 1)
+                : $endYear;
+        }
+
+        $startMonth = sprintf('%04d-%02d', (int) $startYear, $startMonthNum);
+        $endMonth = sprintf('%04d-%02d', (int) $endYear, $endMonthNum);
 
         return [$startMonth, $endMonth];
     }
