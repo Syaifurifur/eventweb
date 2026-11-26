@@ -5073,7 +5073,7 @@ class EventSuite extends BaseController
     public function oneCampus(?string $program = null): string
     {
         $requestedProgram = strtolower(trim((string) ($program ?? $this->request->getGet('program') ?? 'all')));
-        if (! in_array($requestedProgram, ['ojt', 'school', 'banner', 'all'], true)) {
+        if (! in_array($requestedProgram, ['two-event', 'two-hangout', 'ojt', 'school', 'banner', 'all'], true)) {
             $requestedProgram = 'all';
         }
 
@@ -5147,7 +5147,8 @@ class EventSuite extends BaseController
             $filteredSchoolReports = $campusSchoolReports;
         }
 
-        // Hitung & kumpulkan daftar sekolah yang sudah upload dokumen MoU (untuk notifikasi di halaman & filter)
+        // Hitung & kumpulkan daftar sekolah yang sudah upload dokumen MoU (untuk filter)
+        // serta yang belum diverifikasi BJS (untuk banner Notifikasi Dokumen MoU)
         $hasMouFn = static fn (array $s): bool => trim((string) ($s['mou_file'] ?? '')) !== '' || trim((string) ($s['mou_drive_link'] ?? '')) !== '';
         $mouUploadedSchools = array_values(array_filter($filteredSchoolReports, $hasMouFn));
         usort($mouUploadedSchools, static function (array $a, array $b): int {
@@ -5156,6 +5157,11 @@ class EventSuite extends BaseController
             return $tB <=> $tA;
         });
         $mouUploadedCount = count($mouUploadedSchools);
+        $mouPendingNotificationSchools = array_values(array_filter(
+            $mouUploadedSchools,
+            static fn (array $s): bool => ($s['bjs_status'] ?? '') !== 'Aktif'
+        ));
+        $mouPendingNotificationCount = count($mouPendingNotificationSchools);
 
         // Filter khusus Dokumen MoU yang sudah diupload
         $selectedMouFilter = trim((string) ($this->request->getGet('mou_filter') ?? ''));
@@ -5201,24 +5207,39 @@ class EventSuite extends BaseController
             'apps_script_template' => \App\Libraries\GoogleDriveUploadService::getAppsScriptTemplate($folderId),
         ];
 
+        // Data Event untuk KPI Markom: One Campus Two Event & One Campus Two Hangout (Hanya status Disetujui & Selesai)
+        $selectedEventMonth = trim((string) ($this->request->getGet('event_month') ?? ''));
+        if (preg_match('/^\d{4}-\d{2}$/', $selectedEventMonth) !== 1) {
+            $selectedEventMonth = '';
+        }
+        $twoEventReports = $this->oneCampusFilteredEventRows('two-event', $selectedCampusId, $selectedEventMonth);
+        $twoHangoutReports = $this->oneCampusFilteredEventRows('two-hangout', $selectedCampusId, $selectedEventMonth);
+
         $activeMap = [
+            'two-event' => 'one-campus-two-event',
+            'two-hangout' => 'one-campus-two-hangout',
             'ojt' => 'one-campus-ojt',
             'school' => 'one-campus-school',
             'banner' => 'one-campus-banner',
             'all' => 'one-campus',
         ];
         $titleMap = [
+            'two-event' => 'One Campus Two Event',
+            'two-hangout' => 'One Campus Two Hangout',
             'ojt' => 'One Campus Five OJT',
             'school' => 'One Campus Sixty School',
             'banner' => 'One Campus Five Spanduk',
-            'all' => 'One Campus',
+            'all' => 'KPI Markom - One Campus',
         ];
 
         return $this->render('pages/one_campus', [
-            'title' => $titleMap[$requestedProgram] ?? 'One Campus',
+            'title' => $titleMap[$requestedProgram] ?? 'KPI Markom',
             'active' => $activeMap[$requestedProgram] ?? 'one-campus',
             'selectedProgram' => $requestedProgram,
             'campuses' => $visibleCampuses,
+            'twoEventReports' => $twoEventReports,
+            'twoHangoutReports' => $twoHangoutReports,
+            'selectedEventMonth' => $selectedEventMonth,
             'schoolReports' => $filteredSchoolReports,
             'allCampusSchoolReports' => $campusSchoolReports,
             'defaultPmbPeriod' => $defaultPmbPeriod,
@@ -5227,6 +5248,8 @@ class EventSuite extends BaseController
             'selectedMouFilter' => $selectedMouFilter,
             'mouUploadedSchools' => $mouUploadedSchools,
             'mouUploadedCount' => $mouUploadedCount,
+            'mouPendingNotificationSchools' => $mouPendingNotificationSchools,
+            'mouPendingNotificationCount' => $mouPendingNotificationCount,
             'availablePmbPeriods' => $availablePmbPeriods,
             'pmbPeriodCounts' => $pmbPeriodCounts,
             'gdriveSettings' => $gdriveSettings,
@@ -5241,6 +5264,152 @@ class EventSuite extends BaseController
             'selectedOneCampusId' => $selectedCampusId,
             'selectedOneCampusName' => $this->campusNameById($campuses, $selectedCampusId),
         ]);
+    }
+
+    public function oneCampusTwoEvent(): string
+    {
+        return $this->oneCampus('two-event');
+    }
+
+    public function oneCampusTwoHangout(): string
+    {
+        return $this->oneCampus('two-hangout');
+    }
+
+    public function exportOneCampusTwoEvent()
+    {
+        return $this->exportOneCampusEventProgram('two-event', 'One Campus Two Event', 'one-campus-two-event');
+    }
+
+    public function exportOneCampusTwoHangout()
+    {
+        return $this->exportOneCampusEventProgram('two-hangout', 'One Campus Two Hangout', 'one-campus-two-hangout');
+    }
+
+    private function oneCampusFilteredEventRows(string $programKey, ?int $campusId, string $eventMonth): array
+    {
+        $allEventsRaw = (new EventModel())->withCreator()->orderBy('event_date', 'DESC')->findAll();
+        $normalizedEvents = array_map(fn (array $ev): array => $this->normalizeEvent($ev), $allEventsRaw);
+        $campusEvents = $this->filterEventsByCampus($normalizedEvents, $campusId);
+
+        $filtered = array_values(array_filter($campusEvents, function (array $ev) use ($programKey, $eventMonth): bool {
+            $status = strtolower(trim((string) ($ev['status'] ?? '')));
+            if (! in_array($status, ['disetujui', 'selesai'], true)) {
+                return false;
+            }
+            if ($eventMonth !== '' && substr((string) ($ev['date'] ?? ''), 0, 7) !== $eventMonth) {
+                return false;
+            }
+            $category = (string) ($ev['category'] ?? '');
+
+            return $programKey === 'two-hangout'
+                ? $this->isOpenhouseCategory($category)
+                : $this->isOneCampusTwoEventCategory($category);
+        }));
+
+        if ($filtered === []) {
+            return [];
+        }
+
+        // Cek kelengkapan 4 dokumen wajib (Proposal, Laporan, Dokumentasi Foto, Dokumentasi Video)
+        $eventIds = array_values(array_unique(array_filter(array_map(
+            static fn (array $ev): int => (int) ($ev['db_id'] ?? 0),
+            $filtered
+        ))));
+        $requiredMap = $this->completionReportChecklistNames(); // ['laporan' => 'Laporan', 'proposal' => 'Proposal', 'foto' => 'Link Dokumentasi Foto', 'video' => 'Link Dokumentasi Video']
+        $docsByEvent = [];
+        foreach ($eventIds as $eid) {
+            $docsByEvent[$eid] = ['proposal' => false, 'laporan' => false, 'foto' => false, 'video' => false];
+        }
+
+        if ($eventIds !== []) {
+            foreach ((new EventChecklistItemModel())->whereIn('event_id', $eventIds)->whereIn('name', array_values($requiredMap))->findAll() as $item) {
+                if (trim((string) ($item['drive_link'] ?? '')) === '') {
+                    continue;
+                }
+                $eid = (int) ($item['event_id'] ?? 0);
+                $k = array_search((string) ($item['name'] ?? ''), $requiredMap, true);
+                if ($k !== false && isset($docsByEvent[$eid])) {
+                    $docsByEvent[$eid][$k] = true;
+                }
+            }
+            foreach ((new ProposalModel())->whereIn('event_id', $eventIds)->findAll() as $p) {
+                $eid = (int) ($p['event_id'] ?? 0);
+                if (isset($docsByEvent[$eid]) && trim((string) ($p['document_link'] ?? '')) !== '') {
+                    $docsByEvent[$eid]['proposal'] = true;
+                }
+            }
+            foreach ((new ReportModel())->whereIn('event_id', $eventIds)->findAll() as $r) {
+                $eid = (int) ($r['event_id'] ?? 0);
+                if (isset($docsByEvent[$eid]) && trim((string) ($r['document_link'] ?? '')) !== '') {
+                    $docsByEvent[$eid]['laporan'] = true;
+                }
+            }
+        }
+
+        foreach ($filtered as &$ev) {
+            $eid = (int) ($ev['db_id'] ?? 0);
+            $flags = $docsByEvent[$eid] ?? ['proposal' => false, 'laporan' => false, 'foto' => false, 'video' => false];
+            $doneCount = count(array_filter($flags));
+            $isAllComplete = $doneCount === 4;
+            $ev['docs_complete'] = $isAllComplete;
+            $ev['docs_count'] = $doneCount;
+            $ev['docs_flags'] = $flags;
+            // Event dianggap Selesai hanya jika 4 kebutuhan dokumen (Proposal, Laporan, Foto, Video) sudah terupload
+            if ($isAllComplete) {
+                $ev['effective_status'] = 'selesai';
+            } elseif (strtolower((string) ($ev['status'] ?? '')) === 'selesai') {
+                $ev['effective_status'] = 'disetujui';
+            } else {
+                $ev['effective_status'] = strtolower((string) ($ev['status'] ?? 'disetujui'));
+            }
+        }
+        unset($ev);
+
+        return $filtered;
+    }
+
+    private function exportOneCampusEventProgram(string $programKey, string $sheetTitle, string $filePrefix)
+    {
+        $campuses = (new CampusModel())->orderBy('name', 'ASC')->findAll();
+        $selectedCampusId = $this->selectedOneCampusId($campuses);
+        $campusScope = $this->currentOneCampusScope();
+        if ($campusScope !== null) {
+            $selectedCampusId = $campusScope > 0 ? $campusScope : null;
+        }
+        $eventMonth = trim((string) ($this->request->getGet('event_month') ?? ''));
+        if (preg_match('/^\d{4}-\d{2}$/', $eventMonth) !== 1) {
+            $eventMonth = '';
+        }
+
+        $items = $this->oneCampusFilteredEventRows($programKey, $selectedCampusId, $eventMonth);
+
+        $rows = [
+            ['No', 'Kode Event', 'Kampus', 'Judul Kegiatan', 'Kategori', 'Tanggal Mulai', 'Tanggal Selesai', 'Waktu', 'Lokasi', 'PIC', 'Status'],
+        ];
+        foreach ($items as $index => $ev) {
+            $rows[] = [
+                (string) ($index + 1),
+                (string) ($ev['id'] ?? '-'),
+                (string) ($ev['campus'] ?? '-'),
+                (string) ($ev['title'] ?? '-'),
+                (string) ($ev['category'] ?? '-'),
+                (string) ($ev['date'] ?? '-'),
+                (string) ($ev['end_date'] ?? $ev['date'] ?? '-'),
+                (string) ($ev['time'] ?? '-'),
+                (string) ($ev['location'] ?? '-'),
+                (string) ($ev['pic_name'] ?? '-'),
+                ucfirst((string) ($ev['status'] ?? '-')),
+            ];
+        }
+
+        $suffix = $eventMonth !== '' ? '-' . $eventMonth : '';
+        $filename = $filePrefix . $suffix . '-' . date('Ymd-His') . '.xlsx';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setBody($this->xlsxFromRows($rows, $sheetTitle));
     }
 
     public function oneCampusOjt(): string
@@ -10537,7 +10706,7 @@ class EventSuite extends BaseController
             $progress = $summary['percent'];
         }
 
-        $completionReportsReady = $this->hasCompletionReportUploads($items);
+        $completionReportsReady = $this->hasCompletionReportUploads($items, $eventId);
         $updates = ['progress' => $progress];
         if ($completionReportsReady && ! in_array(($event['status'] ?? ''), ['draft', 'ditolak'], true)) {
             $updates['status'] = 'selesai';
@@ -10550,12 +10719,14 @@ class EventSuite extends BaseController
                     'notes' => 'Dokumen pasca event lengkap. Laporan menunggu hasil follow up CRM.',
                 ]);
             }
+        } elseif (! $completionReportsReady && ($event['status'] ?? '') === 'selesai') {
+            $updates['status'] = 'disetujui';
         }
 
         (new EventModel())->update($eventId, $updates);
     }
 
-    private function hasCompletionReportUploads(array $items): bool
+    private function hasCompletionReportUploads(array $items, int $eventId = 0): bool
     {
         $requiredNames = array_values($this->completionReportChecklistNames());
         $reportedNames = [];
@@ -10571,6 +10742,21 @@ class EventSuite extends BaseController
             }
 
             $reportedNames[$name] = true;
+        }
+
+        if ($eventId > 0) {
+            if (! isset($reportedNames['Proposal'])) {
+                $prop = (new ProposalModel())->where('event_id', $eventId)->first();
+                if ($prop && trim((string) ($prop['document_link'] ?? '')) !== '') {
+                    $reportedNames['Proposal'] = true;
+                }
+            }
+            if (! isset($reportedNames['Laporan'])) {
+                $rep = (new ReportModel())->where('event_id', $eventId)->first();
+                if ($rep && trim((string) ($rep['document_link'] ?? '')) !== '') {
+                    $reportedNames['Laporan'] = true;
+                }
+            }
         }
 
         foreach ($requiredNames as $name) {

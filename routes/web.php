@@ -152,6 +152,10 @@ Route::middleware('legacy.auth')->group(function (): void {
     Route::post('reports/{code}', [EventSuite::class, 'updateReport'])->middleware('access:reports');
 
     Route::get('one-campus', [EventSuite::class, 'oneCampus'])->middleware('access:one-campus');
+    Route::get('one-campus/two-event', [EventSuite::class, 'oneCampusTwoEvent'])->middleware('access:one-campus');
+    Route::get('one-campus/two-hangout', [EventSuite::class, 'oneCampusTwoHangout'])->middleware('access:one-campus');
+    Route::get('one-campus/two-event/export', [EventSuite::class, 'exportOneCampusTwoEvent'])->middleware('access:one-campus');
+    Route::get('one-campus/two-hangout/export', [EventSuite::class, 'exportOneCampusTwoHangout'])->middleware('access:one-campus');
     Route::get('one-campus/ojt', [EventSuite::class, 'oneCampusOjt'])->middleware('access:one-campus');
     Route::get('one-campus/schools', [EventSuite::class, 'oneCampusSchools'])->middleware('access:one-campus');
     Route::get('one-campus/banners', [EventSuite::class, 'oneCampusBanners'])->middleware('access:one-campus');

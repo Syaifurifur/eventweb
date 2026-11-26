@@ -5,8 +5,11 @@ $bannerReports = $bannerReports ?? [];
 $ojtReports = $ojtReports ?? [];
 $selectedOneCampusId = $selectedOneCampusId ?? null;
 $selectedOneCampusName = $selectedOneCampusName ?? '';
+$twoEventReports = $twoEventReports ?? [];
+$twoHangoutReports = $twoHangoutReports ?? [];
+$selectedEventMonth = $selectedEventMonth ?? '';
 $selectedProgram = $selectedProgram ?? 'all';
-if (! in_array($selectedProgram, ['ojt', 'school', 'banner', 'all'], true)) {
+if (! in_array($selectedProgram, ['two-event', 'two-hangout', 'ojt', 'school', 'banner', 'all'], true)) {
     $selectedProgram = 'all';
 }
 
@@ -34,12 +37,16 @@ $gdriveSettings = $gdriveSettings ?? [
     'folder_name' => 'MOU BJS Sekolah - BSI Group',
 ];
 $currentProgramUrl = match ($selectedProgram) {
+    'two-event' => site_url('one-campus/two-event'),
+    'two-hangout' => site_url('one-campus/two-hangout'),
     'ojt' => site_url('one-campus/ojt'),
     'school' => site_url('one-campus/schools'),
     'banner' => site_url('one-campus/banners'),
     default => site_url('one-campus'),
 };
 
+$showTwoEvent = in_array($selectedProgram, ['two-event', 'all'], true);
+$showTwoHangout = in_array($selectedProgram, ['two-hangout', 'all'], true);
 $showOjt = in_array($selectedProgram, ['ojt', 'all'], true);
 $showSchool = in_array($selectedProgram, ['school', 'all'], true);
 $showBanner = in_array($selectedProgram, ['banner', 'all'], true);
@@ -50,37 +57,51 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
 
 <div class="toolbar">
     <div>
-        <span class="eyebrow">Laporan Kepala Kampus &bull; Pengelolaan CRUD &amp; Rekap XLSX</span>
+        <span class="eyebrow">KPI Markom &bull; Pengelolaan &amp; Rekap Program</span>
         <h2>
-            <?php if ($selectedProgram === 'ojt'): ?>
+            <?php if ($selectedProgram === 'two-event'): ?>
+                One Campus Two Event
+            <?php elseif ($selectedProgram === 'two-hangout'): ?>
+                One Campus Two Hangout
+            <?php elseif ($selectedProgram === 'ojt'): ?>
                 One Campus Five OJT
             <?php elseif ($selectedProgram === 'school'): ?>
                 One Campus Sixty School
             <?php elseif ($selectedProgram === 'banner'): ?>
                 One Campus Five Spanduk
             <?php else: ?>
-                Rekap &amp; Pengelolaan One Campus Programs
+                Rekap &amp; Pengelolaan KPI Markom (One Campus)
             <?php endif; ?>
         </h2>
     </div>
     <div class="toolbar-summary">
-        <span class="status status-selesai"><?= esc((string) count($ojtReports)) ?> Five OJT</span>
+        <span class="status status-diajukan"><?= esc((string) count($twoEventReports)) ?> Two Event</span>
+        <span class="status status-disetujui"><?= esc((string) count($twoHangoutReports)) ?> Two Hangout</span>
         <span class="status status-aktif"><?= esc((string) count($schoolReports)) ?> Sixty School</span>
+        <span class="status status-selesai"><?= esc((string) count($ojtReports)) ?> Five OJT</span>
         <span class="status status-diajukan"><?= esc((string) count($bannerReports)) ?> Five Spanduk</span>
     </div>
 </div>
 
-<!-- Sub-Menu Navigation Bar -->
+<!-- KPI Markom Quick Switcher Bar -->
 <section class="panel" style="padding: 14px 18px; margin-bottom: 18px;">
     <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
-            <a href="<?= site_url('one-campus/ojt') . $campusQuery ?>"
-               class="<?= $selectedProgram === 'ojt' ? 'primary-button compact-button' : 'ghost-button compact-button' ?>">
-                One Campus Five OJT (<?= esc((string) count($ojtReports)) ?>)
+            <a href="<?= site_url('one-campus/two-event') . $campusQuery ?>"
+               class="<?= $selectedProgram === 'two-event' ? 'primary-button compact-button' : 'ghost-button compact-button' ?>">
+                One Campus Two Event (<?= esc((string) count($twoEventReports)) ?>)
+            </a>
+            <a href="<?= site_url('one-campus/two-hangout') . $campusQuery ?>"
+               class="<?= $selectedProgram === 'two-hangout' ? 'primary-button compact-button' : 'ghost-button compact-button' ?>">
+                One Campus Two Hangout (<?= esc((string) count($twoHangoutReports)) ?>)
             </a>
             <a href="<?= site_url('one-campus/schools') . $campusQuery ?>"
                class="<?= $selectedProgram === 'school' ? 'primary-button compact-button' : 'ghost-button compact-button' ?>">
                 One Campus Sixty School (<?= esc((string) count($schoolReports)) ?>)
+            </a>
+            <a href="<?= site_url('one-campus/ojt') . $campusQuery ?>"
+               class="<?= $selectedProgram === 'ojt' ? 'primary-button compact-button' : 'ghost-button compact-button' ?>">
+                One Campus Five OJT (<?= esc((string) count($ojtReports)) ?>)
             </a>
             <a href="<?= site_url('one-campus/banners') . $campusQuery ?>"
                class="<?= $selectedProgram === 'banner' ? 'primary-button compact-button' : 'ghost-button compact-button' ?>">
@@ -88,11 +109,24 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             </a>
             <a href="<?= site_url('one-campus') . $campusQuery ?>"
                class="<?= $selectedProgram === 'all' ? 'primary-button compact-button' : 'ghost-button compact-button' ?>">
-                Semua Rekap One Campus
+                Semua Rekap
             </a>
         </div>
 
         <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+            <?php
+            $eventExportQuery = $campusQuery . ($selectedEventMonth !== '' ? (($campusQuery !== '' ? '&' : '?') . 'event_month=' . urlencode($selectedEventMonth)) : '');
+            ?>
+            <?php if ($showTwoEvent): ?>
+                <a class="ghost-button compact-button" href="<?= site_url('one-campus/two-event/export') . $eventExportQuery ?>">
+                    Download XLSX Two Event
+                </a>
+            <?php endif; ?>
+            <?php if ($showTwoHangout): ?>
+                <a class="ghost-button compact-button" href="<?= site_url('one-campus/two-hangout/export') . $eventExportQuery ?>">
+                    Download XLSX Two Hangout
+                </a>
+            <?php endif; ?>
             <?php if ($showOjt): ?>
                 <a class="ghost-button compact-button" href="<?= site_url('one-campus/ojt/export') . $campusQuery ?>">
                     Download XLSX Five OJT
@@ -132,12 +166,174 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
                 <?php endforeach; ?>
             </datalist>
         </label>
+        <?php if ($showTwoEvent || $showTwoHangout): ?>
+            <label class="report-filter-field" style="max-width: 220px;">
+                Filter bulan event
+                <input class="control" type="month" name="event_month" value="<?= esc($selectedEventMonth) ?>">
+            </label>
+        <?php endif; ?>
         <div class="report-filter-actions">
             <button class="primary-button compact-button" type="submit">Terapkan Filter</button>
             <a class="ghost-button compact-button" href="<?= $currentProgramUrl ?>">Reset</a>
         </div>
     </form>
 </section>
+
+<?php if ($showTwoEvent): ?>
+<section class="panel" id="section-two-event">
+    <div class="panel-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+        <div>
+            <span class="eyebrow">KPI Markom (OCTE) &bull; Target Minimal 2 Event / Bulan per Kampus</span>
+            <h2>Laporan Rekap: One Campus Two Event</h2>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+            <span class="status status-diajukan"><?= esc((string) count($twoEventReports)) ?> Event</span>
+            <a class="primary-button compact-button" href="<?= site_url('events/new') ?>">+ Buat Event Baru</a>
+        </div>
+    </div>
+    <div class="table-control-bar">
+        <input class="control table-search-control" type="search" placeholder="Cari kode, judul event, kategori, kampus, lokasi, atau status..." data-table-filter>
+        <span class="table-page-summary" data-table-summary></span>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table" data-paginated-table data-page-size="10">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Kode</th>
+                    <th>Kampus</th>
+                    <th>Judul Event</th>
+                    <th>Kategori</th>
+                    <th>Tanggal</th>
+                    <th>Lokasi</th>
+                    <th>Kelengkapan Dokumen</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($twoEventReports as $idx => $ev): ?>
+                    <?php
+                    $effStatus = (string) ($ev['effective_status'] ?? $ev['status'] ?? 'disetujui');
+                    $docsCount = (int) ($ev['docs_count'] ?? 0);
+                    $evSearch = implode(' ', [
+                        $ev['id'] ?? '',
+                        $ev['campus'] ?? '',
+                        $ev['title'] ?? '',
+                        $ev['category'] ?? '',
+                        $ev['date'] ?? '',
+                        $ev['location'] ?? '',
+                        $effStatus,
+                    ]);
+                    ?>
+                    <tr data-page-row data-search-text="<?= esc($evSearch, 'attr') ?>">
+                        <td><?= esc((string) ($idx + 1)) ?></td>
+                        <td><strong><?= esc($ev['id'] ?? '-') ?></strong></td>
+                        <td><?= esc($ev['campus'] ?? '-') ?></td>
+                        <td><?= esc($ev['title'] ?? '-') ?></td>
+                        <td><span class="status status-diajukan"><?= esc($ev['category'] ?? '-') ?></span></td>
+                        <td><?= esc($ev['date_range_label'] ?? $ev['date'] ?? '-') ?></td>
+                        <td><?= esc($ev['location'] ?? '-') ?></td>
+                        <td>
+                            <span class="status <?= $docsCount === 4 ? 'status-selesai' : 'status-menunggu' ?>" title="Proposal, Laporan, Dokumentasi Foto, Dokumentasi Video">
+                                <?= esc((string) $docsCount) ?>/4 <?= $docsCount === 4 ? 'Lengkap' : 'Dokumen' ?>
+                            </span>
+                        </td>
+                        <td><span class="status status-<?= esc($effStatus) ?>"><?= esc(ucfirst($effStatus)) ?></span></td>
+                        <td>
+                            <a class="ghost-button compact-button" href="<?= site_url('events/' . ($ev['id'] ?? '')) ?>">Detail &rarr;</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if ($twoEventReports === []): ?>
+                    <tr data-empty-row>
+                        <td colspan="10"><span class="muted-note">Belum ada data One Campus Two Event pada filter ini.</span></td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+    <nav class="pagination-bar table-pagination-bar" aria-label="Navigasi rekap One Campus Two Event" data-table-pagination></nav>
+</section>
+<?php endif; ?>
+
+<?php if ($showTwoHangout): ?>
+<section class="panel" id="section-two-hangout">
+    <div class="panel-header" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+        <div>
+            <span class="eyebrow">KPI Markom (OCTH) &bull; Target Minimal 2 Hangout / Open House / Bulan per Kampus</span>
+            <h2>Laporan Rekap: One Campus Two Hangout</h2>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+            <span class="status status-disetujui"><?= esc((string) count($twoHangoutReports)) ?> Hangout / Open House</span>
+            <a class="primary-button compact-button" href="<?= site_url('events/new') ?>">+ Buat Hangout / Open House</a>
+        </div>
+    </div>
+    <div class="table-control-bar">
+        <input class="control table-search-control" type="search" placeholder="Cari kode, judul hangout/open house, kampus, lokasi, atau status..." data-table-filter>
+        <span class="table-page-summary" data-table-summary></span>
+    </div>
+    <div class="table-wrap">
+        <table class="data-table" data-paginated-table data-page-size="10">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Kode</th>
+                    <th>Kampus</th>
+                    <th>Judul Hangout / Open House</th>
+                    <th>Kategori</th>
+                    <th>Tanggal</th>
+                    <th>Lokasi</th>
+                    <th>Kelengkapan Dokumen</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($twoHangoutReports as $idx => $ev): ?>
+                    <?php
+                    $effStatus = (string) ($ev['effective_status'] ?? $ev['status'] ?? 'disetujui');
+                    $docsCount = (int) ($ev['docs_count'] ?? 0);
+                    $evSearch = implode(' ', [
+                        $ev['id'] ?? '',
+                        $ev['campus'] ?? '',
+                        $ev['title'] ?? '',
+                        $ev['category'] ?? '',
+                        $ev['date'] ?? '',
+                        $ev['location'] ?? '',
+                        $effStatus,
+                    ]);
+                    ?>
+                    <tr data-page-row data-search-text="<?= esc($evSearch, 'attr') ?>">
+                        <td><?= esc((string) ($idx + 1)) ?></td>
+                        <td><strong><?= esc($ev['id'] ?? '-') ?></strong></td>
+                        <td><?= esc($ev['campus'] ?? '-') ?></td>
+                        <td><?= esc($ev['title'] ?? '-') ?></td>
+                        <td><span class="status status-disetujui"><?= esc($ev['category'] ?? '-') ?></span></td>
+                        <td><?= esc($ev['date_range_label'] ?? $ev['date'] ?? '-') ?></td>
+                        <td><?= esc($ev['location'] ?? '-') ?></td>
+                        <td>
+                            <span class="status <?= $docsCount === 4 ? 'status-selesai' : 'status-menunggu' ?>" title="Proposal, Laporan, Dokumentasi Foto, Dokumentasi Video">
+                                <?= esc((string) $docsCount) ?>/4 <?= $docsCount === 4 ? 'Lengkap' : 'Dokumen' ?>
+                            </span>
+                        </td>
+                        <td><span class="status status-<?= esc($effStatus) ?>"><?= esc(ucfirst($effStatus)) ?></span></td>
+                        <td>
+                            <a class="ghost-button compact-button" href="<?= site_url('events/' . ($ev['id'] ?? '')) ?>">Detail &rarr;</a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if ($twoHangoutReports === []): ?>
+                    <tr data-empty-row>
+                        <td colspan="10"><span class="muted-note">Belum ada data One Campus Two Hangout pada filter ini.</span></td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+    <nav class="pagination-bar table-pagination-bar" aria-label="Navigasi rekap One Campus Two Hangout" data-table-pagination></nav>
+</section>
+<?php endif; ?>
 
 <?php if ($showOjt): ?>
 <section class="panel" id="section-ojt">
@@ -275,23 +471,28 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
     <?php
         $mouUploadedSchools = $mouUploadedSchools ?? [];
         $mouUploadedCount = (int) ($mouUploadedCount ?? count($mouUploadedSchools));
+        $mouPendingNotificationSchools = $mouPendingNotificationSchools ?? array_values(array_filter(
+            $mouUploadedSchools,
+            static fn (array $s): bool => ($s['bjs_status'] ?? '') !== 'Aktif'
+        ));
+        $mouPendingNotificationCount = (int) ($mouPendingNotificationCount ?? count($mouPendingNotificationSchools));
         $selectedMouFilter = $selectedMouFilter ?? '';
         $baseSortUrl = site_url('one-campus/schools?pmb_period=' . urlencode($selectedPmbPeriod) . ($selectedOneCampusId ? '&campus_id=' . urlencode((string) $selectedOneCampusId) : ''));
         $baseSortWithMouFilterUrl = $baseSortUrl . ($selectedMouFilter === 'uploaded' ? '&mou_filter=uploaded' : '');
     ?>
 
-    <!-- Notifikasi Halaman: Sekolah yang Sudah Mengupload Dokumen MoU -->
-    <?php if ($mouUploadedCount > 0): ?>
+    <!-- Notifikasi Halaman: Sekolah yang Sudah Mengupload Dokumen MoU (Belum Diverifikasi BJS) -->
+    <?php if ($mouPendingNotificationCount > 0): ?>
     <div id="mou-upload-notification-banner" style="background: linear-gradient(135deg, #ecfdf5 0%, #f0f9ff 100%); border: 1px solid #6ee7b7; border-left: 5px solid #0d9488; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.08);">
         <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: #0d9488; color: #ffffff; font-size: 1rem;">&#128276;</span>
                 <div>
                     <strong style="display: block; font-size: 0.94rem; color: #0f172a;">
-                        Notifikasi Dokumen MoU: <?= esc((string) $mouUploadedCount) ?> Sekolah Sudah Mengupload Dokumen MoU
+                        Notifikasi Dokumen MoU: <?= esc((string) $mouPendingNotificationCount) ?> Sekolah Menunggu Verifikasi BJS
                     </strong>
                     <span style="font-size: 0.8rem; color: #475569;">
-                        Email notifikasi otomatis dikirim ke <code>syaifur.syl@bsi.ac.id</code> &amp; <code>markom851@bsi.ac.id</code> setiap kali ada upload dokumen MoU baru.
+                        Email notifikasi otomatis dikirim ke <code>syaifur.syl@bsi.ac.id</code> &amp; <code>markom851@bsi.ac.id</code> setiap kali ada upload dokumen MoU baru. Sekolah yang sudah diverifikasi otomatis hilang dari daftar ini.
                     </span>
                 </div>
             </div>
@@ -308,7 +509,7 @@ $dateTimeLocalValue = static fn (mixed $value): string => strtotime((string) $va
             </div>
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-            <?php foreach (array_slice($mouUploadedSchools, 0, 5) as $mouRow): ?>
+            <?php foreach (array_slice($mouPendingNotificationSchools, 0, 5) as $mouRow): ?>
                 <?php
                 $mouTimeRaw = (string) ($mouRow['mou_uploaded_at'] ?: $mouRow['updated_at'] ?: $mouRow['created_at'] ?: '');
                 $mouTimeLabel = $mouTimeRaw !== '' ? date('d M Y H:i', strtotime($mouTimeRaw)) : '';

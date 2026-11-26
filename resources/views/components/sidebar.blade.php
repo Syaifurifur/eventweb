@@ -19,6 +19,16 @@ $navGroups = [
         ],
     ],
     [
+        'title' => 'KPI Markom',
+        'items' => [
+            ['key' => 'one-campus-two-event', 'label' => 'One Campus Two Event', 'url' => site_url('one-campus/two-event'), 'icon' => 'solar:calendar-add-outline'],
+            ['key' => 'one-campus-two-hangout', 'label' => 'One Campus Two Hangout', 'url' => site_url('one-campus/two-hangout'), 'icon' => 'solar:users-group-rounded-outline'],
+            ['key' => 'one-campus-school', 'label' => 'One Campus Sixty School', 'url' => site_url('one-campus/schools'), 'icon' => 'solar:square-academic-cap-outline'],
+            ['key' => 'one-campus-ojt', 'label' => 'One Campus Five OJT', 'url' => site_url('one-campus/ojt'), 'icon' => 'solar:briefcase-outline'],
+            ['key' => 'one-campus-banner', 'label' => 'One Campus Five Spanduk', 'url' => site_url('one-campus/banners'), 'icon' => 'solar:flag-outline'],
+        ],
+    ],
+    [
         'title' => 'Dokumen & Laporan',
         'items' => [
             ['key' => 'documents', 'label' => 'Dokumen Event', 'url' => site_url('documents'), 'icon' => 'solar:document-text-outline'],
@@ -31,17 +41,6 @@ $navGroups = [
     [
         'title' => 'Analitik & Kampus',
         'items' => [
-            [
-                'key' => 'one-campus',
-                'label' => 'One Campus',
-                'url' => site_url('one-campus'),
-                'icon' => 'solar:buildings-2-outline',
-                'children' => [
-                    ['key' => 'one-campus-ojt', 'label' => 'One Campus Five OJT', 'url' => site_url('one-campus/ojt'), 'dotClass' => 'text-warning-600'],
-                    ['key' => 'one-campus-school', 'label' => 'One Campus Sixty School', 'url' => site_url('one-campus/schools'), 'dotClass' => 'text-primary-600'],
-                    ['key' => 'one-campus-banner', 'label' => 'One Campus Five Spanduk', 'url' => site_url('one-campus/banners'), 'dotClass' => 'text-success-600'],
-                ],
-            ],
             ['key' => 'analytics', 'label' => 'Analytics', 'url' => site_url('analytics'), 'icon' => 'solar:pie-chart-2-outline'],
             ['key' => 'special-analytics', 'label' => 'Analisis Khusus', 'url' => site_url('analisis-khusus'), 'icon' => 'solar:graph-new-up-outline'],
         ],
@@ -62,6 +61,7 @@ $canViewSpecialAnalytics = in_array(($currentUser['role'] ?? ''), ['Admin Sistem
 $canAccessItem = static function (string $key) use ($isAdminSystem, $userPermissions, $canViewSpecialAnalytics): bool {
     return $isAdminSystem
         || in_array($key, $userPermissions, true)
+        || (str_starts_with($key, 'one-campus-') && in_array('one-campus', $userPermissions, true))
         || ($key === 'shared-documents')
         || ($key === 'task-manager' && in_array('dashboard', $userPermissions, true))
         || ($key === 'crm-report' && (in_array('reports', $userPermissions, true) || in_array('crm', $userPermissions, true) || in_array('dashboard', $userPermissions, true)))
