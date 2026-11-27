@@ -461,6 +461,12 @@ class CrmController extends BaseController
         $payload = [];
         $priorityCount = 0;
         foreach ($rows as $row) {
+            $studentName = trim((string) ($row['student_name'] ?? ''));
+            if (mb_strlen($studentName) < 2) {
+                continue;
+            }
+            $schoolOrigin = trim((string) ($row['school_origin'] ?? ''));
+            $whatsapp = trim((string) ($row['whatsapp'] ?? ''));
             $prospectStatus = $row['prospect_status'] ?? null;
             if ($prospectStatus === 'priority') {
                 $priorityCount++;
@@ -470,9 +476,9 @@ class CrmController extends BaseController
                 'batch_id' => $batchId,
                 'event_id' => $eventId,
                 'pmb_period' => $pmbPeriod,
-                'student_name' => $row['student_name'],
-                'school_origin' => $row['school_origin'] ?: null,
-                'whatsapp' => $row['whatsapp'] ?: null,
+                'student_name' => mb_substr($studentName, 0, 160),
+                'school_origin' => $schoolOrigin !== '' ? mb_substr($schoolOrigin, 0, 180) : null,
+                'whatsapp' => $whatsapp !== '' ? mb_substr($whatsapp, 0, 40) : null,
                 'email' => ($row['email'] ?? '') !== '' ? mb_substr((string) $row['email'], 0, 160) : null,
                 'participant_status' => ($row['participant_status'] ?? '') !== '' ? mb_substr((string) $row['participant_status'], 0, 60) : null,
                 'student_class' => ($row['student_class'] ?? '') !== '' ? mb_substr((string) $row['student_class'], 0, 30) : null,
@@ -490,7 +496,11 @@ class CrmController extends BaseController
             return redirect()->to(site_url('crm'))->with('error', 'Tidak ada baris valid yang bisa disimpan. Pastikan kolom Nama Siswa terisi.');
         }
 
-        (new CrmLeadModel())->insertBatch($payload);
+        $leadModel = new CrmLeadModel();
+        foreach (array_chunk($payload, 500) as $chunk) {
+            $leadModel->insertBatch($chunk);
+        }
+        (new CrmUploadBatchModel())->update($batchId, ['total_rows' => count($payload)]);
 
         $priorityInfo = $priorityCount > 0 ? ' (' . $priorityCount . ' Prospek Prioritas Chat)' : '';
 
@@ -1002,16 +1012,6 @@ class CrmController extends BaseController
         (new CrmUploadBatchModel())->delete($id);
 
         return redirect()->to(site_url('crm'))->with('success', 'Batch upload dan datanya berhasil dihapus.');
-    }
-
-    public function downloadTemplate()
-    {
-        $csv = "No,Nama Siswa,Asal Sekolah,No WA\n1,Contoh Siswa,SMA Contoh,6281234567890\n";
-
-        return $this->response
-            ->setHeader('Content-Type', 'text/csv; charset=UTF-8')
-            ->setHeader('Content-Disposition', 'attachment; filename="template-crm-calon-pendaftar.csv"')
-            ->setBody($csv);
     }
 
     public function downloadDummyExcel()
@@ -1863,7 +1863,10 @@ class CrmController extends BaseController
     private function readXlsxRows(string $path): array
     {
         $sharedStrings = $this->xlsxSharedStringsFromXml($this->xlsxEntryContents($path, 'xl/sharedStrings.xml'));
-        $sheetCandidates = ['xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml', 'xl/worksheets/sheet3.xml'];
+        $sheetCandidates = [];
+        for ($s = 1; $s <= 10; $s++) {
+            $sheetCandidates[] = 'xl/worksheets/sheet' . $s . '.xml';
+        }
 
         foreach ($sheetCandidates as $sheetEntry) {
             $sheetXml = $this->xlsxEntryContents($path, $sheetEntry);

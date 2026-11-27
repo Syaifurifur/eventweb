@@ -1362,7 +1362,6 @@ $convPct = (int) ($stats['total'] ?? 0) > 0
                             </label>
                             <p>Otomatis baca dari format Excel mana pun: No, Nama Siswa, Asal Sekolah, No Telp/WA, Kelas (Kelas 3/XII), Minat Prodi Kuliah, Minat/Rencana Kuliah Tahun Ini &rarr; kategori <strong>Prospek Prioritas Chat</strong>.</p>
                             <div class="crm-upload-actions">
-                                <a class="ghost-button compact-button" href="<?= site_url('crm/template') ?>">Template</a>
                                 <a class="ghost-button compact-button" href="<?= site_url('crm/dummy-excel') ?>">Dummy (.xlsx)</a>
                                 <button class="crm-upload-button" type="submit">Upload</button>
                             </div>
