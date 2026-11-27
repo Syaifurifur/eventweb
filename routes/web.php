@@ -25,6 +25,7 @@ Route::get('crm/login', [CrmController::class, 'login']);
 Route::post('crm/login', [CrmController::class, 'attempt']);
 Route::post('crm/register', [CrmController::class, 'storeRegistration'])->middleware('role:Kepala Kampus');
 Route::get('crm/template', [CrmController::class, 'downloadTemplate']);
+Route::get('crm/dummy-excel', [CrmController::class, 'downloadDummyExcel']);
 Route::prefix('crm')->middleware('crm.auth')->group(function (): void {
     Route::get('/', [CrmController::class, 'index']);
     Route::get('monitoring', [CrmController::class, 'agentMonitoring']);

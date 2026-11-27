@@ -430,13 +430,15 @@ class CrmController extends BaseController
         }
 
         $extension = strtolower($file->getClientExtension() ?: pathinfo($file->getClientName(), PATHINFO_EXTENSION));
-        if (! in_array($extension, ['csv', 'xlsx'], true)) {
-            return redirect()->to(site_url('crm'))->with('error', 'Format file harus Excel .xlsx atau CSV.');
+        if (! in_array($extension, ['csv', 'xlsx', 'xls'], true)) {
+            return redirect()->to(site_url('crm'))->with('error', 'Format file harus Excel (.xlsx / .xls) atau CSV.');
         }
 
-        $rows = $extension === 'xlsx'
-            ? $this->readXlsxRows($file->getTempName())
-            : $this->readCsvRows($file->getTempName());
+        $rows = match ($extension) {
+            'xlsx' => $this->readXlsxRows($file->getTempName()),
+            'xls' => $this->readXlsRows($file->getTempName()),
+            default => $this->readCsvRows($file->getTempName()),
+        };
 
         if ($rows === []) {
             return redirect()->to(site_url('crm'))->with('error', 'File tidak berisi data yang bisa dibaca.');
@@ -457,7 +459,13 @@ class CrmController extends BaseController
         ], true);
 
         $payload = [];
+        $priorityCount = 0;
         foreach ($rows as $row) {
+            $prospectStatus = $row['prospect_status'] ?? null;
+            if ($prospectStatus === 'priority') {
+                $priorityCount++;
+            }
+
             $payload[] = [
                 'batch_id' => $batchId,
                 'event_id' => $eventId,
@@ -465,9 +473,14 @@ class CrmController extends BaseController
                 'student_name' => $row['student_name'],
                 'school_origin' => $row['school_origin'] ?: null,
                 'whatsapp' => $row['whatsapp'] ?: null,
+                'email' => ($row['email'] ?? '') !== '' ? mb_substr((string) $row['email'], 0, 160) : null,
+                'participant_status' => ($row['participant_status'] ?? '') !== '' ? mb_substr((string) $row['participant_status'], 0, 60) : null,
+                'student_class' => ($row['student_class'] ?? '') !== '' ? mb_substr((string) $row['student_class'], 0, 30) : null,
+                'prospect_status' => $prospectStatus,
                 'stage' => 'Tahap 1',
-                'label' => null,
+                'label' => $prospectStatus === 'priority' ? 'Minat/Tertarik' : null,
                 'agent_id' => null,
+                'notes' => ($row['notes'] ?? '') !== '' ? mb_substr((string) $row['notes'], 0, 1950) : null,
             ];
         }
 
@@ -479,7 +492,9 @@ class CrmController extends BaseController
 
         (new CrmLeadModel())->insertBatch($payload);
 
-        return redirect()->to(site_url('crm?pmb_period=' . urlencode($pmbPeriod) . '&event_id=' . $eventId))->with('success', count($payload) . ' data calon pendaftar berhasil diupload ke klaster PMB ' . $pmbPeriod . ' (Event ' . $event['code'] . ').');
+        $priorityInfo = $priorityCount > 0 ? ' (' . $priorityCount . ' Prospek Prioritas Chat)' : '';
+
+        return redirect()->to(site_url('crm?pmb_period=' . urlencode($pmbPeriod) . '&event_id=' . $eventId))->with('success', count($payload) . ' data calon pendaftar berhasil diupload' . $priorityInfo . ' ke klaster PMB ' . $pmbPeriod . ' (Event ' . $event['code'] . ').');
     }
 
     public function assignLeads()
@@ -997,6 +1012,30 @@ class CrmController extends BaseController
             ->setHeader('Content-Type', 'text/csv; charset=UTF-8')
             ->setHeader('Content-Disposition', 'attachment; filename="template-crm-calon-pendaftar.csv"')
             ->setBody($csv);
+    }
+
+    public function downloadDummyExcel()
+    {
+        $rows = [
+            ['DATA CALON MAHASISWA BARU - UPLOAD KEPALA KAMPUS'],
+            [''],
+            ['No', 'Nama Siswa', 'Asal Sekolah', 'No Telepon / WhatsApp', 'Kelas', 'Minat Prodi Kuliah', 'Berminat Kuliah Tahun Ini ?', 'Rencana Melanjutkan Kuliah'],
+            ['1', 'Ahmad Fauzan', 'SMAN 1 Jakarta', '081234567801', 'Kelas 3', 'Sistem Informasi', 'Ya', 'Tahun ini'],
+            ['2', 'Nabila Putri', 'SMKN 2 Bekasi', '081345678902', 'XII', 'Teknik Informatika', 'Ya', 'Langsung kuliah setelah lulus'],
+            ['3', 'Rizky Pratama', 'SMA Muhammadiyah 1 Depok', '628567890123', '12 IPA', 'Ilmu Komunikasi', 'Tidak', 'Tahun ini'],
+            ['4', 'Siti Rahmawati', 'SMAN 4 Tangerang', '082198765430', 'Kelas XI', 'Manajemen', 'Ya', 'Tahun ini'],
+            ['5', 'Dimas Saputra', 'SMK Telkom Jakarta', '081911223344', 'XI TKJ', 'Teknologi Informasi', 'Tidak', 'Tahun depan'],
+            ['6', 'Aulia Azzahra', 'SMAN 10 Bogor', '085722334455', '3 IPS', 'Akuntansi', 'Tidak', 'Kerja dulu'],
+            ['7', 'Bagas Kurniawan', 'SMKN 5 Jakarta', '081299887766', 'Kelas 2', 'Desain Komunikasi Visual', 'Tidak', 'Tahun depan'],
+            ['8', 'Fitri Handayani', 'SMA Al-Azhar Bekasi', '081388776655', '12', 'Sastra Inggris', 'Ya', '2026'],
+            ['9', 'Reza Mahendra', 'SMAN 3 Karawang', '087812345678', 'Kelas X', 'Sistem Informasi', 'Tidak', 'Belum tahu'],
+            ['10', 'Intan Permata', 'SMKN 1 Cikarang', '081566778899', 'XII RPL', 'Informatika', 'Ya', 'Kuliah tahun ini'],
+        ];
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="dummy-data-crm-siswa.xlsx"')
+            ->setBody($this->xlsxFromRows($rows, 'Data Siswa CRM'));
     }
 
     private function applyLeadFilters($builder): void
@@ -1748,8 +1787,7 @@ class CrmController extends BaseController
             return [];
         }
 
-        $rows = [];
-        $headers = [];
+        $rawRows = [];
         $delimiter = null;
         while (($line = fgetcsv($handle)) !== false) {
             if ($delimiter === null) {
@@ -1758,76 +1796,141 @@ class CrmController extends BaseController
             if ($delimiter !== ',' && count($line) === 1) {
                 $line = str_getcsv((string) $line[0], $delimiter);
             }
-
-            if ($headers === []) {
-                $candidateHeaders = $this->normalizeHeaders($line);
-                if ($this->isLikelyLeadHeaderRow($candidateHeaders)) {
-                    $headers = $candidateHeaders;
-                    continue;
-                }
-                // If first non-empty row is already data without headers, use positional mapping
-                $mappedPositional = $this->mapPositionalLeadRow($line);
-                if ($mappedPositional !== null) {
-                    $rows[] = $mappedPositional;
-                }
-                continue;
-            }
-
-            $mapped = $this->mapLeadRow($headers, $line);
-            if ($mapped !== null) {
-                $rows[] = $mapped;
-            }
+            $rawRows[] = $line;
         }
         fclose($handle);
 
-        return $rows;
+        return $this->mapRawLeadRows($rawRows);
+    }
+
+    private function readXlsRows(string $path): array
+    {
+        $content = @file_get_contents($path);
+        if (! is_string($content) || trim($content) === '') {
+            return [];
+        }
+
+        // Some .xls files are actually XLSX (ZIP), HTML tables, SpreadsheetML XML, or CSV
+        if (str_starts_with($content, "PK\x03\x04")) {
+            return $this->readXlsxRows($path);
+        }
+
+        $rawRows = [];
+        if (stripos($content, '<table') !== false || stripos($content, '<tr') !== false) {
+            $dom = new \DOMDocument();
+            $prev = libxml_use_internal_errors(true);
+            $dom->loadHTML('<?xml encoding="utf-8" ?>' . $content);
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
+
+            foreach ($dom->getElementsByTagName('tr') as $tr) {
+                $cells = [];
+                foreach ($tr->childNodes as $cell) {
+                    if ($cell instanceof \DOMElement && in_array(strtolower($cell->tagName), ['td', 'th'], true)) {
+                        $cells[] = trim(preg_replace('/\s+/', ' ', (string) $cell->textContent) ?? '');
+                    }
+                }
+                if ($cells !== []) {
+                    $rawRows[] = $cells;
+                }
+            }
+        } elseif (stripos($content, '<Workbook') !== false || stripos($content, '<Row') !== false) {
+            $prev = libxml_use_internal_errors(true);
+            $xml = simplexml_load_string($content);
+            libxml_clear_errors();
+            libxml_use_internal_errors($prev);
+            if ($xml) {
+                foreach ($xml->xpath('//*[local-name()="Row"]') ?: [] as $row) {
+                    $cells = [];
+                    foreach ($row->xpath('./*[local-name()="Cell"]') ?: [] as $cell) {
+                        $dataNodes = $cell->xpath('./*[local-name()="Data"]');
+                        $cells[] = trim((string) ($dataNodes[0] ?? ''));
+                    }
+                    if ($cells !== []) {
+                        $rawRows[] = $cells;
+                    }
+                }
+            }
+        }
+
+        if ($rawRows !== []) {
+            return $this->mapRawLeadRows($rawRows);
+        }
+
+        return $this->readCsvRows($path);
     }
 
     private function readXlsxRows(string $path): array
     {
         $sharedStrings = $this->xlsxSharedStringsFromXml($this->xlsxEntryContents($path, 'xl/sharedStrings.xml'));
-        $sheetXml = $this->xlsxEntryContents($path, 'xl/worksheets/sheet1.xml');
+        $sheetCandidates = ['xl/worksheets/sheet1.xml', 'xl/worksheets/sheet2.xml', 'xl/worksheets/sheet3.xml'];
 
-        if (! is_string($sheetXml) || $sheetXml === '') {
-            return [];
+        foreach ($sheetCandidates as $sheetEntry) {
+            $sheetXml = $this->xlsxEntryContents($path, $sheetEntry);
+            if (! is_string($sheetXml) || $sheetXml === '') {
+                continue;
+            }
+
+            $xml = simplexml_load_string($sheetXml);
+            if (! $xml) {
+                continue;
+            }
+
+            $namespace = $this->xlsxSpreadsheetNamespace($xml);
+            $sheetRows = [];
+            if ($namespace !== null) {
+                $xml->registerXPathNamespace('xlsx', $namespace);
+                $sheetRows = $xml->xpath('/xlsx:worksheet/xlsx:sheetData/xlsx:row') ?: [];
+            } elseif (isset($xml->sheetData)) {
+                $sheetRows = iterator_to_array($xml->sheetData->row, false);
+            }
+
+            $rawRows = [];
+            foreach ($sheetRows as $row) {
+                $values = [];
+                $fallbackIndex = 0;
+                if ($namespace !== null) {
+                    $row->registerXPathNamespace('xlsx', $namespace);
+                    $cells = $row->xpath('xlsx:c') ?: [];
+                } else {
+                    $cells = iterator_to_array($row->c, false);
+                }
+
+                foreach ($cells as $cell) {
+                    $value = $this->xlsxCellValue($cell, $sharedStrings);
+                    $reference = (string) $cell['r'];
+                    $columnIndex = $reference !== '' ? $this->xlsxColumnIndex($reference) : $fallbackIndex;
+                    $values[$columnIndex] = trim($value);
+                    $fallbackIndex++;
+                }
+
+                ksort($values);
+                $rawRows[] = $this->denseRowValues($values);
+            }
+
+            $mappedRows = $this->mapRawLeadRows($rawRows);
+            if ($mappedRows !== []) {
+                return $mappedRows;
+            }
         }
 
-        $xml = simplexml_load_string($sheetXml);
-        if (! $xml) {
-            return [];
-        }
+        return [];
+    }
 
-        $namespace = $this->xlsxSpreadsheetNamespace($xml);
-        $sheetRows = [];
-        if ($namespace !== null) {
-            $xml->registerXPathNamespace('xlsx', $namespace);
-            $sheetRows = $xml->xpath('/xlsx:worksheet/xlsx:sheetData/xlsx:row') ?: [];
-        } elseif (isset($xml->sheetData)) {
-            $sheetRows = iterator_to_array($xml->sheetData->row, false);
-        }
-
+    private function mapRawLeadRows(array $rawRows): array
+    {
         $headers = [];
         $rows = [];
-        foreach ($sheetRows as $row) {
-            $values = [];
-            $fallbackIndex = 0;
-            if ($namespace !== null) {
-                $row->registerXPathNamespace('xlsx', $namespace);
-                $cells = $row->xpath('xlsx:c') ?: [];
-            } else {
-                $cells = iterator_to_array($row->c, false);
+
+        foreach ($rawRows as $values) {
+            if (! is_array($values)) {
+                continue;
             }
 
-            foreach ($cells as $cell) {
-                $value = $this->xlsxCellValue($cell, $sharedStrings);
-                $reference = (string) $cell['r'];
-                $columnIndex = $reference !== '' ? $this->xlsxColumnIndex($reference) : $fallbackIndex;
-                $values[$columnIndex] = trim($value);
-                $fallbackIndex++;
+            $nonEmptyCount = count(array_filter($values, static fn ($v): bool => trim((string) $v) !== ''));
+            if ($nonEmptyCount === 0) {
+                continue;
             }
-
-            ksort($values);
-            $values = $this->denseRowValues($values);
 
             if ($headers === []) {
                 $candidateHeaders = $this->normalizeHeaders($values);
@@ -2089,16 +2192,24 @@ class CrmController extends BaseController
 
     private function isLikelyLeadHeaderRow(array $normalizedHeaders): bool
     {
+        $matches = 0;
+        $hasPrimaryField = false;
+
         foreach ($normalizedHeaders as $h) {
             if ($h === '') {
                 continue;
             }
             if (preg_match('/(?:^|_)(?:nama|name|siswa|peserta|mahasiswa|camaba|sekolah|school|wa|whatsapp|telp|telepon|telpon|tlp|hp|handphone|phone|mobile|kontak|contact)(?:_|$)/', $h) === 1) {
-                return true;
+                $hasPrimaryField = true;
+                $matches++;
+                continue;
+            }
+            if (preg_match('/^(?:no|nomor)$|(?:^|_)(?:kelas|class|prodi|program_studi|jurusan|minat|berminat|kuliah|rencana|email)(?:_|$)/', $h) === 1) {
+                $matches++;
             }
         }
 
-        return false;
+        return $hasPrimaryField && $matches >= 2;
     }
 
     private function firstNonEmptyValue(array $row, array $keys): string
@@ -2110,6 +2221,74 @@ class CrmController extends BaseController
         }
 
         return '';
+    }
+
+    private function firstMatchingHeaderValue(array $row, array $patterns): string
+    {
+        foreach ($patterns as $pattern) {
+            foreach ($row as $hKey => $hVal) {
+                $val = trim((string) $hVal);
+                if ($val !== '' && preg_match($pattern, (string) $hKey) === 1) {
+                    return $val;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    private function normalizeStudentClassAndCheckGrade3(string $rawClass): array
+    {
+        $clean = trim($rawClass);
+        if ($clean === '' || in_array(strtolower($clean), ['-', 'tidak ada', 'none', 'n/a'], true)) {
+            return ['', false];
+        }
+
+        $lower = strtolower($clean);
+        $stripped = preg_replace('/^(?:kelas|kls|class|tingkat)\s*/i', '', $clean) ?? $clean;
+        $strippedLower = strtolower(trim($stripped));
+
+        // Deteksi Kelas 3 / XII / 12 (mis. "3", "Kelas 3", "3 SMA", "XII", "XII IPA 1", "12 TKJ")
+        $isGrade3 = preg_match('/^(?:3|12|xii)(?:\b|\s|[-_\/]|$)/i', $strippedLower) === 1
+            || preg_match('/\b(?:kelas\s*3|kelas\s*12|kelas\s*xii|xii|12)\b/i', $lower) === 1;
+
+        if (preg_match('/^(?:3|12|xii)$/i', $strippedLower) === 1) {
+            return ['XII', true];
+        }
+        if (preg_match('/^(?:2|11|xi)$/i', $strippedLower) === 1) {
+            return ['XI', false];
+        }
+        if (preg_match('/^(?:1|10|x)$/i', $strippedLower) === 1) {
+            return ['X', false];
+        }
+
+        return [mb_substr(trim($stripped) !== '' ? trim($stripped) : $clean, 0, 30), $isGrade3];
+    }
+
+    private function isAffirmativeCollegeInterest(string $value): bool
+    {
+        $lower = strtolower(trim($value));
+        if ($lower === '' || preg_match('/\b(?:tidak|tdk|gak|ga|nggak|enggak|bukan|belum|no|nope|ragu)\b/', $lower) === 1) {
+            return false;
+        }
+
+        return preg_match('/\b(?:ya|iya|yes|y|berminat|minat|mau|ingin|tertarik|lanjut|melanjutkan|kuliah|siap|tentu|pasti|1|true|202[5-9])\b/', $lower) === 1;
+    }
+
+    private function isCollegePlanThisYear(string $value): bool
+    {
+        $lower = strtolower(trim($value));
+        if ($lower === '') {
+            return false;
+        }
+        if (preg_match('/\b(?:tidak|tdk|bukan|belum|tahun depan|kerja dulu|bekerja|wirausaha|menikah|gap\s*year|menunda)\b/', $lower) === 1) {
+            return false;
+        }
+
+        $currentYear = date('Y');
+        $nextYear = (string) ((int) $currentYear + 1);
+
+        return preg_match('/\b(?:tahun ini|sekarang|langsung|secepatnya|segera|ya|iya|kuliah|' . $currentYear . '|' . $nextYear . ')\b/', $lower) === 1;
     }
 
     private function mapLeadRow(array $headers, array $values): ?array
@@ -2131,7 +2310,7 @@ class CrmController extends BaseController
         ]);
         if ($name === '') {
             foreach ($row as $hKey => $hVal) {
-                if ($hVal !== '' && preg_match('/(?:^|_)(?:nama|student_name|full_name|name)(?:_|$)/', $hKey) === 1 && ! str_contains($hKey, 'sekolah') && ! str_contains($hKey, 'event') && ! str_contains($hKey, 'kampus')) {
+                if ($hVal !== '' && preg_match('/(?:^|_)(?:nama|student_name|full_name|name)(?:_|$)/', $hKey) === 1 && ! str_contains($hKey, 'sekolah') && ! str_contains($hKey, 'event') && ! str_contains($hKey, 'kampus') && ! str_contains($hKey, 'orang_tua') && ! str_contains($hKey, 'wali')) {
                     $name = $hVal;
                     break;
                 }
@@ -2139,7 +2318,7 @@ class CrmController extends BaseController
         }
 
         $school = $this->firstNonEmptyValue($row, [
-            'asal_sekolah', 'sekolah_asal', 'nama_sekolah', 'sekolah', 'school_origin', 'school_name', 'school', 'instansi', 'sma_smk',
+            'asal_sekolah', 'sekolah_asal', 'nama_sekolah', 'sekolah', 'school_origin', 'school_name', 'school', 'instansi', 'asal_instansi', 'sma_smk',
         ]);
         if ($school === '') {
             foreach ($row as $hKey => $hVal) {
@@ -2156,6 +2335,7 @@ class CrmController extends BaseController
             'no_telp', 'nomor_telp', 'no_telepon', 'nomor_telepon', 'no_telpon', 'nomor_telpon',
             'telp', 'telepon', 'telpon', 'no_tlp', 'nomor_tlp', 'tlp',
             'no_hp_wa', 'no_wa_hp', 'no_telp_wa', 'no_telp_hp', 'telp_wa', 'hp_wa',
+            'no_telepon_whatsapp', 'telepon_whatsapp', 'no_telepon_wa',
             'phone', 'phone_number', 'no_phone', 'mobile', 'no_mobile', 'mobile_phone',
             'kontak', 'no_kontak', 'nomor_kontak', 'contact', 'contact_number', 'telepon_wa',
         ]);
@@ -2180,14 +2360,113 @@ class CrmController extends BaseController
             }
         }
 
-        if (trim($name) === '' || $this->isLikelyLeadHeaderRow($this->normalizeHeaders([$name]))) {
+        if (trim($name) === '' || preg_match('/^(?:nama|nama_siswa|nama_lengkap|student_name)$/', strtolower(trim($name))) === 1) {
             return null;
+        }
+
+        $email = $this->firstNonEmptyValue($row, ['email', 'e_mail', 'alamat_email', 'email_siswa', 'email_peserta']);
+
+        // Cari kolom tambahan dari Excel mana pun: Kelas, Minat Prodi Kuliah, Berminat Kuliah Tahun Ini, Rencana Melanjutkan Kuliah
+        $rawClass = $this->firstNonEmptyValue($row, [
+            'kelas', 'class', 'student_class', 'tingkat', 'tingkatan', 'kelas_saat_ini', 'jenjang_kelas',
+        ]);
+        if ($rawClass === '') {
+            $rawClass = $this->firstMatchingHeaderValue($row, [
+                '/(?:^|_)(?:kelas|class|tingkat)(?:_|$)/',
+            ]);
+        }
+        [$studentClass, $isGrade3] = $this->normalizeStudentClassAndCheckGrade3($rawClass);
+
+        $participantStatus = $this->firstNonEmptyValue($row, ['status_peserta', 'participant_status', 'status']);
+        if ($participantStatus === '' && $studentClass !== '') {
+            $participantStatus = 'Siswa';
+        }
+
+        $minatProdi = $this->firstNonEmptyValue($row, [
+            'minat_prodi_kuliah', 'minat_prodi', 'prodi', 'program_studi', 'prodi_pilihan',
+            'pilihan_prodi', 'jurusan_kuliah', 'minat_jurusan', 'jurusan_yang_diminati', 'prodi_yang_diminati',
+        ]);
+        if ($minatProdi === '') {
+            $minatProdi = $this->firstMatchingHeaderValue($row, [
+                '/(?:prodi|program_studi)/',
+                '/minat.*jurusan|jurusan.*kuliah/',
+            ]);
+        }
+        if (in_array(strtolower($minatProdi), ['-', 'tidak ada', 'belum tahu', 'belum ada', 'tidak', 'none'], true)) {
+            $minatProdi = '';
+        }
+
+        $berminatKuliahTahunIni = $this->firstNonEmptyValue($row, [
+            'berminat_kuliah_tahun_ini', 'minat_kuliah_tahun_ini', 'kuliah_tahun_ini',
+            'apakah_berminat_kuliah_tahun_ini', 'berminat_kuliah', 'minat_kuliah',
+        ]);
+        if ($berminatKuliahTahunIni === '') {
+            $berminatKuliahTahunIni = $this->firstMatchingHeaderValue($row, [
+                '/(?:minat|berminat|ingin|mau|tertarik).*(?:kuliah|lanjut)/',
+                '/kuliah.*tahun_ini/',
+            ]);
+        }
+
+        $rencanaKuliah = $this->firstNonEmptyValue($row, [
+            'rencana_melanjutkan_kuliah', 'rencana_kuliah', 'rencana_setelah_lulus',
+            'kapan_kuliah', 'target_kuliah', 'waktu_kuliah', 'tahun_kuliah',
+        ]);
+        if ($rencanaKuliah === '') {
+            $rencanaKuliah = $this->firstMatchingHeaderValue($row, [
+                '/rencana.*(?:kuliah|lanjut|melanjutkan|studi|lulus)/',
+                '/(?:kapan|target|tahun|waktu).*kuliah/',
+            ]);
+        }
+
+        $hasCollegeIntentThisYear = $this->isAffirmativeCollegeInterest($berminatKuliahTahunIni);
+        $hasCollegePlanThisYear = $this->isCollegePlanThisYear($rencanaKuliah);
+        $hasPrioritySignal = $isGrade3 || $hasCollegeIntentThisYear || $hasCollegePlanThisYear;
+
+        $hasAnyClassificationColumn = $studentClass !== ''
+            || $minatProdi !== ''
+            || $berminatKuliahTahunIni !== ''
+            || $rencanaKuliah !== '';
+
+        $prospectStatus = null;
+        if ($hasPrioritySignal) {
+            $prospectStatus = 'priority';
+        } elseif ($hasAnyClassificationColumn) {
+            $prospectStatus = 'nurture';
+        }
+
+        $notesParts = [];
+        if ($studentClass !== '') {
+            $notesParts[] = 'Kelas: ' . $studentClass;
+        }
+        if ($minatProdi !== '') {
+            $notesParts[] = 'Minat Prodi: ' . $minatProdi;
+        }
+        if ($berminatKuliahTahunIni !== '') {
+            $notesParts[] = 'Berminat Kuliah Tahun Ini: ' . $berminatKuliahTahunIni;
+        }
+        if ($rencanaKuliah !== '') {
+            $notesParts[] = 'Rencana Melanjutkan Kuliah: ' . $rencanaKuliah;
+        }
+
+        $notes = '';
+        if ($prospectStatus === 'priority') {
+            $notes = '[⭐ PROSPEK PRIORITAS (Chat di Awal)]';
+        } elseif ($prospectStatus === 'nurture') {
+            $notes = '[🕒 FOLLOW UP LANJUTAN (Setelah Prospek Selesai)]';
+        }
+        if ($notesParts !== []) {
+            $notes = trim($notes . ' ' . implode(' | ', $notesParts));
         }
 
         return [
             'student_name' => trim($name),
             'school_origin' => trim($school),
             'whatsapp' => $this->normalizeWhatsappNumber($wa),
+            'email' => trim($email),
+            'participant_status' => trim($participantStatus),
+            'student_class' => $studentClass,
+            'prospect_status' => $prospectStatus,
+            'notes' => $notes,
         ];
     }
 
